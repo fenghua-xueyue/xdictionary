@@ -13,19 +13,38 @@
 
   /* ---------- 状态 ---------- */
   var state = {
-    view: "learn",          // learn | review
+    view: "learn",          // learn(正常学习) | review(复习模式)
     mode: "learn",          // learn | en | zh
-    currentIndex: 0,        // 当前翻卡索引（学习/回顾共享）
+    currentIndex: 0,        // 学习视图内当前翻卡索引
     showAnswer: false,      // 英文/中文模式是否已揭示答案
     pool: [],               // 打乱后的词库索引
     cursor: 0,              // 已抽取的游标
     roundCounter: 0,        // 当前轮次号
     currentRound: null,     // { round, words, createdAt }
-    previousRound: null     // { round, words, createdAt }
+    reviewIndex: 0          // 复习模式下跨所有学过的词的全局索引
   };
 
   var LS_KEY = "english_app_v1";
   var ROUND_SIZE = 20;
+
+  /* ---------- 复习模式：所有学过的词，按 20 个一组分页 ---------- */
+  function getLearnedWords() {
+    if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) return [];
+    return state.pool.slice(0, state.cursor).map(function (i) { return WORDS[i]; });
+  }
+  function getReviewChunks() {
+    var learned = getLearnedWords();
+    var chunks = [];
+    for (var i = 0; i < learned.length; i += ROUND_SIZE) {
+      chunks.push(learned.slice(i, i + ROUND_SIZE));
+    }
+    return chunks;
+  }
+  function reviewTotal() {
+    var n = 0;
+    getReviewChunks().forEach(function (c) { n += c.length; });
+    return n;
+  }
 
   /* ---------- 抽词：Fisher-Yates 打乱 ---------- */
   function freshPool() {
@@ -54,15 +73,6 @@
     var words = indices.map(function (i) { return WORDS[i]; });
     state.roundCounter += 1;
 
-    // 当前轮转存为上一轮（便于回顾展示）
-    if (state.currentRound) {
-      state.previousRound = {
-        round: state.currentRound.round,
-        words: state.currentRound.words,
-        createdAt: state.currentRound.createdAt
-      };
-    }
-
     state.currentRound = {
       round: state.roundCounter,
       words: words,
@@ -89,7 +99,7 @@
         cursor: state.cursor,
         roundCounter: state.roundCounter,
         currentRound: state.currentRound,
-        previousRound: state.previousRound
+        reviewIndex: state.reviewIndex
       }));
     } catch (e) { /* 无痕模式等：降级为内存态 */ }
   }
@@ -104,6 +114,19 @@
     } catch (e) { return false; }
   }
 
+  /* ---------- 视图对应的轮次 ---------- */
+  function activeRoundFor(viewName) {
+    if (viewName === "review") {
+      var chunks = getReviewChunks();
+      if (!chunks.length) return null;
+      var rIdx = Math.floor(state.reviewIndex / ROUND_SIZE);
+      if (rIdx >= chunks.length) rIdx = chunks.length - 1;
+      if (rIdx < 0) rIdx = 0;
+      return { words: chunks[rIdx], _round: rIdx, _total: chunks.length };
+    }
+    return state.currentRound;
+  }
+
   /* ---------- 视图切换 ---------- */
   function switchView(name) {
     state.view = name;
@@ -115,12 +138,20 @@
   /* ---------- 渲染：卡片 ---------- */
   function renderCard(viewName) {
     var viewEl = document.getElementById(viewName === "review" ? "view-review" : "view-learn");
-    var round = viewName === "review" ? state.previousRound : state.currentRound;
+    var round = activeRoundFor(viewName);
     if (!round) return;
 
-    if (state.currentIndex >= round.words.length) state.currentIndex = 0;
+    var idx;
+    if (viewName === "review") {
+      idx = state.reviewIndex % ROUND_SIZE;
+      if (idx >= round.words.length) idx = round.words.length - 1;
+      if (idx < 0) idx = 0;
+    } else {
+      idx = state.currentIndex;
+      if (idx >= round.words.length) idx = 0;
+    }
 
-    var w = round.words[state.currentIndex];
+    var w = round.words[idx];
     var card = viewEl.querySelector(".flashcard");
     card.dataset.mode = state.mode;
     card.classList.toggle("show-answer", state.showAnswer);
@@ -133,13 +164,27 @@
     input.value = "";
     input.classList.remove("correct", "wrong");
 
-    var pct = (state.currentIndex / (round.words.length - 1)) * 100;
+    var pct = (idx / Math.max(round.words.length - 1, 1)) * 100;
     viewEl.querySelector(".progress-fill").style.width = pct + "%";
     viewEl.querySelector(".progress-text").textContent =
-      (state.currentIndex + 1) + " / " + round.words.length;
+      (idx + 1) + " / " + round.words.length;
 
-    viewEl.querySelector(".nav-left").disabled = state.currentIndex === 0;
-    viewEl.querySelector(".nav-right").disabled = state.currentIndex === round.words.length - 1;
+    if (viewName === "review") {
+      viewEl.querySelector(".nav-left").disabled = state.reviewIndex === 0;
+      viewEl.querySelector(".nav-right").disabled = state.reviewIndex >= reviewTotal() - 1;
+      var rt = document.getElementById("review-title");
+      if (rt) rt.textContent = "复习模式 · 第 " + (round._round + 1) + " / " + round._total + " 轮";
+      var hint = viewEl.querySelector(".progress-hint");
+      if (hint) hint.textContent = "复习所有学过的单词 · 仅中 / 英文模式";
+      // 复习模式“上一轮 / 下一轮”= 跳上/下一批；在首/尾批则禁用
+      var nextBtn = document.getElementById("btn-new-round-review");
+      if (nextBtn) nextBtn.disabled = (round._round + 1) >= round._total;
+      var prevBtn = document.getElementById("btn-prev-batch");
+      if (prevBtn) prevBtn.disabled = round._round <= 0;
+    } else {
+      viewEl.querySelector(".nav-left").disabled = idx === 0;
+      viewEl.querySelector(".nav-right").disabled = idx === round.words.length - 1;
+    }
   }
 
   /* ---------- 渲染：模式切换器高亮（两个视图同步） ---------- */
@@ -174,20 +219,25 @@
     renderRoundBadge();
     renderStory();
     renderCard("learn");
-    if (state.previousRound) renderCard("review");
-    var reviewBtn = document.getElementById("btn-review");
-    if (reviewBtn) reviewBtn.disabled = !state.previousRound;
+    if (state.view === "review") renderCard("review");
+
+    // 复习切换按钮：标签随当前模式翻转，正常学习时可复习才不禁用
+    var toggleBtn = document.getElementById("btn-review");
+    if (toggleBtn) {
+      toggleBtn.textContent = state.view === "review" ? "学习" : "复习";
+      toggleBtn.disabled = state.view === "learn" && reviewTotal() === 0;
+    }
   }
 
   /* ---------- 交互动作 ---------- */
   function goTo(i) {
-    var round = state.view === "review" ? state.previousRound : state.currentRound;
+    var round = state.currentRound;
     if (!round) return;
     if (i < 0 || i >= round.words.length) return;
     state.currentIndex = i;
     state.showAnswer = false;
     saveState();
-    renderCard(state.view);
+    renderCard("learn");
   }
 
   function setMode(mode) {
@@ -195,15 +245,91 @@
     state.showAnswer = false;
     saveState();
     renderModeSwitchers();
-    renderCard("learn");
-    if (state.previousRound) renderCard("review");
+    renderCard(state.view);
   }
 
   function revealAnswer() {
     state.showAnswer = true;
     saveState();
-    renderCard("learn");
-    if (state.previousRound) renderCard("review");
+    renderCard(state.view);
+  }
+
+  // 复习模式：在“所有学过的词”里前后翻一张
+  function reviewStep(delta) {
+    var total = reviewTotal();
+    if (!total) return;
+    var gi = state.reviewIndex + delta;
+    if (gi < 0) gi = 0;
+    if (gi > total - 1) gi = total - 1;
+    state.reviewIndex = gi;
+    state.showAnswer = false;
+    saveState();
+    renderCard("review");
+  }
+
+  // 复习模式：跳到下一批 20 个词（不退出复习）
+  function reviewNextBatch() {
+    var total = reviewTotal();
+    if (!total) return;
+    var curChunk = Math.floor(state.reviewIndex / ROUND_SIZE);
+    var nextStart = (curChunk + 1) * ROUND_SIZE;
+    if (nextStart >= total) { toast("已经是最后一批啦"); return; }
+    state.reviewIndex = nextStart;
+    state.showAnswer = false;
+    saveState();
+    renderCard("review");
+  }
+
+  // 复习模式：回到上一批 20 个词（不退出复习）
+  function reviewPrevBatch() {
+    if (reviewTotal() === 0) return;
+    var curChunk = Math.floor(state.reviewIndex / ROUND_SIZE);
+    if (curChunk <= 0) { toast("已经是第一批啦"); return; }
+    state.reviewIndex = (curChunk - 1) * ROUND_SIZE;
+    state.showAnswer = false;
+    saveState();
+    renderCard("review");
+  }
+
+  // 复习 ↔ 正常学习 切换
+  function toggleReview() {
+    if (state.view === "review") {
+      state.view = "learn";
+      state.showAnswer = false;
+    } else {
+      if (reviewTotal() === 0) { toast("还没有学过的单词可复习哦"); return; }
+      state.view = "review";
+      state.reviewIndex = 0;
+      state.showAnswer = false;
+      if (state.mode === "learn") state.mode = "en"; // 复习模式无“背单词”
+    }
+    saveState();
+    renderAll();
+  }
+
+  // 重置：清空所有背过的单词，从头开始
+  function openResetModal() {
+    var m = document.getElementById("reset-modal");
+    if (m) m.removeAttribute("hidden");
+  }
+  function closeResetModal() {
+    var m = document.getElementById("reset-modal");
+    if (m) m.setAttribute("hidden", "");
+  }
+  function resetAll() {
+    try { localStorage.removeItem(LS_KEY); } catch (e) { /* ignore */ }
+    state.pool = [];
+    state.cursor = 0;
+    state.roundCounter = 0;
+    state.currentRound = null;
+    state.reviewIndex = 0;
+    state.view = "learn";
+    state.mode = "learn";
+    state.currentIndex = 0;
+    state.showAnswer = false;
+    closeResetModal();
+    if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) state.pool = freshPool();
+    drawRound(); // 抽第 1 轮并渲染
   }
 
   var toastTimer;
@@ -217,34 +343,37 @@
 
   /* ---------- 事件绑定 ---------- */
   function bindEvents() {
-    // 学习页：开始新一轮 / 回顾上一轮
+    // 顶栏：复习模式切换（标签在渲染时翻转为 复习 / 学习）
+    document.getElementById("btn-review").addEventListener("click", toggleReview);
+
+    // 学习页：重置（先弹确认框）
+    document.getElementById("btn-reset").addEventListener("click", openResetModal);
+    document.getElementById("btn-reset-cancel").addEventListener("click", closeResetModal);
+    document.getElementById("btn-reset-confirm").addEventListener("click", resetAll);
+    // 点遮罩空白处 / 按 Esc 取消
+    var resetModal = document.getElementById("reset-modal");
+    if (resetModal) {
+      resetModal.addEventListener("click", function (e) { if (e.target === this) closeResetModal(); });
+    }
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && resetModal && !resetModal.hasAttribute("hidden")) closeResetModal();
+    });
+
+    // 学习页：开始新一轮 / 生成故事（提示态）
     document.getElementById("btn-new-round-learn").addEventListener("click", function () { drawRound(); });
-    document.getElementById("btn-review").addEventListener("click", function () {
-      if (!state.previousRound) { toast("还没有上一轮哦"); return; }
-      state.view = "review"; state.showAnswer = false; state.currentIndex = 0;
-      saveState(); renderAll();
-    });
-
-    // 回顾页：重新生成 / 开始新一轮 / 返回当前学习
-    document.getElementById("btn-regen").addEventListener("click", function () {
-      toast("AI 生成开发中，敬请期待 🚀");
-    });
-    document.getElementById("btn-new-round-review").addEventListener("click", function () { drawRound(); });
-    document.getElementById("btn-back").addEventListener("click", function () {
-      state.view = "learn"; state.showAnswer = false;
-      saveState(); renderAll();
-    });
-
-    // 生成故事（提示态）
     document.getElementById("btn-generate").addEventListener("click", function () {
       toast("AI 生成开发中，敬请期待 🚀");
     });
 
+    // 复习页：上一轮 / 下一轮 = 在复习批之间前后跳转（停留复习模式）
+    document.getElementById("btn-prev-batch").addEventListener("click", reviewPrevBatch);
+    document.getElementById("btn-new-round-review").addEventListener("click", reviewNextBatch);
+
     // 翻卡箭头
     document.getElementById("nav-prev-learn").addEventListener("click", function () { goTo(state.currentIndex - 1); });
     document.getElementById("nav-next-learn").addEventListener("click", function () { goTo(state.currentIndex + 1); });
-    document.getElementById("nav-prev-review").addEventListener("click", function () { goTo(state.currentIndex - 1); });
-    document.getElementById("nav-next-review").addEventListener("click", function () { goTo(state.currentIndex + 1); });
+    document.getElementById("nav-prev-review").addEventListener("click", function () { reviewStep(-1); });
+    document.getElementById("nav-next-review").addEventListener("click", function () { reviewStep(1); });
 
     // 模式切换器（两个视图）
     document.querySelectorAll(".mode-switcher").forEach(function (sw) {
@@ -262,9 +391,11 @@
     document.querySelectorAll(".write-input").forEach(function (input) {
       input.addEventListener("input", function () {
         if (state.mode !== "zh") { input.classList.remove("correct", "wrong"); return; }
-        var round = state.view === "review" ? state.previousRound : state.currentRound;
+        var round = activeRoundFor(state.view);
         if (!round) return;
-        var w = round.words[state.currentIndex];
+        var idx = state.view === "review" ? (state.reviewIndex % ROUND_SIZE) : state.currentIndex;
+        if (idx >= round.words.length) idx = 0;
+        var w = round.words[idx];
         var val = input.value.trim().toLowerCase();
         if (!val) { input.classList.remove("correct", "wrong"); return; }
         if (val === w.word.toLowerCase()) { input.classList.add("correct"); input.classList.remove("wrong"); }
@@ -281,6 +412,8 @@
     }
     if (!state.currentRound) { drawRound(); return; } // 直接打开学习页时自动抽第一轮
     if (state.view !== "learn" && state.view !== "review") state.view = "learn";
+    // 复习模式下不允许停留在被隐藏的“背单词”模式
+    if (state.view === "review" && state.mode === "learn") state.mode = "en";
     bindEvents();
     renderAll();
   }

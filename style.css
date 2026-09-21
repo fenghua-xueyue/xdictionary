@@ -80,6 +80,39 @@ body {
   white-space: nowrap;
 }
 
+/* 顶栏右侧：复习模式切换按钮 + 轮次徽标 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-review-toggle {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  border: 2px solid var(--accent);
+  background: #fff;
+  color: var(--accent-dark);
+  transition: background .15s, transform .12s;
+}
+.btn-review-toggle:hover { background: #F0F4F1; }
+.btn-review-toggle:active { transform: scale(0.98); }
+.btn-review-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #C9DDD3;
+  color: var(--text-muted);
+}
+
+/* 复习模式：仅保留中文 / 英文两种模式，隐藏“背单词” */
+.mode-switcher[data-view="review"] .mode-btn[data-mode="learn"] { display: none; }
+
+/* 复习模式不展示故事面板 */
+#view-review .story-panel { display: none; }
+
 /* ============================ 视图显隐 ============================ */
 .app-main {
   max-width: 1280px;
@@ -132,6 +165,74 @@ body {
   color: var(--text-primary);
   margin: 8px auto 18px;
   max-width: var(--max-width);
+}
+/* 学习页标题行：标题 + 重置按钮 */
+.view-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: var(--max-width);
+  margin: 8px auto 18px;
+}
+.view-title-row .view-title {
+  margin: 0;
+  flex: 1;
+}
+.btn-reset {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  border: 2px solid #E2C9C9;
+  background: #fff;
+  color: #B5564F;
+  white-space: nowrap;
+  transition: background .15s, transform .12s;
+}
+.btn-reset:hover { background: #FCEFEF; }
+.btn-reset:active { transform: scale(0.98); }
+
+/* ============================ 重置确认弹窗 ============================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 48, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  padding: 20px;
+  animation: overlay-in .15s ease;
+}
+.modal-overlay[hidden] { display: none; }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: 0 18px 44px rgba(34, 48, 42, 0.28);
+  padding: 30px 28px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  animation: modal-in .16s ease;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-text {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
 }
 
 /* ============================ 模式切换器 ============================ */
