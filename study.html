@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>高频词小灶 · 学习</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 全局顶栏 -->
+  <header class="app-header" id="app-header">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28">
+          <rect x="2" y="2" width="28" height="28" rx="9" fill="#2E9E78"/>
+          <path d="M16 7 C16 7 9 16 9 21 A7 7 0 0 0 23 21 C23 16 16 7 16 7 Z" fill="#fff"/>
+        </svg>
+      </span>
+      <span class="brand-name">高频词小灶</span>
+    </div>
+    <div class="round-badge" id="round-badge">第 1 轮</div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ===== 学习主页（含三种模式） ===== -->
+    <section class="view view-study view-active" id="view-learn">
+      <h2 class="view-title">今日单词</h2>
+
+      <div class="mode-switcher" data-view="learn">
+        <button class="mode-btn active" data-mode="learn">背单词</button>
+        <button class="mode-btn" data-mode="en">英文模式</button>
+        <button class="mode-btn" data-mode="zh">中文模式</button>
+      </div>
+
+      <div class="flashcard-area">
+        <button class="nav nav-left" id="nav-prev-learn" aria-label="上一个">‹</button>
+
+        <div class="flashcard" data-mode="learn">
+          <button class="card-speaker" aria-label="发音预留" title="发音功能开发中">🔈</button>
+          <div class="card-word"></div>
+          <div class="card-phonetic"></div>
+          <div class="card-meaning"></div>
+          <div class="answer-row">
+            <button class="btn btn-outline btn-show-answer">显示中文释义</button>
+          </div>
+          <div class="write-row">
+            <input type="text" class="write-input" placeholder="在此输入英文单词…" autocomplete="off" />
+            <button class="btn btn-outline btn-show-answer">显示英文单词</button>
+          </div>
+        </div>
+
+        <button class="nav nav-right" id="nav-next-learn" aria-label="下一个">›</button>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill"></div></div>
+        <div class="progress-text">1 / 20</div>
+        <div class="progress-hint">点击左右箭头，切换上一个 / 下一个单词</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btn-generate">
+          <span class="btn-icon">📝</span> 生成故事
+        </button>
+        <button class="btn btn-secondary" id="btn-new-round-learn">
+          <span class="btn-icon">↻</span> 开始背单词
+        </button>
+        <button class="btn btn-secondary" id="btn-review">
+          <span class="btn-icon">↺</span> 回顾上一轮
+        </button>
+      </div>
+
+      <article class="story-panel">
+        <h3 class="story-title">今日小故事 · 中英对照</h3>
+        <p class="story-subtitle">用刚才这 20 个词写成，英文约 120 词，附中文对照</p>
+        <p class="story-en"></p>
+        <p class="story-zh"></p>
+        <p class="story-footer">已尽量包含全部 20 个词；个别难组合的词已省略。</p>
+      </article>
+    </section>
+
+    <!-- ===== 回顾上一轮 ===== -->
+    <section class="view view-study" id="view-review">
+      <h2 class="view-title">上一轮单词</h2>
+
+      <div class="mode-switcher" data-view="review">
+        <button class="mode-btn active" data-mode="learn">背单词</button>
+        <button class="mode-btn" data-mode="en">英文模式</button>
+        <button class="mode-btn" data-mode="zh">中文模式</button>
+      </div>
+
+      <div class="flashcard-area">
+        <button class="nav nav-left" id="nav-prev-review" aria-label="上一个">‹</button>
+
+        <div class="flashcard" data-mode="learn">
+          <button class="card-speaker" aria-label="发音预留" title="发音功能开发中">🔈</button>
+          <div class="card-word"></div>
+          <div class="card-phonetic"></div>
+          <div class="card-meaning"></div>
+          <div class="answer-row">
+            <button class="btn btn-outline btn-show-answer">显示中文释义</button>
+          </div>
+          <div class="write-row">
+            <input type="text" class="write-input" placeholder="在此输入英文单词…" autocomplete="off" />
+            <button class="btn btn-outline btn-show-answer">显示英文单词</button>
+          </div>
+        </div>
+
+        <button class="nav nav-right" id="nav-next-review" aria-label="下一个">›</button>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill"></div></div>
+        <div class="progress-text">1 / 20</div>
+        <div class="progress-hint">点击左右箭头，切换上一个 / 下一个单词</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btn-regen">
+          <span class="btn-icon">📝</span> 重新生成
+        </button>
+        <button class="btn btn-secondary" id="btn-new-round-review">
+          <span class="btn-icon">↻</span> 开始新一轮
+        </button>
+        <button class="btn btn-secondary" id="btn-back">
+          <span class="btn-icon">←</span> 返回当前学习
+        </button>
+      </div>
+
+      <article class="story-panel">
+        <h3 class="story-title">上一轮小故事 · 中英对照</h3>
+        <p class="story-subtitle">上一轮用这 20 个词写成，英文约 120 词，附中文对照</p>
+        <p class="story-en"></p>
+        <p class="story-zh"></p>
+        <p class="story-footer">已尽量包含全部 20 个词；个别难组合的词已省略。</p>
+      </article>
+    </section>
+
+  </main>
+
+  <!-- 轻提示 -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="words.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

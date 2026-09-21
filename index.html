@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="bAP7GXeG8ocJ6mFFKND4be">
+<head data-page-node-id="wIUvaJ8xSl6EoSZFXcOC9t">
+  <meta charset="UTF-8" data-page-node-id="Y8KDwyErcJF5j4eoYwc5UQ" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="jkO19P5jJztHJGm9I3EeqC" />
+  <title>高频词小灶 · 开始</title>
+  <link rel="stylesheet" href="style.css" data-page-node-id="nzhEUvjqDQgQdLm2HcFYJD" />
+</head>
+<body data-page-node-id="GljrZ5SJ0uPjrievL1Z7Vz">
+  <main class="app-main" data-page-node-id="SNjRZLTdPw7tly0bUilHHt">
+    <!-- 第一界面：初始空状态 -->
+    <section class="view view-empty view-active" id="view-empty" data-page-node-id="laddc7V5qauVDnkxVRmvQC">
+      <div class="hero" data-page-node-id="EVA8WnEDJdJI1P7cf4esxs">
+        <div class="hero-logo" aria-hidden="true" data-page-node-id="1D5RdYzVXC83O1cAC2Auur">
+          <svg viewBox="0 0 64 64" width="64" height="64" data-page-node-id="oP2WanXnuHtgjFC8kG3EhX">
+            <rect x="4" y="4" width="56" height="56" rx="18" fill="#2E9E78" data-page-node-id="lctOEvOayehTCz5PBFG7Yr"/>
+            <path d="M32 16 C32 16 20 32 20 40 A12 12 0 0 0 44 40 C44 32 32 16 32 16 Z" fill="#fff" data-page-node-id="4Tm3CIlNwxifGGmYxFF73J"/>
+          </svg>
+        </div>
+        <h1 class="hero-title" data-page-node-id="BSzpXKBA9GfpU4wbN74tH1">每天 20 个四级高频词，<br  data-page-node-id="3A1r88MSqU2jGNvgu7BngO"/>用一个故事串起来。</h1>
+        <p class="hero-subtitle" data-page-node-id="UGjTegXLrFs4Um5PO2cLfL">随机抽词 · 跨轮不重复 · 用词生成中英对照小故事</p>
+        <button class="btn btn-primary btn-hero" id="btn-start" data-page-node-id="JpGOZIQxuyTs6whIRHn1j5">
+          <span class="btn-icon" data-page-node-id="RiTKGAPvpJJuRpae1XMdsr">→</span> 开始背单词
+        </button>
+        <p class="hero-footer" data-page-node-id="nnF6YVYLP1ez2wD9VZ3K4P">词库 300 词 · 学完一轮自动循环</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="words.js"></script>
+  <script>
+    /* 首屏：抽新一轮并跳转到第二界面（学习主页） */
+    (function () {
+      "use strict";
+      var LS_KEY = "english_app_v1";
+      var ROUND_SIZE = 20;
+
+      function freshPool() {
+        var pool = [];
+        for (var i = 0; i < WORDS.length; i++) pool.push(i);
+        for (var k = pool.length - 1; k > 0; k--) {
+          var j = Math.floor(Math.random() * (k + 1));
+          var t = pool[k]; pool[k] = pool[j]; pool[j] = t;
+        }
+        return pool;
+      }
+      function loadState() {
+        try { var r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; }
+        catch (e) { return null; }
+      }
+      function saveState(d) {
+        try { localStorage.setItem(LS_KEY, JSON.stringify(d)); } catch (e) {}
+      }
+      function drawRound() {
+        var cur = loadState() || {};
+        var pool = cur.pool, cursor = cur.cursor || 0, roundCounter = cur.roundCounter || 0;
+        if (!Array.isArray(pool) || pool.length !== WORDS.length) { pool = freshPool(); cursor = 0; }
+        if (cursor + ROUND_SIZE > WORDS.length) { pool = freshPool(); cursor = 0; }
+        var idx = pool.slice(cursor, cursor + ROUND_SIZE); cursor += ROUND_SIZE;
+        var words = idx.map(function (i) { return WORDS[i]; });
+        roundCounter += 1;
+        var prev = cur.currentRound
+          ? { round: cur.currentRound.round, words: cur.currentRound.words, createdAt: cur.currentRound.createdAt }
+          : null;
+        saveState({
+          view: "learn",
+          mode: cur.mode || "learn",
+          currentIndex: 0,
+          showAnswer: false,
+          pool: pool, cursor: cursor, roundCounter: roundCounter,
+          currentRound: { round: roundCounter, words: words, createdAt: new Date().toISOString() },
+          previousRound: prev
+        });
+        window.location.href = "study.html";
+      }
+      document.getElementById("btn-start").addEventListener("click", drawRound);
+    })();
+  </script>
+</body>
+</html>
