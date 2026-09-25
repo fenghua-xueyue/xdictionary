@@ -27,53 +27,34 @@
     </section>
   </main>
 
-  <script src="words.js"></script>
   <script>
-    /* 首屏：抽新一轮并跳转到第二界面（学习主页） */
+    /* 首屏：仅负责进入学习页，不再抽新一轮。
+       若尚无进度，study.html 的 init() 会自动抽第 1 轮；
+       已有进度则直接回到当前学习轮，避免点一下就跳到下一轮。
+       按钮文案随进度变化：无进度「开始背单词」/ 有进度「继续学习」。 */
     (function () {
       "use strict";
       var LS_KEY = "english_app_v1";
-      var ROUND_SIZE = 20;
+      var btn = document.getElementById("btn-start");
+      if (!btn) return;
 
-      function freshPool() {
-        var pool = [];
-        for (var i = 0; i < WORDS.length; i++) pool.push(i);
-        for (var k = pool.length - 1; k > 0; k--) {
-          var j = Math.floor(Math.random() * (k + 1));
-          var t = pool[k]; pool[k] = pool[j]; pool[j] = t;
+      // 已有学习进度 → 文案改为「继续学习」（保留箭头图标）
+      try {
+        var raw = localStorage.getItem(LS_KEY);
+        if (raw) {
+          var d = JSON.parse(raw);
+          if (d && d.currentRound) {
+            var icon = btn.querySelector(".btn-icon");
+            btn.textContent = "";
+            if (icon) btn.appendChild(icon);
+            btn.appendChild(document.createTextNode(" 继续学习"));
+          }
         }
-        return pool;
-      }
-      function loadState() {
-        try { var r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; }
-        catch (e) { return null; }
-      }
-      function saveState(d) {
-        try { localStorage.setItem(LS_KEY, JSON.stringify(d)); } catch (e) {}
-      }
-      function drawRound() {
-        var cur = loadState() || {};
-        var pool = cur.pool, cursor = cur.cursor || 0, roundCounter = cur.roundCounter || 0;
-        if (!Array.isArray(pool) || pool.length !== WORDS.length) { pool = freshPool(); cursor = 0; }
-        if (cursor + ROUND_SIZE > WORDS.length) { pool = freshPool(); cursor = 0; }
-        var idx = pool.slice(cursor, cursor + ROUND_SIZE); cursor += ROUND_SIZE;
-        var words = idx.map(function (i) { return WORDS[i]; });
-        roundCounter += 1;
-        var prev = cur.currentRound
-          ? { round: cur.currentRound.round, words: cur.currentRound.words, createdAt: cur.currentRound.createdAt }
-          : null;
-        saveState({
-          view: "learn",
-          mode: cur.mode || "learn",
-          currentIndex: 0,
-          showAnswer: false,
-          pool: pool, cursor: cursor, roundCounter: roundCounter,
-          currentRound: { round: roundCounter, words: words, createdAt: new Date().toISOString() },
-          previousRound: prev
-        });
+      } catch (e) {}
+
+      btn.addEventListener("click", function () {
         window.location.href = "study.html";
-      }
-      document.getElementById("btn-start").addEventListener("click", drawRound);
+      });
     })();
   </script>
 </body>

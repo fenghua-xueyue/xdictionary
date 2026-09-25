@@ -19,7 +19,7 @@
       <span class="brand-name" data-page-node-id="nVP5USLAz1eFHW9O8JblOM">高频词小灶</span>
     </div>
     <div class="header-right">
-      <button class="btn btn-review-toggle" id="btn-review" type="button">复习</button>
+      <button class="btn btn-reset" id="btn-reset" type="button">↺ 重置</button>
       <div class="round-badge" id="round-badge" data-page-node-id="Kndmtq3IaAoNlK10dJABQL">第 1 轮</div>
     </div>
   </header>
@@ -30,7 +30,7 @@
     <section class="view view-study view-active" id="view-learn" data-page-node-id="kg3OSDvD9r9OCAicbxAbyn">
       <div class="view-title-row" data-page-node-id="Sz5Vt4NtXR9Of0cKm4DHmb">
         <h2 class="view-title">今日单词</h2>
-        <button class="btn btn-reset" id="btn-reset" type="button">↺ 重置</button>
+        <button class="btn btn-review-toggle" id="btn-review" type="button">复习</button>
       </div>
 
       <div class="mode-switcher" data-view="learn" data-page-node-id="dklajrSLloBD47VVX1voBG">
@@ -43,6 +43,11 @@
         <button class="nav nav-left" id="nav-prev-learn" aria-label="上一个" data-page-node-id="21o4D2GyfJljEBfjG9Uem4">‹</button>
 
         <div class="flashcard" data-mode="learn" data-page-node-id="wxIqw3smmFgSNF9ReNaSv4">
+          <button class="card-mark" type="button" aria-pressed="false" aria-label="标记这个单词" title="标记这个单词">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+          </button>
           <button class="card-speaker" aria-label="发音预留" title="发音功能开发中" data-page-node-id="OpwqFQ6DCUNbEmbjLUmDMz">🔈</button>
           <div class="card-word" data-page-node-id="0jJie4RnRnHj5rI3ZTzREk"></div>
           <div class="card-phonetic" data-page-node-id="7CUycCGHjuVK9yZ8GYFKYR"></div>
@@ -85,7 +90,13 @@
 
     <!-- ===== 复习模式：复习所有学过的单词，每 20 个为一轮，仅中/英文 ===== -->
     <section class="view view-study" id="view-review" data-page-node-id="4mq2AUMs4QHTXQJ4NfZl42">
-      <h2 class="view-title" id="review-title" data-page-node-id="FCguqEEcXqGZ8vZUeHJltA">复习模式</h2>
+      <div class="view-title-row" data-page-node-id="Sz5Vt4NtXR9Of0cKm4DHmC">
+        <h2 class="view-title" id="review-title" data-page-node-id="FCguqEEcXqGZ8vZUeHJltA">复习模式</h2>
+        <div class="view-title-actions">
+          <button class="btn btn-review-toggle" id="btn-review-back" type="button">学习</button>
+          <button class="btn btn-review-toggle" id="btn-mark-only" type="button" aria-pressed="false" title="只看已标记的单词">标记</button>
+        </div>
+      </div>
 
       <div class="mode-switcher" data-view="review" data-page-node-id="xoWJubbRAEFLhBHJbqhHAK">
         <button class="mode-btn active" data-mode="learn" data-page-node-id="XyDEUnoDwnpzXUMuDGdbPY">背单词</button>
@@ -97,6 +108,11 @@
         <button class="nav nav-left" id="nav-prev-review" aria-label="上一个" data-page-node-id="WrkxFjEo98VaYMuclZWKFU">‹</button>
 
         <div class="flashcard" data-mode="learn" data-page-node-id="A1gli18NEhq6aBDLCQXBo8">
+          <button class="card-mark" type="button" aria-pressed="false" aria-label="标记这个单词" title="标记这个单词">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+          </button>
           <button class="card-speaker" aria-label="发音预留" title="发音功能开发中" data-page-node-id="Vo3dDBP5DEXyas4v1vNkQ9">🔈</button>
           <div class="card-word" data-page-node-id="onsRxwTJ3N2L8YtKoLRFNh"></div>
           <div class="card-phonetic" data-page-node-id="pPfGQaa4oYPA3d4T794hzc"></div>

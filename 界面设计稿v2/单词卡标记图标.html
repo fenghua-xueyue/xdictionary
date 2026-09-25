@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>单词卡标记图标 · 设计</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #F5F7F3; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 680 506" width="680" height="506" role="img" xmlns="http://www.w3.org/2000/svg" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+  <title>单词卡标记图标设计（红色版）</title>
+  <desc>书签形状的标记图标，未标记为灰色描边，已标记为红色实心填充。</desc>
+
+  <text x="40" y="48" font-size="15" font-weight="500" fill="#22302A">单词卡「标记」图标设计</text>
+  <text x="40" y="70" font-size="13" font-weight="400" fill="#6A7A70">置于卡片左上角，与右上角发音图标左右对称；仅在中文 / 英文模式出现</text>
+  <line x1="40" y1="88" x2="640" y2="88" stroke="#EDEFEA" stroke-width="1"/>
+
+  <rect x="40" y="104" width="290" height="182" rx="16" fill="#FFFFFF" stroke="#E3E7E0" stroke-width="1"/>
+  <circle cx="185" cy="176" r="36" fill="#F1F3EF"/>
+  <g transform="translate(185,176) scale(1.42) translate(-12,-12)">
+    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" fill="none" stroke="#4A5A51" stroke-width="1.6" stroke-linejoin="round"/>
+  </g>
+  <text x="185" y="241" font-size="13" font-weight="500" fill="#22302A" text-anchor="middle">未标记（默认）</text>
+  <text x="185" y="263" font-size="12" font-weight="400" fill="#6A7A70" text-anchor="middle">空心书签 · 描边 #4A5A51</text>
+
+  <rect x="350" y="104" width="290" height="182" rx="16" fill="#FFFFFF" stroke="#E3E7E0" stroke-width="1"/>
+  <circle cx="495" cy="176" r="36" fill="#FCEBEB"/>
+  <g transform="translate(495,176) scale(1.42) translate(-12,-12)">
+    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" fill="#E24B4A"/>
+  </g>
+  <text x="495" y="241" font-size="13" font-weight="500" fill="#22302A" text-anchor="middle">已标记</text>
+  <text x="495" y="263" font-size="12" font-weight="400" fill="#6A7A70" text-anchor="middle">实心书签 · 填充 #E24B4A</text>
+
+  <rect x="40" y="306" width="290" height="150" rx="16" fill="#FFFFFF" stroke="#E3E7E0" stroke-width="1"/>
+  <rect x="64" y="326" width="242" height="110" rx="12" fill="#FBFCFA" stroke="#EDEFEA" stroke-width="1"/>
+  <circle cx="92" cy="356" r="16" fill="#FCEBEB"/>
+  <g transform="translate(92,356) scale(0.72) translate(-12,-12)">
+    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" fill="#E24B4A"/>
+  </g>
+  <circle cx="278" cy="356" r="16" fill="#F1F3EF"/>
+  <g transform="translate(278,356) scale(0.6) translate(-12,-12)">
+    <path d="M11 5 6 9H3v6h3l5 4V5z" fill="#9AA89F"/>
+    <path d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="#9AA89F" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <text x="185" y="398" font-size="15" font-weight="500" fill="#22302A" text-anchor="middle">ability</text>
+  <text x="185" y="418" font-size="12" font-weight="400" fill="#9AA89F" text-anchor="middle">/əˈbɪləti/</text>
+  <text x="185" y="450" font-size="12" font-weight="400" fill="#6A7A70" text-anchor="middle">左上角放置示意</text>
+
+  <text x="350" y="334" font-size="14" font-weight="500" fill="#22302A">规格</text>
+  <text x="350" y="364" font-size="13" font-weight="400" fill="#4A5A51">按钮 40 × 40 px 圆形</text>
+  <text x="350" y="390" font-size="13" font-weight="400" fill="#4A5A51">图标 20 × 20 px · 描边 2 px</text>
+  <text x="350" y="416" font-size="13" font-weight="400" fill="#4A5A51">未标记底 #F1F3EF · 描边 #4A5A51</text>
+  <text x="350" y="442" font-size="13" font-weight="400" fill="#4A5A51">已标记底 #FCEBEB · 填充 #E24B4A</text>
+
+  <text x="40" y="486" font-size="12" font-weight="400" fill="#9AA89F">点击图标即标记，再点取消标记</text>
+</svg>
+</body>
+</html>

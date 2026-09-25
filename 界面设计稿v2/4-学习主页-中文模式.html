@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>设计稿 v2 · 4 学习主页（中文模式）</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <!-- 全局顶栏 -->
+  <header class="app-header" id="app-header">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28">
+          <rect x="2" y="2" width="28" height="28" rx="9" fill="#2E9E78"/>
+          <path d="M16 7 C16 7 9 16 9 21 A7 7 0 0 0 23 21 C23 16 16 7 16 7 Z" fill="#fff"/>
+        </svg>
+      </span>
+      <span class="brand-name">高频词小灶</span>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-reset" type="button">↺ 重置</button>
+      <div class="round-badge">第 3 轮 · 已学 60 词</div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="view view-study view-active" id="view-learn">
+      <div class="view-title-row">
+        <h2 class="view-title">今日单词</h2>
+        <button class="btn btn-review-toggle" type="button">复习</button>
+      </div>
+
+      <div class="mode-switcher" data-view="learn">
+        <button class="mode-btn" data-mode="learn">背单词</button>
+        <button class="mode-btn" data-mode="en">英文模式</button>
+        <button class="mode-btn active" data-mode="zh">中文模式</button>
+      </div>
+
+      <div class="flashcard-area">
+        <button class="nav nav-left" aria-label="上一个">‹</button>
+
+        <!-- 中文模式：隐藏英文与音标，显示默写输入框；输入正确时边框转绿 -->
+        <div class="flashcard" data-mode="zh">
+          <button class="card-mark marked" type="button" aria-pressed="true" aria-label="取消标记" title="取消标记">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+          </button>
+          <button class="card-speaker" aria-label="发音预留" title="发音功能开发中">🔈</button>
+          <div class="card-word">ability</div>
+          <div class="card-phonetic">/əˈbɪləti/</div>
+          <div class="card-meaning">能力；才能</div>
+          <div class="answer-row">
+            <button class="btn btn-outline btn-show-answer">显示中文释义</button>
+          </div>
+          <div class="write-row">
+            <input type="text" class="write-input correct" value="ability" placeholder="在此输入英文单词…" autocomplete="off" />
+            <button class="btn btn-outline btn-show-answer">显示英文单词</button>
+          </div>
+        </div>
+
+        <button class="nav nav-right" aria-label="下一个">›</button>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill" style="width: 15%"></div></div>
+        <div class="progress-text">4 / 20</div>
+        <div class="progress-hint">点击左右箭头，切换上一个 / 下一个单词</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary">
+          <span class="btn-icon">📝</span> 生成故事
+        </button>
+        <button class="btn btn-secondary">
+          <span class="btn-icon">↻</span> 下一轮
+        </button>
+      </div>
+
+      <article class="story-panel">
+        <h3 class="story-title">今日小故事 · 中英对照</h3>
+        <p class="story-subtitle">用刚才这 20 个词写成，英文约 120 词，附中文对照</p>
+        <p class="story-en">Last year, Tom decided to improve his English. At first, the task seemed impossible, and he almost wanted to abandon the plan. But his teacher told him that real ability grows from daily effort. So Tom made a simple schedule: twenty new words every day, and he would not neglect any of them. Slowly, he began to recognize patterns and understand the logic behind each word. When he met a difficult problem, he did not refuse to face it. Instead, he tried to find a better method. After six months, he could read short articles without fear. His steady progress proved that continued work can achieve great results.</p>
+        <p class="story-zh">去年，汤姆决定提升自己的英语。起初，这项任务看起来不可能完成，他一度想放弃这个计划。但老师告诉他，真正的能力来自日复一日的努力。于是汤姆制定了一个简单的日程：每天二十个新单词，并且不会忽视其中任何一个。慢慢地，他开始认出规律，理解每个单词背后的逻辑。遇到难题时，他不逃避面对，而是努力寻找更好的方法。六个月后，他已经能毫不费力地阅读短文。他稳步的进步证明，持续的付出能够取得巨大的成果。</p>
+        <p class="story-footer">已尽量包含全部 20 个词；个别难组合的词已省略。</p>
+      </article>
+    </section>
+  </main>
+
+  <!-- 设计稿说明：静态高保真稿，样式与真实应用共用 ../style.css，不接交互逻辑 -->
+</body>
+</html>

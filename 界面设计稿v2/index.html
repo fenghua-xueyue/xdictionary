@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>界面设计稿 v2 · 总览</title>
+  <style>
+    :root {
+      --bg: #F5F7F3;
+      --surface: #FFFFFF;
+      --text: #22302A;
+      --text-2: #4A5A51;
+      --text-3: #6A7A70;
+      --muted: #9AA89F;
+      --accent: #2E9E78;
+      --accent-dark: #176B4F;
+      --line: #E1E8E3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+      padding: 44px 24px 72px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    .page-head { text-align: center; margin-bottom: 12px; }
+    .page-title { font-size: 30px; font-weight: 700; letter-spacing: .5px; }
+    .page-sub { margin-top: 10px; font-size: 15px; color: var(--text-3); }
+    .meta {
+      margin: 22px auto 0;
+      max-width: 760px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px 22px;
+      font-size: 14px;
+      color: var(--text-2);
+      text-align: left;
+    }
+    .meta b { color: var(--text); }
+    .meta ul { margin: 8px 0 0 20px; }
+    .grid {
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 18px;
+      box-shadow: 0 8px 22px rgba(34, 48, 42, .08);
+      padding: 22px 24px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-no {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 3px 12px;
+      align-self: flex-start;
+    }
+    .card-title { margin-top: 12px; font-size: 19px; font-weight: 700; }
+    .card-desc { margin-top: 8px; font-size: 14px; color: var(--text-3); flex: 1; }
+    .card-keys {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-2);
+      background: #F7FAF8;
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .card-keys span { display: block; }
+    .card-link {
+      margin-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(46, 158, 120, .25);
+      transition: background .15s, transform .12s;
+    }
+    .card-link:hover { background: #29906d; transform: translateY(-1px); }
+    .foot {
+      margin-top: 34px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .foot code {
+      background: #EEF2EF;
+      padding: 2px 7px;
+      border-radius: 6px;
+      color: var(--text-2);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="page-head">
+      <h1 class="page-title">高频词小灶 · 界面设计稿 v2</h1>
+      <p class="page-sub">7 张高保真状态稿 + 1 张标记图标稿 · 与真实应用共用同一份样式表</p>
+    </div>
+
+    <div class="meta">
+      <b>说明</b>
+      <ul>
+        <li>本套设计稿为 <b>HTML 静态稿</b>，直接引用真实应用的 <code>../style.css</code>，因此所见即当前线上界面，不会随代码改动而失真。</li>
+        <li>稿内不含任何交互脚本，仅用于查看与验收；点击卡片按钮可打开对应状态。</li>
+        <li>每张状态稿已同步导出<b>同名 PNG</b>（Chrome 无头截图，1280px 宽），便于归档与分享。</li>
+        <li>样例数据：单词 <b>ability</b> /əˈbɪləti/（能力；才能），进度「4 / 20」，轮次「第 3 轮 · 已学 60 词」。</li>
+        <li>按钮位置（2026-09-24 起）：<b>顶栏常驻「↺ 重置」+ 轮次徽标</b>；<b>「复习 / 学习」按钮在各视图的标题行右侧</b>。</li>
+        <li><b>词卡「标记」（书签）</b>：卡片左上角，与右上角发音图标左右对称；<b>只在中文模式与英文模式出现</b>，背单词模式不显示。详见 08 号稿。</li>
+        <li><b>标记模式</b>：复习页标题行「标记」按钮进入，只显示<b>当前模式</b>下被标记过的词。详见 07 号稿。</li>
+        <li>v1 设计稿（Ardot 导出 PNG/PDF）已冻结归档于 <code>界面设计稿v1\</code>，不再更新。</li>
+      </ul>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <span class="card-no">01</span>
+        <h2 class="card-title">初始空状态</h2>
+        <p class="card-desc">应用首屏。居中 hero 文案 + 大号主按钮入口，底部说明词库规模与循环规则。</p>
+        <div class="card-keys">
+          <span>· 入口按钮「开始背单词」</span>
+          <span>· 文案：每天 20 个四级高频词</span>
+          <span>· 底部：词库 300 词 · 学完一轮自动循环</span>
+        </div>
+        <a class="card-link" href="1-初始空状态.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">02</span>
+        <h2 class="card-title">学习主页 · 背单词</h2>
+        <p class="card-desc">默认视图。完整卡面（英文 + 音标 + 中文释义），底部展示中英对照故事面板。</p>
+        <div class="card-keys">
+          <span>· 标题行「今日单词」+「复习」按钮</span>
+          <span>· 顶栏：「↺ 重置」+ 轮次徽标</span>
+          <span>· 操作栏：生成故事 · 下一轮</span>
+        </div>
+        <a class="card-link" href="2-学习主页-背单词.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">03</span>
+        <h2 class="card-title">学习主页 · 英文模式</h2>
+        <p class="card-desc">隐藏中文释义，先回想再看答案；点击「显示中文释义」揭示。</p>
+        <div class="card-keys">
+          <span>· 卡面仅英文 + 音标</span>
+          <span>· 左上角显示「标记」书签按钮</span>
+          <span>· 「显示中文释义」按钮</span>
+          <span>· 标题行右侧「复习」；顶栏「↺ 重置」</span>
+          <span>· 激活段用深祖母绿 #176B4F（AA 对比度）</span>
+        </div>
+        <a class="card-link" href="3-学习主页-英文模式.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">04</span>
+        <h2 class="card-title">学习主页 · 中文模式</h2>
+        <p class="card-desc">隐藏英文与音标，看释义默写单词；输入正确边框转绿、错误转红（实时校验，不阻断）。</p>
+        <div class="card-keys">
+          <span>· 卡面仅中文释义</span>
+          <span>· 左上角显示「标记」书签按钮（已标记态）</span>
+          <span>· 默写输入框 + 「显示英文单词」</span>
+          <span>· 稿中展示「输入正确」的绿色态</span>
+        </div>
+        <a class="card-link" href="4-学习主页-中文模式.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">05</span>
+        <h2 class="card-title">复习模式</h2>
+        <p class="card-desc">复习所有学过的单词，每 20 个为一批。仅中 / 英文模式，不显示故事面板。</p>
+        <div class="card-keys">
+          <span>· 标题「复习模式 · 第 K / N 轮」</span>
+          <span>· 切换器隐藏「背单词」段</span>
+          <span>· 标题行右侧竖排「学习」+「标记」</span>
+          <span>· 左上角标记按钮常驻（复习只有中 / 英文模式）</span>
+          <span>· 操作栏：上一轮 · 下一轮（首 / 尾批禁用）</span>
+          <span>· 顶栏「↺ 重置」常驻</span>
+        </div>
+        <a class="card-link" href="5-复习模式.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">06</span>
+        <h2 class="card-title">重置确认弹窗</h2>
+        <p class="card-desc">点「↺ 重置」后的二次确认。确定清空全部进度重抽第 1 轮，取消或点遮罩 / Esc 关闭。</p>
+        <div class="card-keys">
+          <span>· 文案：重置后会清空所有背过的单词…</span>
+          <span>· 「取消」+「确定」两个按钮</span>
+          <span>· 半透明遮罩 + 居中卡片</span>
+          <span>· 重置只清学习进度，已标记的词予以保留</span>
+        </div>
+        <a class="card-link" href="6-重置确认弹窗.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">07</span>
+        <h2 class="card-title">复习模式 · 标记模式</h2>
+        <p class="card-desc">点标题行「标记」进入：只显示<b>当前模式</b>下被标记过的单词，其余逻辑与复习模式一致。</p>
+        <div class="card-keys">
+          <span>· 标题变为「标记模式 · 第 K / N 轮」</span>
+          <span>· 「标记」按钮转深绿激活态，再点一次退出</span>
+          <span>· 提示：只看英文模式标记过的单词 · 共 N 个</span>
+          <span>· 词数不足一批时，上一轮 / 下一轮禁用</span>
+        </div>
+        <a class="card-link" href="7-复习模式-标记模式.html">打开 →</a>
+      </div>
+
+      <div class="card">
+        <span class="card-no">08</span>
+        <h2 class="card-title">单词卡标记图标</h2>
+        <p class="card-desc">「标记」（书签）按钮的图标规格与卡片放置示意。置于卡片左上角，与右上角发音图标左右对称。</p>
+        <div class="card-keys">
+          <span>· 按钮 40 × 40 px 圆形；图标 20 × 20 px、描边 2 px</span>
+          <span>· 未标记：底 #F1F3EF · 空心书签描边 #4A5A51</span>
+          <span>· 已标记：底 #FCEBEB · 实心书签 #E24B4A</span>
+          <span>· 仅中文 / 英文模式出现；点击即标记，再点取消</span>
+          <span>· 两种模式各存一套标记，互不影响</span>
+        </div>
+        <a class="card-link" href="单词卡标记图标.html">打开 →</a>
+      </div>
+    </div>
+
+    <p class="foot">
+      更新：2026-09-24 ｜ 对应提交 <code>99029bf</code>（另有未提交改动）｜ 规格文档见上级目录
+      <code>英语高频词学习App-需求规格.md</code>
+    </p>
+  </div>
+</body>
+</html>
