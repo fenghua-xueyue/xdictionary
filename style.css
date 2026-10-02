@@ -1005,19 +1005,21 @@ html[data-skin="pixel"] #view-learn.view-active  { grid-template-rows: repeat(5,
 html[data-skin="pixel"] #view-review.view-active { grid-template-rows: repeat(4, min-content) 1fr; }
 
 /* —— 生成故事：点按钮把故事面板展开（设计稿 07：面板在操作行下方展开） ——
-   面板高度是零和的（内容区 807 已排满），展开时腾空间的三招：
-     ① 卡片收到 410px —— 最满的一屏（中文模式揭示后）内容 ≈355 + 上下内边距 46，
-        再留 ~10px 余量。**注意「已用高」会随中文释义是 1 行还是 2 行差 ~26px**，
-        所以不能贴着极限写（试过 374，量出来正好 0 余量，太脆）。
-     ② 收起副标题行（21）和进度区（60.5）—— 读故事时它们是背景信息，收起后
-        两行的高度 + 两个间隙都归故事面板。
-     ③ 行数从 6 变 4（标题行含模式 / 卡片 / 操作行 / 故事），所以模板也要跟着改，
-        否则 1fr 会落在一个空行上，故事反而拿不到高度。
-   最终故事面板 ≈250px（展开前只有 81px），再点一下按钮全部还原。 */
-html[data-skin="pixel"] #view-learn.story-open { grid-template-rows: repeat(3, min-content) 1fr; }
-html[data-skin="pixel"] #view-learn.story-open .flashcard { height: 410px; min-height: 410px; }
-html[data-skin="pixel"] #view-learn.story-open .px-subtitle,
-html[data-skin="pixel"] #view-learn.story-open .progress-wrap { display: none; }
+   展开不靠「挤」而靠「长」：故事那一行从 `1fr`（吃掉剩余、被压扁）
+   改成 `auto`（按内容自然高度）→ 面板装不下时，让视图容器纵向滚动，
+   跟薄荷一样用鼠标滚轮往下看完整故事。卡片保持 428 不缩、其余各行也不动。
+   （早先那版是「缩卡片到 410 + 收起副标题和进度区」把故事挤到 213px，
+     已被这套替代 —— 那种做法故事仍然看不全，只是没那么挤。） */
+html[data-skin="pixel"] #view-learn.story-open { grid-template-rows: repeat(5, min-content) 540px; }
+/* 为什么是固定 540px 而不是 `auto`：grid 的 `auto` 轨道取的是 max-content ——
+   对一整段文字来说 max-content 意味着「不换行」，于是只算出 ~102px，还是被压扁。
+   固定行高是这里唯一能表达「按当前宽度排完的高度」的办法（实测故事内容 495px）。
+   故事更长时由 `.story-panel` 自己的 overflow:auto 兜底。 */
+/* 内容装不下时纵向滚动。薄荷能滚是因为页面本身能长；像素风舞台固定 1440×1200，
+   所以让视图容器自己滚。
+   ⚠️ 横向必须显式 hidden：只写 overflow-y 时，规范会把 overflow-x 从 visible 变成 auto，
+   那样挥剑/单词飞出面板时可能冒出横向滚动条。 */
+html[data-skin="pixel"] .app-main .view-study.view-active { overflow-y: auto; overflow-x: hidden; }
 
 /* —— 标题行 / 模式切换器 / 进度 / 操作行宽度统一 —— */
 html[data-skin="pixel"] .view-title-row,
