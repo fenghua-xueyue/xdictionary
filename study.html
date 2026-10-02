@@ -5,21 +5,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="SdQzvdihu3L29PSZxEuudD" />
   <title>高频词小灶 · 学习</title>
   <link rel="stylesheet" href="style.css" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
+  <script>
+    /* 防闪屏：必须在首次绘制前把已保存的皮肤套上，否则会先闪一下默认配色。
+       这段脚本刻意写得很短，且不依赖 skin.js（那时还没加载）。
+       皮肤 id 的合法性由 skin.js 的 normalize() 兜底校验。 */
+    (function () {
+      "use strict";
+      var id = "";
+      try { id = localStorage.getItem("english_app_skin_v1") || ""; } catch (e) { /* 无痕模式 */ }
+      document.documentElement.setAttribute("data-skin", id || "mint");
+    })();
+  </script>
 </head>
 <body data-page-node-id="SOwlRg6s4Psc8J9JyfT8Vv">
+  <div id="stage">
+    <div class="px-bg" aria-hidden="true">
+      <svg viewBox="0 0 1440 1200" width="1440" height="1200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#BFE3FF"/>
+            <stop offset="0.083" stop-color="#B3DDFF"/>
+            <stop offset="0.166" stop-color="#A6D7FF"/>
+            <stop offset="0.25" stop-color="#9AD1FF"/>
+            <stop offset="0.333" stop-color="#8DCBFF"/>
+            <stop offset="0.416" stop-color="#81C5FF"/>
+            <stop offset="0.5" stop-color="#74BFFF"/>
+            <stop offset="0.583" stop-color="#68B9FF"/>
+            <stop offset="0.666" stop-color="#5CB3FF"/>
+            <stop offset="0.75" stop-color="#50ADFF"/>
+            <stop offset="0.833" stop-color="#449FFF"/>
+            <stop offset="0.916" stop-color="#3B9FFF"/>
+            <stop offset="1" stop-color="#3B9FFF"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="1440" height="1200" fill="url(#sky)"/>
+        <rect x="0" y="989" width="1440" height="40" fill="#7CB342"/>
+        <rect x="0" y="989" width="1440" height="6" fill="#8BC34A"/>
+        <rect x="0" y="1029" width="1440" height="171" fill="#8B5A2B"/>
+        <rect x="40" y="1060" width="14" height="14" fill="#9AA89F"/>
+        <rect x="62" y="1090" width="10" height="10" fill="#6FE0D0"/>
+        <rect x="1346" y="1055" width="14" height="14" fill="#9AA89F"/>
+        <rect x="1328" y="1095" width="10" height="10" fill="#6FE0D0"/>
+        <rect x="120" y="1100" width="12" height="12" fill="#C9A24B"/>
+        <rect x="1300" y="1110" width="12" height="12" fill="#C9A24B"/>
+        <g shape-rendering="crispEdges">
+          <rect x="46" y="1095" width="8" height="40" fill="#8B5A2B"/>
+          <rect x="46" y="1095" width="3" height="40" fill="#A9763B"/>
+          <rect x="30" y="1086" width="40" height="10" fill="#6FE0D0"/>
+          <rect x="30" y="1086" width="40" height="4" fill="#A6F2E6"/>
+          <rect x="34" y="1082" width="32" height="4" fill="#6FE0D0"/>
+        </g>
+      </svg>
+    </div>
   <!-- 全局顶栏 -->
   <header class="app-header" id="app-header" data-page-node-id="KDATJVcX8cc8iCgE26HF0H">
     <div class="brand" data-page-node-id="CTIaFlZbNoCoxnJQzDfBxc">
       <span class="brand-logo" aria-hidden="true" data-page-node-id="2lCG7wVHgh7fCqMIj0ggVo">
         <svg viewBox="0 0 32 32" width="28" height="28" data-page-node-id="OMZBAJCvqlrvy5deRUEZdQ">
-          <rect x="2" y="2" width="28" height="28" rx="9" fill="#2E9E78" data-page-node-id="jnDu8EAhQ04jSSDZjrPIZ3"/>
-          <path d="M16 7 C16 7 9 16 9 21 A7 7 0 0 0 23 21 C23 16 16 7 16 7 Z" fill="#fff" data-page-node-id="hNjNvTnyaBHY3dZAx3YMJv"/>
+          <rect class="logo-bg" x="2" y="2" width="28" height="28" rx="9" data-page-node-id="jnDu8EAhQ04jSSDZjrPIZ3"/>
+          <path class="logo-fg" d="M16 7 C16 7 9 16 9 21 A7 7 0 0 0 23 21 C23 16 16 7 16 7 Z" data-page-node-id="hNjNvTnyaBHY3dZAx3YMJv"/>
         </svg>
       </span>
       <span class="brand-name" data-page-node-id="nVP5USLAz1eFHW9O8JblOM">高频词小灶</span>
     </div>
     <div class="header-right">
-      <button class="btn btn-reset" id="btn-reset" type="button">↺ 重置</button>
+      <div class="skin-switch">
+        <button class="btn-skin" id="btn-skin" type="button" aria-haspopup="true" aria-expanded="false" title="换个界面皮肤">
+          <span class="btn-icon" aria-hidden="true">🎨</span> 皮肤
+        </button>
+        <div class="skin-pop" id="skin-pop" hidden role="group" aria-label="选择皮肤">
+          <p class="skin-pop-title">换个皮肤，立即生效</p>
+          <div class="skin-list"></div>
+        </div>
+      </div>
+      <button class="btn-sound" id="btn-sound" type="button" aria-pressed="true" title="挥剑音效：开（点击静音）">🔊</button>
+      <button class="btn btn-reset" id="btn-reset" type="button"><span class="std-label">↺ 重置</span><span class="px-label">重置</span></button>
       <div class="round-badge" id="round-badge" data-page-node-id="Kndmtq3IaAoNlK10dJABQL">第 1 轮</div>
     </div>
   </header>
@@ -32,6 +92,7 @@
         <h2 class="view-title">今日单词</h2>
         <button class="btn btn-review-toggle" id="btn-review" type="button">复习</button>
       </div>
+      <p class="px-subtitle" aria-hidden="true"></p>
 
       <div class="mode-switcher" data-view="learn" data-page-node-id="dklajrSLloBD47VVX1voBG">
         <button class="mode-btn active" data-mode="learn" data-page-node-id="gGOnZp6oAU6gPPfYOsyDo3">背单词</button>
@@ -40,16 +101,22 @@
       </div>
 
       <div class="flashcard-area" data-page-node-id="FTRnUBljosb21Buc6jBmbX">
-        <button class="nav nav-left" id="nav-prev-learn" aria-label="上一个" data-page-node-id="21o4D2GyfJljEBfjG9Uem4">‹</button>
+        <button class="nav nav-left" id="nav-prev-learn" aria-label="上一个" data-page-node-id="21o4D2GyfJljEBfjG9Uem4"><span class="std-label">‹</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#F0C24A"/><rect x="15" y="6" width="9" height="6" fill="#F7D98A"/><polygon points="15,2 24,2 19.5,0" fill="#F0C24A"/><rect x="8" y="52" width="23" height="6" fill="#C99A2E"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#F0C24A"/></svg></button>
 
         <div class="flashcard" data-mode="learn" data-page-node-id="wxIqw3smmFgSNF9ReNaSv4">
+          <span class="px-index" aria-hidden="true"></span>
+          <span class="px-eyebrow" aria-hidden="true">CET-4 高频词</span>
+          <span class="px-hint-zh" aria-hidden="true">输入后按回车提交 · 答对自动翻到下一个词</span>
           <button class="card-mark" type="button" aria-pressed="false" aria-label="标记这个单词" title="标记这个单词">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
               <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           </button>
           <button class="card-speaker" aria-label="发音预留" title="发音功能开发中" data-page-node-id="OpwqFQ6DCUNbEmbjLUmDMz">🔈</button>
-          <div class="card-word" data-page-node-id="0jJie4RnRnHj5rI3ZTzREk"></div>
+          <div class="word-stack">
+            <div class="card-word" data-page-node-id="0jJie4RnRnHj5rI3ZTzREk"></div>
+            <div class="card-word-ghost" aria-hidden="true"></div>
+          </div>
           <div class="card-phonetic" data-page-node-id="7CUycCGHjuVK9yZ8GYFKYR"></div>
           <div class="card-meaning" data-page-node-id="2pW1K8I2xkPoyor8VcYI64"></div>
           <div class="answer-row" data-page-node-id="8t3dCzaN0669GMNZ1ojLE0">
@@ -61,7 +128,7 @@
           </div>
         </div>
 
-        <button class="nav nav-right" id="nav-next-learn" aria-label="下一个" data-page-node-id="4OlcvaIKuKkEeBtS7lQE85">›</button>
+        <button class="nav nav-right" id="nav-next-learn" aria-label="下一个" data-page-node-id="4OlcvaIKuKkEeBtS7lQE85"><span class="std-label">›</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#6FE0D0"/><rect x="15" y="6" width="9" height="6" fill="#A6F2E6"/><polygon points="15,2 24,2 19.5,0" fill="#6FE0D0"/><rect x="8" y="52" width="23" height="6" fill="#2B6B63"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#6FE0D0"/></svg></button>
       </div>
 
       <div class="progress-wrap" data-page-node-id="HbmMpv2dPIS8Be0dhAZcsP">
@@ -72,7 +139,8 @@
 
       <div class="action-bar" data-page-node-id="P8rVMSxtHIWNE79oWAukYd">
         <button class="btn btn-primary" id="btn-generate" data-page-node-id="Rhcd0vTT9nDe9Jdo6NJM2I">
-          <span class="btn-icon" data-page-node-id="6mkx7ETRCaN5WimKnGsBEW">📝</span> 生成故事
+          <span class="std-label"><span class="btn-icon">📝</span> 生成故事</span>
+          <span class="px-label"><span class="btn-icon">＋</span> 生成今日故事</span>
         </button>
         <button class="btn btn-secondary" id="btn-new-round-learn" data-page-node-id="vvfxp61KeXyRJKDOBBIHZX">
           <span class="btn-icon" data-page-node-id="XR0CyB2qzp6TdQ9PLKcRBP">↻</span> 下一轮
@@ -105,16 +173,22 @@
       </div>
 
       <div class="flashcard-area" data-page-node-id="m31fRE5UFDQDGnxxD0jEfi">
-        <button class="nav nav-left" id="nav-prev-review" aria-label="上一个" data-page-node-id="WrkxFjEo98VaYMuclZWKFU">‹</button>
+        <button class="nav nav-left" id="nav-prev-review" aria-label="上一个" data-page-node-id="WrkxFjEo98VaYMuclZWKFU"><span class="std-label">‹</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#F0C24A"/><rect x="15" y="6" width="9" height="6" fill="#F7D98A"/><polygon points="15,2 24,2 19.5,0" fill="#F0C24A"/><rect x="8" y="52" width="23" height="6" fill="#C99A2E"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#F0C24A"/></svg></button>
 
         <div class="flashcard" data-mode="learn" data-page-node-id="A1gli18NEhq6aBDLCQXBo8">
+          <span class="px-index" aria-hidden="true"></span>
+          <span class="px-eyebrow" aria-hidden="true">CET-4 高频词</span>
+          <span class="px-hint-zh" aria-hidden="true">输入后按回车提交 · 答对自动翻到下一个词</span>
           <button class="card-mark" type="button" aria-pressed="false" aria-label="标记这个单词" title="标记这个单词">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
               <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           </button>
           <button class="card-speaker" aria-label="发音预留" title="发音功能开发中" data-page-node-id="Vo3dDBP5DEXyas4v1vNkQ9">🔈</button>
-          <div class="card-word" data-page-node-id="onsRxwTJ3N2L8YtKoLRFNh"></div>
+          <div class="word-stack">
+            <div class="card-word" data-page-node-id="onsRxwTJ3N2L8YtKoLRFNh"></div>
+            <div class="card-word-ghost" aria-hidden="true"></div>
+          </div>
           <div class="card-phonetic" data-page-node-id="pPfGQaa4oYPA3d4T794hzc"></div>
           <div class="card-meaning" data-page-node-id="TEx80AuMEfDCwK1Q0dL4MF"></div>
           <div class="answer-row" data-page-node-id="Vg2nAsaLOTJagrSYn1folZ">
@@ -126,7 +200,7 @@
           </div>
         </div>
 
-        <button class="nav nav-right" id="nav-next-review" aria-label="下一个" data-page-node-id="tsIwicf21iHAvumyDiKDtU">›</button>
+        <button class="nav nav-right" id="nav-next-review" aria-label="下一个" data-page-node-id="tsIwicf21iHAvumyDiKDtU"><span class="std-label">›</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#6FE0D0"/><rect x="15" y="6" width="9" height="6" fill="#A6F2E6"/><polygon points="15,2 24,2 19.5,0" fill="#6FE0D0"/><rect x="8" y="52" width="23" height="6" fill="#2B6B63"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#6FE0D0"/></svg></button>
       </div>
 
       <div class="progress-wrap" data-page-node-id="U4YzljXxGdn8LoG2inB88k">
@@ -170,6 +244,10 @@
   <div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="NYLkiER8CIsTokCaqF1Gss"></div>
 
   <script src="words.js"></script>
+  <script src="skin.js"></script>
   <script src="app.js"></script>
+  <script src="pixel.js"></script>
+  <script src="sword.js"></script>
+  </div>
 </body>
 </html>

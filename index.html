@@ -5,16 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="jkO19P5jJztHJGm9I3EeqC" />
   <title>高频词小灶 · 开始</title>
   <link rel="stylesheet" href="style.css" data-page-node-id="nzhEUvjqDQgQdLm2HcFYJD" />
+  <script>
+    /* 防闪屏：首屏同样套用已保存的皮肤（首屏不提供切换入口，只跟随）。
+       皮肤 id 合法性由 skin.js 的 normalize() 兜底校验。 */
+    (function () {
+      "use strict";
+      var id = "";
+      try { id = localStorage.getItem("english_app_skin_v1") || ""; } catch (e) { /* 无痕模式 */ }
+      document.documentElement.setAttribute("data-skin", id || "mint");
+    })();
+  </script>
 </head>
 <body data-page-node-id="GljrZ5SJ0uPjrievL1Z7Vz">
+  <div id="stage">
+    <div class="px-bg" aria-hidden="true">
+      <svg viewBox="0 0 1440 1200" width="1440" height="1200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#BFE3FF"/>
+            <stop offset="0.083" stop-color="#B3DDFF"/>
+            <stop offset="0.166" stop-color="#A6D7FF"/>
+            <stop offset="0.25" stop-color="#9AD1FF"/>
+            <stop offset="0.333" stop-color="#8DCBFF"/>
+            <stop offset="0.416" stop-color="#81C5FF"/>
+            <stop offset="0.5" stop-color="#74BFFF"/>
+            <stop offset="0.583" stop-color="#68B9FF"/>
+            <stop offset="0.666" stop-color="#5CB3FF"/>
+            <stop offset="0.75" stop-color="#50ADFF"/>
+            <stop offset="0.833" stop-color="#449FFF"/>
+            <stop offset="0.916" stop-color="#3B9FFF"/>
+            <stop offset="1" stop-color="#3B9FFF"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="1440" height="1200" fill="url(#sky)"/>
+        <rect x="0" y="989" width="1440" height="40" fill="#7CB342"/>
+        <rect x="0" y="989" width="1440" height="6" fill="#8BC34A"/>
+        <rect x="0" y="1029" width="1440" height="171" fill="#8B5A2B"/>
+        <rect x="40" y="1060" width="14" height="14" fill="#9AA89F"/>
+        <rect x="62" y="1090" width="10" height="10" fill="#6FE0D0"/>
+        <rect x="1346" y="1055" width="14" height="14" fill="#9AA89F"/>
+        <rect x="1328" y="1095" width="10" height="10" fill="#6FE0D0"/>
+        <rect x="120" y="1100" width="12" height="12" fill="#C9A24B"/>
+        <rect x="1300" y="1110" width="12" height="12" fill="#C9A24B"/>
+        <g shape-rendering="crispEdges">
+          <rect x="46" y="1095" width="8" height="40" fill="#8B5A2B"/>
+          <rect x="46" y="1095" width="3" height="40" fill="#A9763B"/>
+          <rect x="30" y="1086" width="40" height="10" fill="#6FE0D0"/>
+          <rect x="30" y="1086" width="40" height="4" fill="#A6F2E6"/>
+          <rect x="34" y="1082" width="32" height="4" fill="#6FE0D0"/>
+        </g>
+      </svg>
+    </div>
   <main class="app-main" data-page-node-id="SNjRZLTdPw7tly0bUilHHt">
     <!-- 第一界面：初始空状态 -->
     <section class="view view-empty view-active" id="view-empty" data-page-node-id="laddc7V5qauVDnkxVRmvQC">
       <div class="hero" data-page-node-id="EVA8WnEDJdJI1P7cf4esxs">
         <div class="hero-logo" aria-hidden="true" data-page-node-id="1D5RdYzVXC83O1cAC2Auur">
           <svg viewBox="0 0 64 64" width="64" height="64" data-page-node-id="oP2WanXnuHtgjFC8kG3EhX">
-            <rect x="4" y="4" width="56" height="56" rx="18" fill="#2E9E78" data-page-node-id="lctOEvOayehTCz5PBFG7Yr"/>
-            <path d="M32 16 C32 16 20 32 20 40 A12 12 0 0 0 44 40 C44 32 32 16 32 16 Z" fill="#fff" data-page-node-id="4Tm3CIlNwxifGGmYxFF73J"/>
+            <rect class="logo-bg" x="4" y="4" width="56" height="56" rx="18" data-page-node-id="lctOEvOayehTCz5PBFG7Yr"/>
+            <path class="logo-fg" d="M32 16 C32 16 20 32 20 40 A12 12 0 0 0 44 40 C44 32 32 16 32 16 Z" data-page-node-id="4Tm3CIlNwxifGGmYxFF73J"/>
           </svg>
         </div>
         <h1 class="hero-title" data-page-node-id="BSzpXKBA9GfpU4wbN74tH1">每天 20 个四级高频词，<br  data-page-node-id="3A1r88MSqU2jGNvgu7BngO"/>用一个故事串起来。</h1>
@@ -57,5 +106,7 @@
       });
     })();
   </script>
+  <script src="pixel.js"></script>
+  </div>
 </body>
 </html>

@@ -1,21 +1,71 @@
 /* ============================================================
    高频词小灶 — 设计系统 (Design Tokens)
-   严格依据需求文档 §9.3
+   基准依据需求文档 §9.3
+
+   ★ 换皮肤说明（新增）
+   本文件所有颜色一律走下面的 CSS 变量，禁止再写死色值。
+   换皮肤 = 覆盖这组变量即可，文件末尾有 `html[data-skin="…"]` 皮肤块。
+   新增皮肤：① 在文件末尾加一段 html[data-skin="<id>"] 覆盖；
+             ② 在 skin.js 的 SKINS 登记表加一行。
    ============================================================ */
 :root {
+  /* ---------- 皮肤可覆盖区（开始） ---------- */
+
   /* 背景与表面 */
-  --bg-page: #F5F7F3;
-  --surface: #FFFFFF;
+  --bg-page: #F5F7F3;          /* 页面底色 */
+  --surface: #FFFFFF;          /* 卡面 / 面板 */
+  --bg-subtle: #E9EEE9;        /* 浅底：模式切换器轨道 */
+  --bg-soft: #F0F4F1;          /* 更浅的底：喇叭按钮 / 按钮 hover */
+  --bg-soft-2: #E7EBE7;        /* 浅底再深一档：书签 hover */
+  --track-bg: #E1E8E3;         /* 进度条轨道 */
+
+  /* 描边 */
+  --border-soft: #D7E2DB;      /* 浅描边：输入框 / 左箭头 */
+  --border-muted: #C9DDD3;     /* 更弱描边：次要按钮 / 禁用态 */
 
   /* 文字 */
-  --text-primary: #22302A;
-  --text-secondary: #4A5A51;
-  --text-tertiary: #6A7A70;
-  --text-muted: #9AA89F;
+  --text-primary: #22302A;     /* 主文字 */
+  --text-secondary: #4A5A51;   /* 次级文字 / 释义 */
+  --text-tertiary: #6A7A70;    /* 辅助文字 */
+  --text-muted: #9AA89F;       /* 更弱的辅助文字 */
+  --on-accent: #FFFFFF;        /* 压在强调色上的文字 / 图形 */
 
   /* 强调 */
-  --accent: #2E9E78;
-  --accent-dark: #176B4F;
+  --accent: #2E9E78;           /* 主色：主按钮 / 右箭头 / 进度条 / 徽标 */
+  --accent-dark: #176B4F;      /* 深主色：切换器激活段 / 白字按钮（AA 级） */
+  --accent-hover: #29906D;     /* 主按钮 hover */
+
+  /* 标记（书签） */
+  --mark-bg: #F1F3EF;          /* 未标记底 */
+  --mark-bg-hover: #E7EBE7;    /* 未标记 hover */
+  --mark-stroke: #4A5A51;      /* 未标记描边 */
+  --mark-bg-on: #FCEBEB;       /* 已标记底 */
+  --mark-bg-on-hover: #F9DEDE; /* 已标记 hover */
+  --mark-fg: #E24B4A;          /* 已标记图标 */
+
+  /* 语义色：默写校验 / 重置 */
+  --ok: #2E9E78;
+  --ok-shadow: rgba(46, 158, 120, 0.18);
+  --bad: #D9534F;
+  --bad-shadow: rgba(217, 83, 79, 0.15);
+  --danger: #B5564F;           /* 「↺ 重置」文字 */
+  --danger-border: #E2C9C9;    /* 「↺ 重置」描边 */
+  --danger-bg: #FCEFEF;        /* 「↺ 重置」hover 底 */
+
+  /* 浮层与阴影 */
+  --overlay: rgba(34, 48, 42, 0.45);
+  --toast-bg: #22302A;
+  --shadow-card: 0 10px 28px rgba(34, 48, 42, 0.12);
+  --shadow-btn: 0 4px 12px rgba(46, 158, 120, 0.25);
+  --shadow-modal: 0 18px 44px rgba(34, 48, 42, 0.28);
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-pop: 0 14px 34px rgba(34, 48, 42, 0.22);
+
+  /* 品牌 logo（内联 SVG 用 fill="currentColor"，由这里驱动） */
+  --logo-bg: #2E9E78;
+  --logo-fg: #FFFFFF;
+
+  /* ---------- 皮肤可覆盖区（结束） ---------- */
 
   /* 字号 */
   --fs-word: 48px;
@@ -31,10 +81,6 @@
   --radius-btn: 12px;
   --radius-switcher: 14px;
   --radius-pill: 999px;
-
-  /* 阴影（墨绿调，非纯黑） */
-  --shadow-card: 0 10px 28px rgba(34, 48, 42, 0.12);
-  --shadow-btn: 0 4px 12px rgba(46, 158, 120, 0.25);
 
   /* 布局 */
   --max-width: 760px;
@@ -72,7 +118,7 @@ body {
 }
 .round-badge {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 15px;
   font-weight: 600;
   padding: 7px 16px;
@@ -94,23 +140,23 @@ body {
   border-radius: var(--radius-pill);
   cursor: pointer;
   border: 2px solid var(--accent);
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-dark);
   transition: background .15s, transform .12s;
 }
-.btn-review-toggle:hover { background: #F0F4F1; }
+.btn-review-toggle:hover { background: var(--bg-soft); }
 .btn-review-toggle:active { transform: scale(0.98); }
 /* 处于开启状态（如复习页的「标记」= 只看已标记的词） */
 .btn-review-toggle.active {
   background: var(--accent-dark);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent-dark);
 }
 .btn-review-toggle.active:hover { background: var(--accent-dark); }
 .btn-review-toggle:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  border-color: #C9DDD3;
+  border-color: var(--border-muted);
   color: var(--text-muted);
 }
 
@@ -202,20 +248,20 @@ body {
   padding: 9px 16px;
   border-radius: var(--radius-btn);
   cursor: pointer;
-  border: 2px solid #E2C9C9;
-  background: #fff;
-  color: #B5564F;
+  border: 2px solid var(--danger-border);
+  background: var(--surface);
+  color: var(--danger);
   white-space: nowrap;
   transition: background .15s, transform .12s;
 }
-.btn-reset:hover { background: #FCEFEF; }
+.btn-reset:hover { background: var(--danger-bg); }
 .btn-reset:active { transform: scale(0.98); }
 
 /* ============================ 重置确认弹窗 ============================ */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(34, 48, 42, 0.45);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,7 +274,7 @@ body {
 .modal {
   background: var(--surface);
   border-radius: var(--radius-card);
-  box-shadow: 0 18px 44px rgba(34, 48, 42, 0.28);
+  box-shadow: var(--shadow-modal);
   padding: 30px 28px;
   max-width: 420px;
   width: 100%;
@@ -256,7 +302,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 4px;
-  background: #E9EEE9;
+  background: var(--bg-subtle);
   border-radius: var(--radius-switcher);
   padding: 5px;
   width: fit-content;
@@ -277,7 +323,7 @@ body {
 .mode-btn:hover { color: var(--text-primary); }
 .mode-btn.active {
   background: var(--accent-dark);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* ============================ 翻卡区 ============================ */
@@ -308,7 +354,7 @@ body {
   top: 18px;
   right: 18px;
   border: none;
-  background: #F0F4F1;
+  background: var(--bg-soft);
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -322,7 +368,7 @@ body {
   top: 18px;
   left: 18px;
   border: none;
-  background: #F1F3EF;
+  background: var(--mark-bg);
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -336,18 +382,25 @@ body {
 .card-mark svg { display: block; }
 .card-mark svg path {
   fill: none;
-  stroke: #4A5A51;
+  stroke: var(--mark-stroke);
   stroke-width: 2;
   stroke-linejoin: round;
   transition: fill .15s, stroke .15s;
 }
-.card-mark:hover { background: #E7EBE7; }
+.card-mark:hover { background: var(--mark-bg-hover); }
 .card-mark:active { transform: scale(0.94); }
 .card-mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 已标记：浅红底 + 红色实心书签 */
-.card-mark.marked { background: #FCEBEB; }
-.card-mark.marked svg path { fill: #E24B4A; stroke: #E24B4A; }
-.card-mark.marked:hover { background: #F9DEDE; }
+.card-mark.marked { background: var(--mark-bg-on); }
+.card-mark.marked svg path { fill: var(--mark-fg); stroke: var(--mark-fg); }
+.card-mark.marked:hover { background: var(--mark-bg-on-hover); }
+/* 词槽：像素风下要做「旧词飞出 + 新词飞入」的双层叠放，
+   所以单词外面套了一层 .word-stack。
+   非像素皮肤用 display:contents —— 盒子本身不参与布局，
+   里面的 .card-word 仍然是 .flashcard 的直接 flex 项，布局与以前逐像素一致。 */
+.word-stack { display: contents; }
+.card-word-ghost { display: none; }
+
 .card-word {
   font-size: var(--fs-word);
   font-weight: 700;
@@ -382,15 +435,15 @@ body {
   font-family: inherit;
   font-size: 18px;
   padding: 12px 16px;
-  border: 2px solid #D7E2DB;
+  border: 2px solid var(--border-soft);
   border-radius: var(--radius-btn);
   outline: none;
   text-align: center;
   transition: border-color .15s, box-shadow .15s;
 }
 .write-input:focus { border-color: var(--accent); }
-.write-input.correct { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,158,120,0.18); }
-.write-input.wrong { border-color: #D9534F; box-shadow: 0 0 0 3px rgba(217,83,79,0.15); }
+.write-input.correct { border-color: var(--ok); box-shadow: 0 0 0 3px var(--ok-shadow); }
+.write-input.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-shadow); }
 
 /* ---- 三种模式显隐规则 ---- */
 /* 默认（背单词模式）：两个交互行都不显示 */
@@ -430,14 +483,14 @@ body {
   user-select: none;
 }
 .nav-left {
-  background: #fff;
-  border: 2px solid #D7E2DB;
+  background: var(--surface);
+  border: 2px solid var(--border-soft);
   color: var(--accent-dark);
 }
 .nav-right {
   background: var(--accent);
   border: 2px solid var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: var(--shadow-btn);
 }
 .nav:hover { transform: scale(1.06); }
@@ -456,7 +509,7 @@ body {
 }
 .progress-track {
   height: 8px;
-  background: #E1E8E3;
+  background: var(--track-bg);
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
@@ -507,20 +560,20 @@ body {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: var(--shadow-btn);
 }
-.btn-primary:hover { background: #29906d; }
+.btn-primary:hover { background: var(--accent-hover); }
 
 .btn-secondary {
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-dark);
-  border-color: #C9DDD3;
+  border-color: var(--border-muted);
 }
-.btn-secondary:hover { background: #F0F4F1; }
+.btn-secondary:hover { background: var(--bg-soft); }
 
 .btn-outline {
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-dark);
   border-color: var(--accent);
   font-size: 15px;
@@ -570,12 +623,12 @@ body {
   left: 50%;
   bottom: 40px;
   transform: translateX(-50%) translateY(20px);
-  background: #22302A;
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--on-accent);
   font-size: 15px;
   padding: 12px 22px;
   border-radius: var(--radius-btn);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-toast);
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s, transform .2s;
@@ -584,6 +637,194 @@ body {
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* ============================ 品牌 logo 随皮肤换色 ============================ */
+/* SVG 里的 fill 写成 currentColor，具体色值由下面的变量给出 */
+.brand-logo .logo-bg { fill: var(--logo-bg); }
+.brand-logo .logo-fg,
+.hero-logo .logo-fg { fill: var(--logo-fg); }
+.hero-logo .logo-bg { fill: var(--logo-bg); }
+
+/* ============================ 皮肤切换 ============================ */
+.skin-switch {
+  position: relative;
+  flex: 0 0 auto;
+}
+.btn-skin,
+.btn-sound {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  border: 2px solid var(--border-muted);
+  background: var(--surface);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background .15s, color .15s, transform .12s;
+}
+.btn-skin:hover,
+.btn-sound:hover { background: var(--bg-soft); color: var(--text-primary); }
+.btn-skin:active,
+.btn-sound:active { transform: scale(0.98); }
+.btn-skin:focus-visible,
+.btn-sound:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-skin .btn-icon { font-size: 16px; line-height: 1; }
+.btn-skin[aria-expanded="true"] {
+  background: var(--bg-soft);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+}
+/* 挥剑音效开关：纯图标按钮，比皮肤按钮窄 */
+.btn-sound { padding: 8px 12px; font-size: 17px; line-height: 1; }
+.btn-sound[aria-pressed="false"] {
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border-color: var(--border-soft);
+}
+
+/* 皮肤选择浮层：贴在按钮下方，抬高 z-index 盖住下方内容（不挪动位置，避免遮住标题行） */
+.skin-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 250px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-pop);
+  padding: 12px;
+  z-index: 70;
+  animation: skin-pop-in .14s ease;
+}
+.skin-pop[hidden] { display: none; }
+@keyframes skin-pop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.skin-pop-title {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 0 4px 10px;
+  line-height: 1.5;
+}
+.skin-list { display: flex; flex-direction: column; gap: 6px; }
+.skin-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.skin-item:hover { background: var(--bg-soft); }
+.skin-item.active {
+  border-color: var(--accent);
+  background: var(--bg-soft);
+}
+.skin-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 皮肤预览色块：三段竖条 = 底色 / 卡面 / 主色 */
+.skin-swatch {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+  display: flex;
+}
+.skin-swatch i { flex: 1 1 0; display: block; }
+.skin-item-text { flex: 1 1 auto; min-width: 0; }
+.skin-item-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+.skin-item-desc {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.skin-item-check {
+  flex: 0 0 auto;
+  font-size: 15px;
+  color: var(--accent-dark);
+  visibility: hidden;
+}
+.skin-item.active .skin-item-check { visibility: visible; }
+/* 皮肤浮层放到页面最上层，避免被 toast 盖住 */
+.toast { z-index: 90; }
+
+/* ============================ 皮肤定义 ============================
+   每个皮肤 = 一组变量覆盖。新增皮肤：
+   ① 在这里加一段 html[data-skin="<id>"] { ... }
+   ② 在 skin.js 的 SKINS 登记表加一行（名字 + 预览色）
+   变量清单见文件顶部「皮肤可覆盖区」。
+   ============================================================ */
+
+/* 皮肤 1：薄荷（默认，直接用 :root 里的基线值，无需覆盖） */
+
+/* 皮肤 2：暖阳米黄 —— 护眼暖色，适合长时间看 */
+html[data-skin="warm"] {
+  --bg-page: #FAF3E7;
+  --surface: #FFFDF8;
+  --bg-subtle: #F0E5D0;
+  --bg-soft: #F6EDDC;
+  --bg-soft-2: #EFE3CC;
+  --track-bg: #E7DAC2;
+
+  --border-soft: #E0D0B2;
+  --border-muted: #D8C4A0;
+
+  --text-primary: #3B2E1E;
+  --text-secondary: #5C4A32;
+  --text-tertiary: #7B6748;
+  --text-muted: #A08D6E;
+  --on-accent: #FFFDF8;
+
+  --accent: #AE5526;           /* 赭橙：白字 5.0:1，达 WCAG AA */
+  --accent-dark: #7E3A15;      /* 深赭：白字 8.6:1，用于切换器激活段 */
+  --accent-hover: #A14C1F;     /* 主按钮 hover（hover 也必须保持 AA） */
+
+  --mark-bg: #F1E7D5;
+  --mark-bg-hover: #EADFC9;
+  --mark-stroke: #5C4A32;
+  --mark-bg-on: #FBE6D6;
+  --mark-bg-on-hover: #F7DCC6;
+  --mark-fg: #C0453B;
+
+  --ok: #4F7A3C;
+  --ok-shadow: rgba(79, 122, 60, 0.20);
+  --bad: #C0453B;
+  --bad-shadow: rgba(192, 69, 59, 0.16);
+  --danger: #A8503C;
+  --danger-border: #E4C3AC;
+  --danger-bg: #FBEDE2;
+
+  --overlay: rgba(59, 46, 30, 0.45);
+  --toast-bg: #3B2E1E;
+  --shadow-card: 0 10px 28px rgba(90, 66, 38, 0.16);
+  --shadow-btn: 0 4px 12px rgba(174, 85, 38, 0.28);
+  --shadow-modal: 0 18px 44px rgba(90, 66, 38, 0.30);
+  --shadow-toast: 0 8px 24px rgba(59, 46, 30, 0.24);
+  --shadow-pop: 0 14px 34px rgba(90, 66, 38, 0.26);
+
+  --logo-bg: #AE5526;
+  --logo-fg: #FFFDF8;
 }
 
 /* ============================ 响应式兜底 ============================ */
@@ -600,3 +841,403 @@ body {
   .nav { width: 46px; height: 46px; font-size: 24px; }
   .app-header { padding: 18px 20px; }
 }
+
+/* ============================================================
+   像素风主题（第三款皮肤 · 我的世界像素）
+   ------------------------------------------------------------
+   作用域：仅 html[data-skin="pixel"]。薄荷 / 米黄 零影响。
+   布局：固定 1440×1200 舞台 + 等比缩放（系数由 pixel.js 写入 --px-scale）。
+   所有规则均挂在 pixel 作用域下；新增的惰性钩子默认隐藏。
+   背景与宝剑的少量写死色值仅存在于像素作用域内（约定 §4-10 的有意例外）。
+   ============================================================ */
+html[data-skin="pixel"] {
+  /* —— 像素专用变量（仅在 pixel 作用域引用，不影响另两款） —— */
+  --px-panel: #F2F2F2;   --px-card: #FFFFFF;
+  --px-sub1: #EDEDED;    --px-sub2: #E3E3E3;
+  --px-hi: #FFFFFF;      --px-lo: #B4B4B4;
+  --px-edge: #3F3F3F;    --px-edge2: #A8A8A8;
+  --px-accent: #7ADB2B;  --px-bar: #5FB81C;  --px-bar-hi: #8CE03E;  --px-accent-dk: #1F4A0B;
+  --px-text: #232323;    --px-text2: #6E6E6E; --px-text3: #8A8A8A;   --px-text4: #9A9A9A;
+  --px-cyan: #16A393;    --px-gold: #F0C24A;  --px-gold-dk: #8A6A15;  --px-dark: #2B2B2B;
+  --px-danger: #B5564F;  --px-danger-bd: #E2C9C9; --px-danger-bg: #FCEFEF;
+
+  /* —— 复用可换肤变量，把颜色换成像素色板、面积归零 —— */
+  --bg-page: #8FBEF0;    --surface: #FFFFFF;   --bg-subtle: #DCDCDC;
+  --bg-soft: #F8F8F8;    --bg-soft-2: #EFEFEF; --track-bg: #C4C4C4;
+  --border-soft: #A8A8A8; --border-muted: #A8A8A8;
+  --text-primary: #232323; --text-secondary: #6E6E6E; --text-tertiary: #8A8A8A;
+  --text-muted: #9A9A9A;   --on-accent: #122103;
+  --accent: #7ADB2B;     --accent-dark: #1F4A0B; --accent-hover: #8CE03E;
+  --mark-bg: #EDEDED;    --mark-bg-hover: #F8F8F8; --mark-stroke: #8A6A15;
+  --mark-bg-on: #F0C24A; --mark-bg-on-hover: #F7DCC6; --mark-fg: #8A6A15;
+  --ok: #5FB81C;         --ok-shadow: rgba(95,184,28,.2);
+  --bad: #D9534F;        --bad-shadow: rgba(217,83,79,.18);
+  --danger: #B5564F;     --danger-border: #E2C9C9; --danger-bg: #FCEFEF;
+  --overlay: rgba(0,0,0,.45); --toast-bg: #2B2B2B;
+  --shadow-card: 0 0 0 0; --shadow-btn: 0 0 0 0; --shadow-modal: 0 0 0 0;
+  --shadow-toast: 0 0 0 0; --shadow-pop: 0 0 0 0;
+  --logo-bg: #7ADB2B;    --logo-fg: #122103;
+
+  /* —— 圆角归零 / 字号放大 —— */
+  --radius-card: 0; --radius-btn: 0; --radius-switcher: 0; --radius-pill: 0;
+  --fs-word: 160px; --fs-meaning: 30px; --fs-phonetic: 19px; --fs-title: 30px;
+  --fs-hint: 13px; --fs-button: 19px; --fs-body: 16px;
+
+  /* —— 挥剑翻页时长：单一真相，只改 --sword-k 就能整体慢放 ——
+     其余用 calc() 派生，JS 不再重复这些数字（调试慢放 = 给 <html> 加 .sword-slow）。 */
+  --sword-k: 1;
+  --sword-swing:  calc(460ms * var(--sword-k));   /* 剑：起势→挥出→归位 */
+  --sword-wdelay: calc(170ms * var(--sword-k));   /* 剑先动，词后随 */
+  --sword-win:    calc(300ms * var(--sword-k));   /* 新词飞入 */
+  --sword-wout:   calc(210ms * var(--sword-k));   /* 旧词甩出 */
+  --sword-infoin: calc(240ms * var(--sword-k));   /* 音标/释义落定后淡入 */
+}
+html[data-skin="pixel"].sword-slow { --sword-k: 2.4; }   /* 调试用慢放 */
+
+/* —— 舞台：固定 1440×1200 + 等比缩放 —— */
+html[data-skin="pixel"] body { background: #8FBEF0; overflow: hidden; }
+html[data-skin="pixel"] #stage {
+  position: fixed; left: 50%; top: 50%; width: 1440px; height: 1200px;
+  margin: -600px 0 0 -720px;
+  transform: scale(var(--px-scale, 1));
+  transform-origin: center center;
+}
+html[data-skin="pixel"] .px-bg {
+  display: block; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+}
+html[data-skin="pixel"] .app-header,
+html[data-skin="pixel"] .app-main { position: absolute; z-index: 1; }
+/* 皮肤浮层 #skin-pop 挂在 .app-header 内部，其 z-index 再大也只在顶栏这一层里生效。
+   顶栏与主面板同为 z-index:1 且主面板在 DOM 里靠后 → 会把浮层盖住，点不到。
+   所以顶栏必须比主面板高一层，浮层才能盖到面板之上。 */
+html[data-skin="pixel"] .app-header { z-index: 2; }
+/* 皮肤浮层挂 .app-header 内部，顶栏必须高于主面板：
+   两者若同为 z-index:1，DOM 靠后的 .app-main 会盖住顶栏的整个子树（含浮层），
+   浮层自身 z-index:70 也救不回来（被困在顶栏的层叠上下文里）。 */
+html[data-skin="pixel"] .app-header { z-index: 2; }
+
+/* 面板：三层像素斜面 */
+html[data-skin="pixel"] .app-header,
+html[data-skin="pixel"] .app-main {
+  background: var(--px-panel);
+  border: 1px solid var(--px-edge);
+  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
+}
+
+/* —— 顶栏（高度锁 79，底边 119，避免压到主面板 y124）—— */
+html[data-skin="pixel"] .app-header {
+  top: 40px; left: 140px; width: 1160px; height: 79px;
+  padding: 0 16px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between;
+}
+html[data-skin="pixel"] .brand-name { font-size: 20px; color: var(--px-text); }
+html[data-skin="pixel"] .header-right { gap: 12px; }
+html[data-skin="pixel"] .btn-skin {
+  border-radius: 0; border: 2px solid var(--px-edge2);
+  background: var(--px-sub1); color: var(--px-text);
+  padding: 8px 18px; font-size: 15px;
+}
+html[data-skin="pixel"] .btn-skin:hover { background: #F8F8F8; color: var(--px-text); }
+html[data-skin="pixel"] .btn-sound {
+  border-radius: 0; border: 2px solid var(--px-edge2);
+  background: var(--px-sub1); color: var(--px-text);
+  padding: 8px 12px; font-size: 16px;
+}
+html[data-skin="pixel"] .btn-sound:hover { background: #F8F8F8; color: var(--px-text); }
+html[data-skin="pixel"] .btn-sound[aria-pressed="false"] {
+  background: var(--px-card); color: var(--px-text4);
+}
+html[data-skin="pixel"] .btn-reset {
+  border-radius: 0; border: 2px solid var(--px-danger-bd);
+  background: var(--px-card); color: var(--px-danger);
+  padding: 9px 16px; font-size: 14px;
+}
+html[data-skin="pixel"] .btn-reset:hover { background: var(--px-danger-bg); }
+html[data-skin="pixel"] .round-badge {
+  background: var(--px-dark); color: #FFFFFF; border-radius: 0;
+  padding: 8px 14px; font-size: 14px; border: 1px solid #000;
+  box-shadow: inset 2px 2px 0 #4a4a4a, inset -2px -2px 0 #000;
+}
+
+/* —— 主舞台（视图容器 = 主面板）—— */
+html[data-skin="pixel"] .app-main {
+  top: 124px; left: 140px; width: 1160px; height: 863px;
+  display: flex; flex-direction: column; gap: 16px; padding: 28px; overflow: hidden;
+}
+html[data-skin="pixel"] .app-main .view { display: none; }
+html[data-skin="pixel"] .app-main .view-active {
+  display: flex; flex-direction: column; gap: 16px; flex: 1 1 auto; min-height: 0;
+}
+
+/* —— 标题行 / 模式切换器 / 进度 / 操作行宽度统一 —— */
+html[data-skin="pixel"] .view-title-row,
+html[data-skin="pixel"] .mode-switcher,
+html[data-skin="pixel"] .flashcard-area,
+html[data-skin="pixel"] .progress-wrap,
+html[data-skin="pixel"] .action-bar,
+html[data-skin="pixel"] .story-panel { max-width: none; width: 100%; margin: 0 auto; }
+html[data-skin="pixel"] .view-title { font-size: var(--fs-title); text-align: left; margin: 0; }
+html[data-skin="pixel"] .view-title-row .view-title { margin: 0; }
+html[data-skin="pixel"] .view-title-actions { flex-direction: row; }
+html[data-skin="pixel"] .view-title-actions .btn { justify-content: center; }
+
+html[data-skin="pixel"] .mode-switcher {
+  background: var(--px-sub1); border: 1px solid var(--px-edge);
+  box-shadow: inset 2px 2px 0 var(--px-hi), inset -2px -2px 0 var(--px-lo);
+  padding: 4px; border-radius: 0; width: fit-content;
+}
+html[data-skin="pixel"] .mode-btn {
+  border: none; background: transparent; color: var(--px-text2);
+  border-radius: 0; padding: 11px 26px; font-size: 14px;
+}
+html[data-skin="pixel"] .mode-btn:hover { color: var(--px-text); }
+html[data-skin="pixel"] .mode-btn.active {
+  background: var(--px-accent); color: var(--on-accent);
+  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
+}
+
+html[data-skin="pixel"] .btn-review-toggle {
+  border-radius: 0; border: 2px solid var(--px-accent-dk);
+  background: var(--px-card); color: var(--px-accent-dk);
+  padding: 13px 22px; font-size: 14px;
+}
+html[data-skin="pixel"] .btn-review-toggle.active {
+  background: var(--px-gold); color: var(--px-gold-dk); border-color: var(--px-gold-dk);
+}
+
+/* —— 翻卡区 + 卡片 —— */
+html[data-skin="pixel"] .flashcard-area {
+  position: relative; gap: 0; max-width: 1160px; width: 100%; flex: 0 0 auto;
+}
+html[data-skin="pixel"] .flashcard {
+  width: 1082px; max-width: 1082px; margin: 0 auto; min-height: 360px; height: 360px;
+  background: var(--px-card); border: 1px solid var(--px-edge);
+  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
+  border-radius: 0; padding: 22px 26px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+html[data-skin="pixel"] .card-word,
+html[data-skin="pixel"] .card-word-ghost {
+  font-size: var(--fs-word); line-height: 1; letter-spacing: 0;
+  white-space: nowrap; max-width: 840px;   /* 给两侧宝剑留位，避免文字撞剑 */
+}
+
+/* —— 词槽：两层叠放（当前词常驻 + 飞入的新词） ——
+   用 grid 把两层放进同一个格子：两层都在正常流里，
+   clientWidth 仍是「按内容自适应」→ pixel.js 的字号测量逻辑原样可用。 */
+html[data-skin="pixel"] .word-stack {
+  display: grid; grid-template-columns: auto; justify-items: center; align-items: center;
+}
+html[data-skin="pixel"] .word-stack > .card-word,
+html[data-skin="pixel"] .word-stack > .card-word-ghost { grid-area: 1 / 1; }
+html[data-skin="pixel"] .card-word-ghost {
+  display: block; font-weight: 700; color: var(--px-text); pointer-events: none;
+  will-change: transform, opacity;
+}
+/* 中文模式下单词是「答案」（.card-word 被隐藏），ghost 层必须跟着隐藏，
+   否则翻页时新答案会先飞进来把答案漏掉。 */
+html[data-skin="pixel"] .flashcard[data-mode="zh"] .card-word-ghost { display: none; }
+html[data-skin="pixel"] .card-phonetic {
+  font-size: var(--fs-phonetic); color: var(--px-text3); margin-top: 8px;
+}
+html[data-skin="pixel"] .card-meaning {
+  font-size: var(--fs-meaning); color: var(--px-text); margin-top: 14px;
+  position: relative; padding-top: 18px;
+}
+html[data-skin="pixel"] .card-meaning::before {
+  content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 64px; height: 4px; background: var(--px-cyan);
+}
+
+/* 右上角：发音 + 标记 并排 */
+html[data-skin="pixel"] .card-speaker {
+  top: 22px; right: 22px; width: 44px; height: 44px; border-radius: 0;
+  background: var(--px-sub1); border: 2px solid var(--px-edge2); font-size: 20px;
+}
+html[data-skin="pixel"] .card-mark {
+  top: 22px; right: 74px; left: auto; width: 44px; height: 44px; border-radius: 0;
+  background: var(--px-sub1); border: 2px solid var(--px-edge2);
+}
+html[data-skin="pixel"] .card-mark.marked { background: var(--px-gold); border-color: var(--px-gold-dk); }
+html[data-skin="pixel"] .card-mark.marked svg path { fill: var(--px-gold-dk); stroke: var(--px-gold-dk); }
+
+/* 宝剑翻页键（绝对定位入卡，垂直居中）
+   注意：垂直居中改用 top:calc() 算，把 transform 整个腾给挥剑动画；
+   hover / active 的缩放改挂在里面的 .px-sword 上 —— 否则两者抢同一个 transform。 */
+html[data-skin="pixel"] .nav {
+  position: absolute; top: calc(50% - 40.5px);
+  width: 39px; height: 81px; border: none; background: transparent; box-shadow: none;
+  border-radius: 0; font-size: 0; display: flex; align-items: center; justify-content: center;
+  z-index: 3;
+  transform-origin: 50% 100%;      /* 旋转轴 = 剑柄根部 */
+  transition: opacity 140ms ease-out;
+}
+html[data-skin="pixel"] .nav-left { left: 48px; }
+html[data-skin="pixel"] .nav-right { right: 48px; }
+html[data-skin="pixel"] .px-sword { display: block; width: 39px; height: 81px; transition: transform 140ms ease-out; }
+html[data-skin="pixel"] .nav:hover .px-sword { transform: scale(1.08); }
+html[data-skin="pixel"] .nav:active .px-sword { transform: scale(.96); }
+html[data-skin="pixel"] .nav:disabled { opacity: .35; box-shadow: none; }
+
+/* —— 挥剑：绕剑柄根部旋扫 + 放大 ——
+   方向约定（沿用原型，已验证）：两把剑都朝卡片内侧扫，扫向 = 新词入场方向（剑领、词随）
+     · 左剑（黄金 / 上一个）：朝右扫 = 顺时针 = 正角 → 新词自左飞入
+     · 右剑（钻石 / 下一个）：朝左扫 = 逆时针 = 负角 → 新词自右飞入
+   13% 起势帧先反向外倾蓄力；末帧写回 rotate(0) opacity:0 收势淡出，
+   不写第二段动画，避免两段之间的接缝。 */
+html[data-skin="pixel"] .nav.swL { animation: px-swingL var(--sword-swing) cubic-bezier(.4,0,.3,1) both; z-index: 20; }
+html[data-skin="pixel"] .nav.swR { animation: px-swingR var(--sword-swing) cubic-bezier(.4,0,.3,1) both; z-index: 20; }
+@keyframes px-swingL {
+  0%  { transform: rotate(0deg) scale(1); }
+  13% { transform: rotate(-10deg) scale(1.06); }
+  45% { transform: rotate(36deg) scale(1.42); }
+  68% { transform: rotate(99deg) scale(1.92); }
+  78% { transform: rotate(92deg) scale(1.9); }
+  92% { transform: rotate(92deg) scale(1.9); opacity: 1; }
+  100%{ transform: rotate(0deg) scale(1); opacity: 0; }
+}
+@keyframes px-swingR {
+  0%  { transform: rotate(0deg) scale(1); }
+  13% { transform: rotate(10deg) scale(1.06); }
+  45% { transform: rotate(-36deg) scale(1.42); }
+  68% { transform: rotate(-99deg) scale(1.92); }
+  78% { transform: rotate(-92deg) scale(1.9); }
+  92% { transform: rotate(-92deg) scale(1.9); opacity: 1; }
+  100%{ transform: rotate(0deg) scale(1); opacity: 0; }
+}
+
+/* —— 单词：旧词甩出（当前层）+ 新词弧线飞入（ghost 层），同延同时起手 —— */
+html[data-skin="pixel"] .card-word.awayL { animation: px-awayL var(--sword-wout) cubic-bezier(.5,0,.75,.4) var(--sword-wdelay) both; }
+html[data-skin="pixel"] .card-word.awayR { animation: px-awayR var(--sword-wout) cubic-bezier(.5,0,.75,.4) var(--sword-wdelay) both; }
+html[data-skin="pixel"] .card-word-ghost.flyL { animation: px-flyL var(--sword-win) cubic-bezier(.2,1.04,.32,1) var(--sword-wdelay) both; }
+html[data-skin="pixel"] .card-word-ghost.flyR { animation: px-flyR var(--sword-win) cubic-bezier(.2,1.04,.32,1) var(--sword-wdelay) both; }
+@keyframes px-awayL { 0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} 100%{opacity:0;transform:translate(210px,80px) rotate(8deg) scale(.74)} }
+@keyframes px-awayR { 0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} 100%{opacity:0;transform:translate(-210px,80px) rotate(-8deg) scale(.74)} }
+@keyframes px-flyL  { 0%{opacity:0;transform:translate(-320px,-140px) rotate(-13deg) scale(.38)} 30%{opacity:1} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
+@keyframes px-flyR  { 0%{opacity:0;transform:translate(320px,-140px) rotate(13deg) scale(.38)} 30%{opacity:1} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
+
+/* —— 音标 / 释义：先随剑淡出，落定后再淡入 —— */
+html[data-skin="pixel"] .card-phonetic.sw-infoout,
+html[data-skin="pixel"] .card-meaning.sw-infoout { animation: px-infoOut var(--sword-wout) ease-in var(--sword-wdelay) both; }
+html[data-skin="pixel"] .card-phonetic.sw-infoin,
+html[data-skin="pixel"] .card-meaning.sw-infoin { animation: px-infoIn var(--sword-infoin) ease-out both; }
+@keyframes px-infoOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-10px); } }
+@keyframes px-infoIn  { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* —— 进度条 —— */
+html[data-skin="pixel"] .progress-wrap { text-align: left; }
+html[data-skin="pixel"] .progress-track {
+  height: 28px; background: var(--px-sub1); border: 3px solid var(--px-edge); border-radius: 0;
+  box-shadow: inset 2px 2px 0 var(--px-hi), inset -2px -2px 0 var(--px-lo); padding: 3px;
+}
+html[data-skin="pixel"] .progress-fill {
+  height: 100%; background: var(--px-bar); box-shadow: inset 0 6px 0 0 var(--px-bar-hi); border-radius: 0;
+}
+html[data-skin="pixel"] .progress-text { font-size: 15px; }
+/* Q3：学习页进度提示行不要了 */
+html[data-skin="pixel"] #view-learn .progress-hint { display: none; }
+
+/* —— 操作栏按钮 —— */
+html[data-skin="pixel"] .action-bar { gap: 16px; }
+html[data-skin="pixel"] .btn {
+  border-radius: 0; border: 2px solid var(--px-edge2); color: var(--px-text);
+  font-size: var(--fs-button); padding: 18px 24px;
+}
+html[data-skin="pixel"] .btn-primary {
+  background: var(--px-accent); color: var(--on-accent);
+  border-color: var(--px-accent-dk);
+  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk), 4px 4px 0 var(--px-accent-dk);
+}
+html[data-skin="pixel"] .btn-primary:hover { background: var(--px-accent-hover); }
+html[data-skin="pixel"] .btn-primary:active {
+  transform: translate(3px, 3px);
+  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
+}
+html[data-skin="pixel"] .btn-secondary { background: var(--px-sub2); color: var(--px-text); border-color: var(--px-edge2); }
+html[data-skin="pixel"] .btn-outline { background: var(--px-card); color: var(--px-accent-dk); border: 2px solid var(--px-accent-dk); }
+html[data-skin="pixel"] #btn-generate { width: 540px; }
+html[data-skin="pixel"] #btn-new-round-learn { width: 280px; }
+html[data-skin="pixel"] #btn-prev-batch,
+html[data-skin="pixel"] #btn-new-round-review { width: 352px; }
+
+/* —— 故事面板 —— */
+html[data-skin="pixel"] .story-panel {
+  background: var(--px-card); border: 1px solid var(--px-edge);
+  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
+  border-radius: 0; padding: 16px 22px; overflow: auto; flex: 1 1 0; min-height: 0;
+}
+html[data-skin="pixel"] .story-title { color: var(--px-accent-dk); font-size: 17px; }
+html[data-skin="pixel"] .story-en { font-size: 20px; line-height: 1.7; }
+html[data-skin="pixel"] .story-zh { font-size: 18px; line-height: 1.9; }
+
+/* —— 重置弹窗 / toast —— */
+html[data-skin="pixel"] .modal {
+  background: var(--px-card); border: 1px solid var(--px-edge);
+  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
+  border-radius: 0; padding: 38px 44px; max-width: 620px;
+}
+html[data-skin="pixel"] .modal-text { font-size: 18px; }
+html[data-skin="pixel"] .modal-actions { gap: 16px; }
+html[data-skin="pixel"] #btn-reset-cancel,
+html[data-skin="pixel"] #btn-reset-confirm { width: 220px; }
+html[data-skin="pixel"] .toast {
+  background: var(--px-dark); border: 1px solid #101010; border-radius: 0;
+  padding: 15px 22px; color: #FFFFFF; display: flex; align-items: center; gap: 8px;
+}
+
+/* —— 皮肤浮层 —— */
+html[data-skin="pixel"] .skin-pop {
+  border: 1px solid var(--px-edge); background: var(--px-card); border-radius: 0;
+  box-shadow: inset 3px 3px 0 var(--px-hi), inset -3px -3px 0 var(--px-lo); width: 260px;
+}
+html[data-skin="pixel"] .skin-item { border: 2px solid transparent; border-radius: 0; }
+html[data-skin="pixel"] .skin-item.active { border-color: var(--px-accent); background: var(--px-sub1); }
+html[data-skin="pixel"] .skin-swatch { border-radius: 0; border: 1px solid var(--px-edge2); }
+
+/* ============================================================
+   惰性钩子：默认全隐藏，像素皮肤下才显示
+   ============================================================ */
+.px-bg, .px-sword, .px-eyebrow, .px-hint-zh, .px-index, .px-subtitle, .px-label { display: none; }
+
+html[data-skin="pixel"] .px-index {
+  display: block; position: absolute; top: 24px; left: 24px;
+  font-size: 14px; color: var(--px-text3);
+}
+html[data-skin="pixel"] .px-eyebrow {
+  display: block; margin-bottom: 6px; font-size: 12px; color: var(--px-text2);
+}
+html[data-skin="pixel"] .flashcard[data-mode="zh"] .px-hint-zh {
+  display: block; position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; color: var(--px-text3);
+}
+html[data-skin="pixel"] .px-subtitle {
+  display: block; font-size: 14px; color: var(--px-text2);
+}
+/* 文案双份：像素皮肤下显示像素文案，隐藏标准文案 */
+html[data-skin="pixel"] .std-label { display: none; }
+html[data-skin="pixel"] .px-label { display: inline-flex; align-items: center; gap: 8px; }
+
+/* —— 首页（index.html）像素化 —— */
+html[data-skin="pixel"] .view-empty {
+  display: flex; align-items: center; justify-content: center;
+  flex: 1 1 auto; min-height: 0;
+}
+html[data-skin="pixel"] .hero {
+  background: var(--px-card); border: 1px solid var(--px-edge);
+  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
+  border-radius: 0; padding: 48px 40px; max-width: 760px;
+}
+html[data-skin="pixel"] .hero-logo { margin-bottom: 20px; }
+html[data-skin="pixel"] .hero-title { font-size: 56px; }
+html[data-skin="pixel"] .hero-subtitle { font-size: 18px; color: var(--px-text2); }
+html[data-skin="pixel"] .hero-footer { color: var(--px-text3); }
+html[data-skin="pixel"] .btn-hero {
+  font-size: 19px; padding: 18px 44px; background: var(--px-accent); color: var(--on-accent);
+  border: 2px solid var(--px-accent-dk); border-radius: 0;
+  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk), 4px 4px 0 var(--px-accent-dk);
+}
+html[data-skin="pixel"] .btn-hero:active {
+  transform: translate(3px, 3px);
+  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
+}
+
