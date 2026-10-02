@@ -542,11 +542,31 @@
       if (e.key === "Escape" && resetModal && !resetModal.hasAttribute("hidden")) closeResetModal();
     });
 
-    // 学习页：开始新一轮 / 生成故事（提示态）
+    // 学习页：开始新一轮 / 生成故事
     document.getElementById("btn-new-round-learn").addEventListener("click", function () { drawRound(); });
-    document.getElementById("btn-generate").addEventListener("click", function () {
-      toast("AI 生成开发中，敬请期待 🚀");
+
+    /* 生成故事：AI 生成还没接，先把示例故事展开 / 收起，给按钮一个真实行为。
+       展开态只加一个 .story-open 类到学习视图，具体怎么让位（缩卡片、收两行）
+       全交给 style.css 的像素段 —— 薄荷/米黄下这个类没有任何样式，行为不变。 */
+    var btnGen = document.getElementById("btn-generate");
+    var learnView = document.getElementById("view-learn");
+    function setGenLabel(text) {
+      // 两种皮肤的文案各有一个 span（std-label / px-label），图标是子元素，文字是它后面的文本节点
+      btnGen.querySelectorAll(".std-label, .px-label").forEach(function (span) {
+        for (var i = span.childNodes.length - 1; i >= 0; i--) {
+          if (span.childNodes[i].nodeType === 3 && span.childNodes[i].nodeValue.trim()) {
+            span.childNodes[i].nodeValue = " " + text;
+          }
+        }
+      });
+    }
+    btnGen.addEventListener("click", function () {
+      var open = learnView.classList.toggle("story-open");
+      btnGen.setAttribute("aria-expanded", open ? "true" : "false");
+      setGenLabel(open ? "收起故事" : "生成故事");
+      if (!open) toast("已收起故事");
     });
+    btnGen.setAttribute("aria-expanded", "false");
 
     // 复习页：上一轮 / 下一轮 = 在复习批之间前后跳转（停留复习模式）
     document.getElementById("btn-prev-batch").addEventListener("click", reviewPrevBatch);
