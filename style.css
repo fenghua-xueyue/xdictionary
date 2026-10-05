@@ -361,6 +361,12 @@ body {
   font-size: 18px;
   cursor: pointer;
   line-height: 1;
+  transition: background .15s, color .15s;
+}
+/* 播放中：喇叭转主色（颜色走变量，三款皮肤自动适配） */
+.card-speaker.active {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 /* ---- 卡片左上角「标记」按钮（与右上角发音图标左右对称） ---- */
 .card-mark {
@@ -1110,6 +1116,11 @@ html[data-skin="pixel"] .card-meaning::before {
 html[data-skin="pixel"] .card-speaker {
   top: 22px; right: 22px; width: 44px; height: 44px; border-radius: 0;
   background: var(--px-sub1); border: 2px solid var(--px-edge2); font-size: 20px;
+}
+html[data-skin="pixel"] .card-speaker.active {
+  background: var(--px-accent);
+  border-color: var(--px-accent-dk);
+  color: var(--on-accent);
 }
 html[data-skin="pixel"] .card-mark {
   top: 22px; right: 74px; left: auto; width: 44px; height: 44px; border-radius: 0;
