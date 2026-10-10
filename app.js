@@ -1,15 +1,9 @@
 /* ============================================================
    xdictionary — 第二界面（学习主页）交互逻辑
-   纯前端，localStorage 持久化；不做 AI 故事生成
+   纯前端，localStorage 持久化；故事面板内容归 story.js（AI 生成）
    ============================================================ */
 (function () {
   "use strict";
-
-  /* ---------- 静态示例故事（展示用，不接 API） ---------- */
-  var SAMPLE_STORY = {
-    en: "Last year, Tom decided to improve his English. At first, the task seemed impossible, and he almost wanted to abandon the plan. But his teacher told him that real ability grows from daily effort. So Tom made a simple schedule: twenty new words every day, and he would not neglect any of them. Slowly, he began to recognize patterns and understand the logic behind each word. When he met a difficult problem, he did not refuse to face it. Instead, he tried to find a better method. After six months, he could read short articles without fear. His steady progress proved that continued work can achieve great results.",
-    zh: "去年，汤姆决定提升自己的英语。起初，这项任务看起来不可能完成，他一度想放弃这个计划。但老师告诉他，真正的能力来自日复一日的努力。于是汤姆制定了一个简单的日程：每天二十个新单词，并且不会忽视其中任何一个。慢慢地，他开始认出规律，理解每个单词背后的逻辑。遇到难题时，他不逃避面对，而是努力寻找更好的方法。六个月后，他已经能毫不费力地阅读短文。他稳步的进步证明，持续的付出能够取得巨大的成果。"
-  };
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -305,20 +299,15 @@
     badge.textContent = "第 " + round + " 轮 · 已学 " + learned + " 词";
   }
 
-  /* ---------- 渲染：故事面板（静态示例） ---------- */
-  function renderStory() {
-    document.querySelector("#view-learn .story-en").textContent = SAMPLE_STORY.en;
-    document.querySelector("#view-learn .story-zh").textContent = SAMPLE_STORY.zh;
-    document.querySelector("#view-review .story-en").textContent = SAMPLE_STORY.en;
-    document.querySelector("#view-review .story-zh").textContent = SAMPLE_STORY.zh;
-  }
+  /* ---------- 故事面板 ----------
+     面板内容（空态 / 生成中 / 成品）由 story.js 负责（AI 生成），
+     这里不再写入静态示例 —— renderAll 不碰面板内容。 */
 
   /* ---------- 总渲染 ---------- */
   function renderAll() {
     switchView(state.view);
     renderModeSwitchers();
     renderRoundBadge();
-    renderStory();
     renderCard("learn");
     if (state.view === "review") renderCard("review");
 

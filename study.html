@@ -113,11 +113,22 @@
       </div>
 
       <article class="story-panel" data-page-node-id="mjyQDDu2sDL4dVZzdsMOQm">
-        <h3 class="story-title" data-page-node-id="X2NzCOjLjAQJwW2wDt0451">今日小故事 · 中英对照</h3>
-        <p class="story-subtitle" data-page-node-id="Wcf9SKBFI1pyIKpr3T3QtV">用刚才这 20 个词写成，英文约 120 词，附中文对照</p>
-        <p class="story-en" data-page-node-id="WJs2mldxisQEptBOH91qv5"></p>
-        <p class="story-zh" data-page-node-id="e2Y2ZBszgxhJHR5aUdQSe3"></p>
-        <p class="story-footer" data-page-node-id="3hhfp44uWpFqSTzuS1KwOb">已尽量包含全部 20 个词；个别难组合的词已省略。</p>
+        <div class="story-head">
+          <div class="story-head-text">
+            <h3 class="story-title" data-page-node-id="X2NzCOjLjAQJwW2wDt0451">今日小故事 · 中英对照</h3>
+            <p class="story-subtitle" data-page-node-id="Wcf9SKBFI1pyIKpr3T3QtV">用刚才这 20 个词写成，英文约 120 词，附中文对照</p>
+          </div>
+          <div class="story-tools">
+            <button class="btn btn-outline btn-story-gen" id="btn-story-gen" type="button">✨ 生成本轮故事</button>
+            <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里">📖</button>
+            <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置">⚙</button>
+          </div>
+        </div>
+        <p class="story-empty">这一轮还没有故事。点右上角「✨ 生成本轮故事」，AI 会把这 20 个词串成一篇小短文。</p>
+        <p class="story-status" role="status" aria-live="polite" hidden></p>
+        <p class="story-en" data-page-node-id="WJs2mldxisQEptBOH91qv5" hidden></p>
+        <p class="story-zh" data-page-node-id="e2Y2ZBszgxhJHR5aUdQSe3" hidden></p>
+        <p class="story-footer" data-page-node-id="3hhfp44uWpFqSTzuS1KwOb" hidden>已尽量包含全部 20 个词；个别难组合的词已省略。</p>
       </article>
     </section>
 
@@ -205,6 +216,43 @@
     </div>
   </div>
 
+  <!-- 故事生成设置弹窗（story.js 管理） -->
+  <div class="modal-overlay" id="story-config-modal" hidden>
+    <div class="modal modal-config" role="dialog" aria-modal="true" aria-labelledby="story-config-title">
+      <h3 class="modal-title" id="story-config-title">故事生成设置</h3>
+      <p class="modal-hint">在这里填 AI 接口信息，默认适配 DeepSeek（platform.deepseek.com 注册后可拿 Key）。Key 只保存在你自己的浏览器里，不会被上传到别处。</p>
+      <div class="modal-field">
+        <label for="cfg-baseurl">接口地址</label>
+        <input type="text" id="cfg-baseurl" placeholder="https://api.deepseek.com" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="modal-field">
+        <label for="cfg-apikey">API Key</label>
+        <input type="password" id="cfg-apikey" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="modal-field">
+        <label for="cfg-model">模型名</label>
+        <input type="text" id="cfg-model" placeholder="deepseek-chat" autocomplete="off" spellcheck="false" />
+      </div>
+      <p class="modal-field-hint" id="cfg-hint" hidden></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-cfg-cancel" type="button">取消</button>
+        <button class="btn btn-primary" id="btn-cfg-save" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 故事集（历史故事）弹窗（story.js 管理） -->
+  <div class="modal-overlay" id="story-history-modal" hidden>
+    <div class="modal modal-history" role="dialog" aria-modal="true" aria-labelledby="story-history-title">
+      <h3 class="modal-title" id="story-history-title">故事集</h3>
+      <p class="modal-hint">历轮生成的故事都自动收在这里（最多 200 篇），换一轮、点重置都不会丢。</p>
+      <div class="history-list" id="story-history-list"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-history-close" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 轻提示 -->
   <div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="NYLkiER8CIsTokCaqF1Gss"></div>
 
@@ -214,6 +262,7 @@
   <script src="pixel.js"></script>
   <script src="sword.js"></script>
   <script src="speak.js"></script>
+  <script src="story.js"></script>
   </div>
 </body>
 </html>
