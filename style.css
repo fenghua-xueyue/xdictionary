@@ -1164,7 +1164,7 @@ html[data-skin="pixel"] #view-learn.story-open { grid-template-rows: repeat(5, m
 /* 为什么是固定 540px 而不是 `auto`：grid 的 `auto` 轨道取的是 max-content ——
    对一整段文字来说 max-content 意味着「不换行」，于是只算出 ~102px，还是被压扁。
    固定行高是这里唯一能表达「按当前宽度排完的高度」的办法（实测故事内容 495px）。
-   故事更长时由 `.story-panel` 自己的 overflow:auto 兜底。 */
+   故事更长时由 `.story-panel` 自己的 overflow:auto 兜底（仅展开态有，收起态是 hidden）。 */
 /* 内容装不下时纵向滚动。薄荷能滚是因为页面本身能长；像素风舞台固定 1440×1200，
    所以让视图容器自己滚。
    ⚠️ 横向必须显式 hidden：只写 overflow-y 时，规范会把 overflow-x 从 visible 变成 auto，
@@ -1372,12 +1372,16 @@ html[data-skin="pixel"] #btn-new-round-learn { width: 280px; }
 html[data-skin="pixel"] #btn-prev-batch,
 html[data-skin="pixel"] #btn-new-round-review { width: 352px; }
 
-/* —— 故事面板 —— */
+/* —— 故事面板 ——
+   收起态：矮框只作预览，内容超出直接裁掉、不可滚动（2026-10-11）。
+   展开态（#view-learn.story-open，540px 全高）才给 overflow:auto 读全文，
+   见下方 story-open 段。 */
 html[data-skin="pixel"] .story-panel {
   background: var(--px-card); border: 1px solid var(--px-edge);
   box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-  border-radius: 0; padding: 16px 22px; overflow: auto; flex: 1 1 0; min-height: 0;
+  border-radius: 0; padding: 16px 22px; overflow: hidden; flex: 1 1 0; min-height: 0;
 }
+html[data-skin="pixel"] #view-learn.story-open .story-panel { overflow: auto; }
 html[data-skin="pixel"] .story-title { color: var(--px-accent-dk); font-size: 17px; }
 html[data-skin="pixel"] .story-en { font-size: 20px; line-height: 1.7; }
 html[data-skin="pixel"] .story-zh { font-size: 18px; line-height: 1.9; }
