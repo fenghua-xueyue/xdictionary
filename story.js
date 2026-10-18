@@ -124,7 +124,13 @@
   }
 
   /* ---------- 渲染 ---------- */
-  function setGenLabel(text) { if (els.gen) els.gen.textContent = text; }
+  function setGenLabel(iconId, text) {
+    if (!els.gen) return;
+    /* iconId 为空时写纯文字（如「生成中…」），否则前置对应线描图标（与 HTML 初始结构一致） */
+    els.gen.innerHTML = iconId
+      ? '<svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#' + iconId + '"></use></svg>' + text
+      : text;
+  }
   function setStatus(msg, isError) {
     els.status.hidden = false;
     els.status.textContent = msg;
@@ -183,7 +189,7 @@
   function render() {
     if (!els.panel) return;
     els.gen.disabled = busy;
-    if (busy) { setGenLabel("生成中…"); return; }   // 生成中的面板状态由 generate() 管理
+    if (busy) { setGenLabel(null, "生成中…"); return; }   // 生成中的面板状态由 generate() 管理
     var story = currentStoryForRound();
     if (story) {
       var words = currentRoundWords();
@@ -194,14 +200,14 @@
       els.footer.hidden = false;
       els.empty.hidden = true;
       els.status.hidden = true;
-      setGenLabel("↻ 重新生成");
+      setGenLabel("i-cyclic", "重新生成");
     } else {
       els.en.hidden = true;
       els.zh.hidden = true;
       els.footer.hidden = true;
       els.empty.hidden = false;
       els.status.hidden = true;
-      setGenLabel("✨ 生成本轮故事");
+      setGenLabel("i-spark", "生成本轮故事");
     }
   }
 
@@ -212,7 +218,7 @@
     els.empty.hidden = true;
     setStatus(msg, true);
     els.gen.disabled = false;
-    setGenLabel(currentStoryForRound() ? "↻ 重新生成" : "✨ 生成本轮故事");
+    setGenLabel(currentStoryForRound() ? "i-cyclic" : "i-spark", currentStoryForRound() ? "重新生成" : "生成本轮故事");
   }
 
   /* ---------- 请求 ---------- */
@@ -232,7 +238,7 @@
     ];
   }
   function friendlyHttpError(status, bodyText) {
-    if (status === 401) return "API Key 无效或没填对，点右上角 ⚙ 检查一下设置。";
+    if (status === 401) return "API Key 无效或没填对，点右上角的设置按钮检查一下。";
     if (status === 402) return "账户余额不足，请到 DeepSeek 开放平台充值后再试。";
     if (status === 429) return "请求太频繁了，稍等一会儿再试。";
     var detail = "";
@@ -258,7 +264,7 @@
     var roundNo = (rp && typeof rp.round === "number") ? rp.round : null;
     busy = true;
     els.gen.disabled = true;
-    setGenLabel("生成中…");
+    setGenLabel(null, "生成中…");
     els.empty.hidden = true;
     els.footer.hidden = true;
     els.zh.hidden = true;

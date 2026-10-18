@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T23:40:00+08:00",
+  "title": "Design System: xdictionary",
+  "extensions": {
+    "colorMeta": {
+      "mint-accent": { "role": "primary", "displayName": "薄荷祖母绿 Fresh Mint", "canonical": "#2E9E78" },
+      "mint-accent-deep": { "role": "primary", "displayName": "深松绿 Deep Pine", "canonical": "#176B4F" },
+      "mint-page": { "role": "neutral", "displayName": "雾绿纸 Fog Paper", "canonical": "#F5F7F3" },
+      "mint-surface": { "role": "neutral", "displayName": "卡面白 Card White", "canonical": "#FFFFFF" },
+      "mint-text-primary": { "role": "neutral", "displayName": "墨松 Ink Pine", "canonical": "#22302A" },
+      "mint-mark-on": { "role": "secondary", "displayName": "书签红 Bookmark Red", "canonical": "#E24B4A" },
+      "warm-accent": { "role": "primary", "displayName": "暖陶土 Warm Terracotta（warm 皮肤）", "canonical": "#AE5526" },
+      "pixel-accent": { "role": "primary", "displayName": "草地像素绿 Pixel Grass（pixel 皮肤）", "canonical": "#7ADB2B" }
+    },
+    "typographyMeta": {
+      "word-display": { "displayName": "Word Display", "purpose": "被学习的单词，视觉主角；像素世界 160px。" },
+      "hint": { "displayName": "Hint", "purpose": "全系统最小字号，禁止更小。" }
+    },
+    "shadows": [
+      { "name": "card-float", "value": "0 10px 28px rgba(34,48,42,0.12)", "purpose": "卡面/面板常态悬浮影（薄荷/米黄；像素皮肤归零）。" },
+      { "name": "btn-support", "value": "0 4px 12px rgba(46,158,120,0.25)", "purpose": "主按钮同色系衬影。" },
+      { "name": "modal-press", "value": "0 18px 44px rgba(34,48,42,0.28)", "purpose": "弹窗深压影。" }
+    ],
+    "motion": [
+      { "name": "state-fast", "value": "0.15s ease", "purpose": "颜色/背景状态过渡默认时长。" },
+      { "name": "press-lift", "value": "translateY(-1px) hover / translateY(0) active", "purpose": ".btn 通用按压反馈；像素皮肤保持自身 transform 规则。" }
+    ],
+    "breakpoints": [
+      { "name": "mobile-fallback", "value": "720px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "深主色实底主按钮，白字 AA，底部同色衬影。",
+      "html": "<button class=\"ds-btn-primary\">生成故事</button>",
+      "css": ".ds-btn-primary { background: var(--btn-primary-bg, #176B4F); color: #FFFFFF; font-size: 16px; font-weight: 600; padding: 14px 26px; border-radius: 12px; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(46,158,120,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 9px; transition: background .15s, transform .12s; } .ds-btn-primary:hover { background: #145944; transform: translateY(-1px); } .ds-btn-primary:active { transform: translateY(0); } .ds-btn-primary:focus-visible { outline: 2px solid #2E9E78; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "白底描边次级按钮，hover 边框文字染主色。",
+      "html": "<button class=\"ds-btn-secondary\">下一轮</button>",
+      "css": ".ds-btn-secondary { background: #FFFFFF; color: #176B4F; font-size: 15px; font-weight: 600; padding: 12px 22px; border-radius: 12px; border: 2px solid #C9DDD3; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; transition: background .15s, color .15s, border-color .15s; } .ds-btn-secondary:hover { background: #F0F4F1; border-color: #2E9E78; } .ds-btn-secondary:focus-visible { outline: 2px solid #2E9E78; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "button-ghost-icon",
+      "description": "顶栏透明底图标钮，hover 浮现浅底。",
+      "html": "<button class=\"ds-btn-ghost\" aria-label=\"备份进度\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M8 3v13M4 8l4-4 4 4M16 21V8M12 16l4 4 4-4\"/></svg></button>",
+      "css": ".ds-btn-ghost { width: 40px; height: 40px; border-radius: 999px; border: 2px solid transparent; background: transparent; color: #4A5A51; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .15s; } .ds-btn-ghost:hover { background: #F0F4F1; } .ds-btn-ghost:focus-visible { outline: 2px solid #2E9E78; outline-offset: 2px; }"
+    },
+    {
+      "name": "Flashcard",
+      "kind": "card",
+      "refersTo": "flashcard",
+      "description": "签名组件：词卡。居中 48px 单词 + 音标 + 释义。",
+      "html": "<div class=\"ds-flashcard\"><div class=\"ds-word\">abandon</div><div class=\"ds-phon\">/əˈbændən/</div><div class=\"ds-meaning\">v. 放弃，抛弃</div></div>",
+      "css": ".ds-flashcard { background: #FFFFFF; border-radius: 20px; box-shadow: 0 10px 28px rgba(34,48,42,0.12); padding: 44px 32px; text-align: center; font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; } .ds-word { font-size: 48px; font-weight: 600; color: #22302A; line-height: 1.2; } .ds-phon { font-size: 18px; color: #5E6C62; margin-top: 8px; } .ds-meaning { font-size: 24px; font-weight: 500; color: #22302A; margin-top: 16px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": null,
+      "description": "默写输入框：2px 浅描边，focus 转主色加柔光。",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"在此输入英文单词…\">",
+      "css": ".ds-input { font-size: 18px; font-family: inherit; padding: 12px 16px; border: 2px solid #D7E2DB; border-radius: 12px; outline: none; text-align: center; color: #22302A; background: #FFFFFF; transition: border-color .15s, box-shadow .15s; width: 240px; } .ds-input:focus { border-color: #2E9E78; box-shadow: 0 0 0 3px rgba(46,158,120,0.18); }"
+    },
+    {
+      "name": "Modal",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "确认/设置弹窗：卡面白、深压影、全套 ARIA。",
+      "html": "<div class=\"ds-modal\"><h3 class=\"ds-modal-title\">重置进度</h3><p class=\"ds-modal-text\">确定要重置吗？</p><div class=\"ds-modal-actions\"><button class=\"ds-btn-secondary\">取消</button><button class=\"ds-btn-primary\">确定</button></div></div>",
+      "css": ".ds-modal { background: #FFFFFF; border-radius: 20px; box-shadow: 0 18px 44px rgba(34,48,42,0.28); padding: 28px 30px; max-width: 420px; font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; } .ds-modal-title { font-size: 20px; font-weight: 600; color: #22302A; margin: 0 0 10px; } .ds-modal-text { font-size: 15px; color: #4A5A51; line-height: 1.6; margin: 0 0 20px; } .ds-modal-actions { display: flex; gap: 10px; justify-content: flex-end; } .ds-btn-primary { background: #176B4F; color: #FFFFFF; font-size: 15px; font-weight: 600; padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; } .ds-btn-secondary { background: #FFFFFF; color: #176B4F; font-size: 15px; font-weight: 600; padding: 10px 20px; border-radius: 12px; border: 2px solid #C9DDD3; cursor: pointer; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "One App, Three Worlds（一个应用，三个世界）",
+    "overview": "皮肤不是配色方案，是三个完整的世界：薄荷是安静的书房，暖阳米黄是同一间书房换上暖陶与牛皮纸，像素风是另一个宇宙——8-bit 游戏画面，宝剑代替箭头，零圆角零阴影。三个世界共享同一副骨架：布局、字号阶梯、信息密度、图标语言、交互结构完全一致；世界只决定色板、材质与签名动效。",
+    "keyCharacteristics": [
+      "词卡是绝对主角：48px 单词，一切操作钮为它服务",
+      "按钮三级分明：实底主按钮 / 描边次级 / 浅底魔法动作",
+      "全部颜色经 CSS 变量流动，皮肤 = 变量覆盖",
+      "自绘 2px 线描 SVG 图标 sprite，跟随文字色换肤",
+      "安静：一屏只有一种强调色在工作"
+    ],
+    "rules": [
+      { "name": "The Single Voice Rule", "body": "一屏只允许一种强调色工作。语义色只在默写校验与破坏性操作上出现。", "section": "colors" },
+      { "name": "The Deep-Pine Rule", "body": "白字永远压深主色，不压亮主色；亮主色上只允许深色文字。", "section": "colors" },
+      { "name": "The Big-Word Rule", "body": "单词展示字号只许增大，词卡主字号不得降到 40px 以下。", "section": "typography" }
+    ],
+    "dos": [
+      "Do 颜色一律走 CSS 变量，新颜色先进皮肤可覆盖区",
+      "Do 任何视觉改动三皮肤各验一遍，像素风锁作用域",
+      "Do 新交互元素必须带 :focus-visible，文字对比度 ≥4.5:1",
+      "Do 新图标画进 sprite 表，24 视框 2px 描边"
+    ],
+    "donts": [
+      "Don't 在组件样式区写死色值",
+      "Don't 用 emoji 或 Unicode 字符充当图标",
+      "Don't 让动效/音效拦截点击或修改状态",
+      "Don't 把像素风的样式或节点泄漏到薄荷/米黄",
+      "Don't 缩小词卡主字号或收紧留白"
+    ]
+  }
+}

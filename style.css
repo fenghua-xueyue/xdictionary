@@ -26,14 +26,18 @@
   /* 文字 */
   --text-primary: #22302A;     /* 主文字 */
   --text-secondary: #4A5A51;   /* 次级文字 / 释义 */
-  --text-tertiary: #6A7A70;    /* 辅助文字 */
-  --text-muted: #9AA89F;       /* 更弱的辅助文字 */
+  --text-tertiary: #5E6C62;    /* 辅助文字 */
+  --text-muted: #657368;       /* 更弱的辅助文字 */
   --on-accent: #FFFFFF;        /* 压在强调色上的文字 / 图形 */
 
   /* 强调 */
   --accent: #2E9E78;           /* 主色：主按钮 / 右箭头 / 进度条 / 徽标 */
   --accent-dark: #176B4F;      /* 深主色：切换器激活段 / 白字按钮（AA 级） */
   --accent-hover: #29906D;     /* 主按钮 hover */
+
+  /* 主按钮底色（与 accent 解耦：白字需 AA，薄荷用深绿 #176B4F 6.5:1） */
+  --btn-primary-bg: var(--accent-dark);
+  --btn-primary-bg-hover: #145944;   /* 白字 8.3:1 */
 
   /* 标记（书签） */
   --mark-bg: #F1F3EF;          /* 未标记底 */
@@ -117,7 +121,7 @@ body {
   letter-spacing: 0.5px;
 }
 .round-badge {
-  background: var(--accent);
+  background: var(--btn-primary-bg);
   color: var(--on-accent);
   font-size: 15px;
   font-weight: 600;
@@ -383,6 +387,31 @@ body {
 }
 .modal-history .modal-actions { margin-top: 18px; }
 
+/* ---- 备份进度弹窗（backup-modal，backup.js 管理，2026-10-13 新增） ---- */
+.modal-backup { text-align: left; max-width: 480px; }
+.modal-backup .backup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.modal-backup .backup-actions .btn { width: 100%; justify-content: center; }
+.modal-backup .modal-actions { margin-top: 6px; }
+.backup-hint {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  min-height: 1em;
+  margin-bottom: 8px;
+}
+.backup-hint.is-error { color: var(--bad); }
+.backup-confirm-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+
 /* ============================ 模式切换器 ============================ */
 .mode-switcher {
   display: flex;
@@ -444,8 +473,10 @@ body {
   border-radius: 50%;
   width: 40px;
   height: 40px;
-  font-size: 18px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   transition: background .15s, color .15s;
 }
@@ -658,18 +689,29 @@ body {
 .btn:active { transform: translateY(0); }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--btn-primary-bg);
   color: var(--on-accent);
   box-shadow: var(--shadow-btn);
 }
-.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:hover { background: var(--btn-primary-bg-hover); }
+
+/* 键盘焦点可见性：主/次/描边按钮、模式切换、喇叭（箭头单独配色，见下） */
+.btn:focus-visible,
+.mode-btn:focus-visible,
+.card-speaker:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 翻页箭头右键是 accent 底，accent 描边会隐形，统一用深主色 */
+.nav:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
 
 .btn-secondary {
   background: var(--surface);
   color: var(--accent-dark);
   border-color: var(--border-muted);
 }
-.btn-secondary:hover { background: var(--bg-soft); }
+.btn-secondary:hover {
+  background: var(--bg-soft);
+  border-color: var(--accent);        /* 次级 hover：边框与文字染主色，与主按钮拉开层级 */
+  color: var(--accent-dark);
+}
 
 .btn-outline {
   background: var(--surface);
@@ -804,6 +846,16 @@ body {
 .hero-logo .logo-bg { fill: var(--logo-bg); }
 
 /* ============================ 皮肤切换 ============================ */
+/* 内联 SVG 图标基线：2px 描边、跟随文字色（currentColor），三皮肤自动换色 */
+.svg-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+  vertical-align: -0.15em;
+}
 .skin-switch {
   position: relative;
   flex: 0 0 auto;
@@ -816,8 +868,8 @@ body {
   padding: 8px 18px;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  border: 2px solid var(--border-muted);
-  background: var(--surface);
+  border: 2px solid transparent;      /* ghost 态：默认无底无框，hover 浮现浅底 */
+  background: transparent;
   color: var(--text-secondary);
   white-space: nowrap;
   display: inline-flex;
@@ -842,8 +894,31 @@ body {
 .btn-sound[aria-pressed="false"] {
   color: var(--text-muted);
   background: var(--bg-soft);
-  border-color: var(--border-soft);
 }
+/* 静音态图标切换：aria-pressed 驱动，JS 只改属性不改内容 */
+.btn-sound .icon-off { display: none; }
+.btn-sound[aria-pressed="false"] .icon-on { display: none; }
+.btn-sound[aria-pressed="false"] .icon-off { display: inline-block; }
+
+/* 备份进度按钮：纯图标，与音效按钮同宽窄（backup.js，2026-10-13 新增） */
+.btn-backup {
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  border: 2px solid transparent;      /* ghost 态，与皮肤/音效按钮一致 */
+  background: transparent;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  transition: background .15s, color .15s, transform .12s;
+}
+.btn-backup:hover { background: var(--bg-soft); color: var(--text-primary); }
+.btn-backup:active { transform: scale(0.98); }
+.btn-backup:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* 皮肤选择浮层：贴在按钮下方，抬高 z-index 盖住下方内容（不挪动位置，避免遮住标题行） */
 .skin-pop {
@@ -950,12 +1025,14 @@ html[data-skin="warm"] {
   --text-primary: #3B2E1E;
   --text-secondary: #5C4A32;
   --text-tertiary: #7B6748;
-  --text-muted: #A08D6E;
+  --text-muted: #7B6645;
   --on-accent: #FFFDF8;
 
   --accent: #AE5526;           /* 赭橙：白字 5.0:1，达 WCAG AA */
   --accent-dark: #7E3A15;      /* 深赭：白字 8.6:1，用于切换器激活段 */
   --accent-hover: #A14C1F;     /* 主按钮 hover（hover 也必须保持 AA） */
+  --btn-primary-bg: var(--accent);           /* 赭橙白字已 5.0:1，保持原样 */
+  --btn-primary-bg-hover: var(--accent-hover);
 
   --mark-bg: #F1E7D5;
   --mark-bg-hover: #EADFC9;
@@ -1023,8 +1100,9 @@ html[data-skin="pixel"] {
   --bg-soft: #F8F8F8;    --bg-soft-2: #EFEFEF; --track-bg: #C4C4C4;
   --border-soft: #A8A8A8; --border-muted: #A8A8A8;
   --text-primary: #232323; --text-secondary: #6E6E6E; --text-tertiary: #8A8A8A;
-  --text-muted: #9A9A9A;   --on-accent: #122103;
+  --text-muted: #6E6E6E;   --on-accent: #122103;
   --accent: #7ADB2B;     --accent-dark: #1F4A0B; --accent-hover: #8CE03E;
+  --btn-primary-bg: var(--px-accent);  --btn-primary-bg-hover: var(--px-bar); /* 原引用的 --px-accent-hover 未定义，补上 */
   --mark-bg: #EDEDED;    --mark-bg-hover: #F8F8F8; --mark-stroke: #8A6A15;
   --mark-bg-on: #F0C24A; --mark-bg-on-hover: #F7DCC6; --mark-fg: #8A6A15;
   --ok: #5FB81C;         --ok-shadow: rgba(95,184,28,.2);
@@ -1104,6 +1182,12 @@ html[data-skin="pixel"] .btn-sound {
   padding: 8px 12px; font-size: 16px;
 }
 html[data-skin="pixel"] .btn-sound:hover { background: #F8F8F8; color: var(--px-text); }
+html[data-skin="pixel"] .btn-backup {
+  border-radius: 0; border: 2px solid var(--px-edge2);
+  background: var(--px-sub1); color: var(--px-text);
+  padding: 8px 12px; font-size: 16px;
+}
+html[data-skin="pixel"] .btn-backup:hover { background: #F8F8F8; color: var(--px-text); }
 html[data-skin="pixel"] .btn-sound[aria-pressed="false"] {
   background: var(--px-card); color: var(--px-text4);
 }
@@ -1360,14 +1444,20 @@ html[data-skin="pixel"] .btn-primary {
   border-color: var(--px-accent-dk);
   box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk), 4px 4px 0 var(--px-accent-dk);
 }
-html[data-skin="pixel"] .btn-primary:hover { background: var(--px-accent-hover); }
+html[data-skin="pixel"] .btn-primary:hover { background: var(--btn-primary-bg-hover); }
 html[data-skin="pixel"] .btn-primary:active {
   transform: translate(3px, 3px);
   box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
 }
 html[data-skin="pixel"] .btn-secondary { background: var(--px-sub2); color: var(--px-text); border-color: var(--px-edge2); }
 html[data-skin="pixel"] .btn-outline { background: var(--px-card); color: var(--px-accent-dk); border: 2px solid var(--px-accent-dk); }
+/* 像素皮肤：亮绿描边压天空底太弱，焦点环换深灰描边色 */
+html[data-skin="pixel"] .btn:focus-visible,
+html[data-skin="pixel"] .mode-btn:focus-visible,
+html[data-skin="pixel"] .card-speaker:focus-visible,
+html[data-skin="pixel"] .nav:focus-visible { outline-color: var(--px-edge); }
 html[data-skin="pixel"] #btn-generate { width: 540px; }
+html[data-skin="pixel"] #btn-generate > .svg-icon { display: none; }  /* 像素风保持纯文字标签 */
 html[data-skin="pixel"] #btn-new-round-learn { width: 280px; }
 html[data-skin="pixel"] #btn-prev-batch,
 html[data-skin="pixel"] #btn-new-round-review { width: 352px; }
@@ -1401,9 +1491,10 @@ html[data-skin="pixel"] .story-status.is-error { color: var(--bad); }
 html[data-skin="pixel"] .story-en .story-hl,
 html[data-skin="pixel"] .story-zh .story-hl { color: var(--px-accent-dk); }
 
-/* —— 故事生成设置弹窗 / 故事集弹窗 —— */
+/* —— 故事生成设置弹窗 / 故事集弹窗 / 备份弹窗 —— */
 html[data-skin="pixel"] .modal-config,
-html[data-skin="pixel"] .modal-history {
+html[data-skin="pixel"] .modal-history,
+html[data-skin="pixel"] .modal-backup {
   max-width: 760px; padding: 30px 34px;
   background: var(--px-card); border: 1px solid var(--px-edge); border-radius: 0;
   box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);

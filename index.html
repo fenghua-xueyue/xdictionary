@@ -34,7 +34,7 @@
         <h1 class="hero-title" data-page-node-id="BSzpXKBA9GfpU4wbN74tH1">每天 20 个四级高频词，<br  data-page-node-id="3A1r88MSqU2jGNvgu7BngO"/>用一个故事串起来。</h1>
         <p class="hero-subtitle" data-page-node-id="UGjTegXLrFs4Um5PO2cLfL">随机抽词 · 跨轮不重复 · 用词生成中英对照小故事</p>
         <button class="btn btn-primary btn-hero" id="btn-start" data-page-node-id="JpGOZIQxuyTs6whIRHn1j5">
-          <span class="btn-icon" data-page-node-id="RiTKGAPvpJJuRpae1XMdsr">→</span> 开始背单词
+          <svg class="btn-icon svg-icon" data-page-node-id="RiTKGAPvpJJuRpae1XMdsr" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg> 开始背单词
         </button>
         <p class="hero-footer" data-page-node-id="nnF6YVYLP1ez2wD9VZ3K4P">词库 300 词 · 学完一轮自动循环</p>
       </div>
@@ -58,10 +58,11 @@
         if (raw) {
           var d = JSON.parse(raw);
           if (d && d.currentRound) {
-            var icon = btn.querySelector(".btn-icon");
-            btn.textContent = "";
-            if (icon) btn.appendChild(icon);
-            btn.appendChild(document.createTextNode(" 继续学习"));
+          var icon = btn.querySelector(".btn-icon");
+          /* 逐个移除子节点而非 textContent=""：后者会把 SVG 内部的 <use>/path 一并清空，图标就没了 */
+          while (btn.firstChild) btn.removeChild(btn.firstChild);
+          if (icon) btn.appendChild(icon);
+          btn.appendChild(document.createTextNode(" 继续学习"));
           }
         }
       } catch (e) {}

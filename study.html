@@ -18,6 +18,21 @@
   </script>
 </head>
 <body data-page-node-id="SOwlRg6s4Psc8J9JyfT8Vv">
+  <!-- 全站图标 sprite：2px 线描、currentColor，三皮肤自动换色 -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a2 2 0 0 1 0-4h5.5A3.5 3.5 0 0 0 21 8.5C21 5.4 17 3 12 3z"/><circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-sound-on" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></symbol>
+    <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></symbol>
+    <symbol id="i-backup" viewBox="0 0 24 24"><path d="M8 3v13"/><path d="M4 8l4-4 4 4"/><path d="M16 21V8"/><path d="M12 16l4 4 4-4"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-cyclic" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M2 6h4"/><path d="M12 6h10"/><path d="M2 12h12"/><path d="M20 12h2"/><path d="M2 18h6"/><path d="M14 18h8"/><circle cx="9" cy="6" r="2.2"/><circle cx="17" cy="12" r="2.2"/><circle cx="11" cy="18" r="2.2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 21h16"/></symbol>
+  </svg>
   <div id="stage">
     <div class="px-bg" aria-hidden="true">
       <img src="px-bg.svg" width="1440" height="1200" alt="" />
@@ -36,15 +51,16 @@
     <div class="header-right">
       <div class="skin-switch">
         <button class="btn-skin" id="btn-skin" type="button" aria-haspopup="true" aria-expanded="false" title="换个界面皮肤">
-          <span class="btn-icon" aria-hidden="true">🎨</span> 皮肤
+          <svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-palette"></use></svg> 皮肤
         </button>
         <div class="skin-pop" id="skin-pop" hidden role="group" aria-label="选择皮肤">
           <p class="skin-pop-title">换个皮肤，立即生效</p>
           <div class="skin-list"></div>
         </div>
       </div>
-      <button class="btn-sound" id="btn-sound" type="button" aria-pressed="true" title="挥剑音效：开（点击静音）">🔊</button>
-      <button class="btn btn-reset" id="btn-reset" type="button"><span class="std-label">↺ 重置</span><span class="px-label">重置</span></button>
+      <button class="btn-sound" id="btn-sound" type="button" aria-pressed="true" title="挥剑音效：开（点击静音）"><svg class="svg-icon icon-on" aria-hidden="true" width="18" height="18"><use href="#i-sound-on"></use></svg><svg class="svg-icon icon-off" aria-hidden="true" width="18" height="18"><use href="#i-sound-off"></use></svg></button>
+      <button class="btn-backup" id="btn-backup" type="button" title="备份进度：导出 / 导入" aria-haspopup="dialog"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-backup"></use></svg></button>
+      <button class="btn btn-reset" id="btn-reset" type="button"><span class="std-label"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-reset"></use></svg> 重置</span><span class="px-label">重置</span></button>
       <div class="round-badge" id="round-badge" data-page-node-id="Kndmtq3IaAoNlK10dJABQL">第 1 轮</div>
     </div>
   </header>
@@ -77,7 +93,7 @@
               <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           </button>
-          <button class="card-speaker" type="button" aria-label="朗读这个单词" data-page-node-id="OpwqFQ6DCUNbEmbjLUmDMz">🔈</button>
+          <button class="card-speaker" type="button" aria-label="朗读这个单词" data-page-node-id="OpwqFQ6DCUNbEmbjLUmDMz"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-sound-on"></use></svg></button>
           <div class="word-stack">
             <div class="card-word" data-page-node-id="0jJie4RnRnHj5rI3ZTzREk"></div>
             <div class="card-word-ghost" aria-hidden="true"></div>
@@ -104,11 +120,11 @@
 
       <div class="action-bar" data-page-node-id="P8rVMSxtHIWNE79oWAukYd">
         <button class="btn btn-primary" id="btn-generate" data-page-node-id="Rhcd0vTT9nDe9Jdo6NJM2I">
-          <span class="std-label"><span class="btn-icon">📝</span> 生成故事</span>
+          <svg class="btn-icon svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-pen"></use></svg><span class="std-label"> 生成故事</span>
           <span class="px-label">展开今日故事</span>
         </button>
         <button class="btn btn-secondary" id="btn-new-round-learn" data-page-node-id="vvfxp61KeXyRJKDOBBIHZX">
-          <span class="btn-icon" data-page-node-id="XR0CyB2qzp6TdQ9PLKcRBP">↻</span> 下一轮
+          <svg class="btn-icon svg-icon" data-page-node-id="XR0CyB2qzp6TdQ9PLKcRBP" aria-hidden="true" width="16" height="16"><use href="#i-cyclic"></use></svg> 下一轮
         </button>
       </div>
 
@@ -119,12 +135,12 @@
             <p class="story-subtitle" data-page-node-id="Wcf9SKBFI1pyIKpr3T3QtV">用刚才这 20 个词写成，英文约 120 词，附中文对照</p>
           </div>
           <div class="story-tools">
-            <button class="btn btn-outline btn-story-gen" id="btn-story-gen" type="button">✨ 生成本轮故事</button>
-            <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里">📖</button>
-            <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置">⚙</button>
+            <button class="btn btn-outline btn-story-gen" id="btn-story-gen" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-spark"></use></svg> 生成本轮故事</button>
+            <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-book"></use></svg></button>
+            <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-gear"></use></svg></button>
           </div>
         </div>
-        <p class="story-empty">这一轮还没有故事。点右上角「✨ 生成本轮故事」，AI 会把这 20 个词串成一篇小短文。</p>
+        <p class="story-empty">这一轮还没有故事。点右上角「生成本轮故事」，AI 会把这 20 个词串成一篇小短文。</p>
         <p class="story-status" role="status" aria-live="polite" hidden></p>
         <p class="story-en" data-page-node-id="WJs2mldxisQEptBOH91qv5" hidden></p>
         <p class="story-zh" data-page-node-id="e2Y2ZBszgxhJHR5aUdQSe3" hidden></p>
@@ -160,7 +176,7 @@
               <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           </button>
-          <button class="card-speaker" type="button" aria-label="朗读这个单词" data-page-node-id="Vo3dDBP5DEXyas4v1vNkQ9">🔈</button>
+          <button class="card-speaker" type="button" aria-label="朗读这个单词" data-page-node-id="Vo3dDBP5DEXyas4v1vNkQ9"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-sound-on"></use></svg></button>
           <div class="word-stack">
             <div class="card-word" data-page-node-id="onsRxwTJ3N2L8YtKoLRFNh"></div>
             <div class="card-word-ghost" aria-hidden="true"></div>
@@ -187,10 +203,10 @@
 
       <div class="action-bar" data-page-node-id="UJqWWZRG5nLkIRdSfRg21f">
         <button class="btn btn-secondary" id="btn-prev-batch">
-          <span class="btn-icon">↺</span> 上一轮
+          <svg class="btn-icon svg-icon" aria-hidden="true" width="16" height="16"><use href="#i-reset"></use></svg> 上一轮
         </button>
         <button class="btn btn-secondary" id="btn-new-round-review" data-page-node-id="olJtXBheByArCVviqVoBX7">
-          <span class="btn-icon" data-page-node-id="oCPBkjfOz2HSSavCss67uN">↻</span> 下一轮
+          <svg class="btn-icon svg-icon" data-page-node-id="oCPBkjfOz2HSSavCss67uN" aria-hidden="true" width="16" height="16"><use href="#i-cyclic"></use></svg> 下一轮
         </button>
       </div>
 
@@ -253,6 +269,30 @@
     </div>
   </div>
 
+  <!-- 备份进度弹窗（backup.js 管理） -->
+  <div class="modal-overlay" id="backup-modal" hidden>
+    <div class="modal modal-backup" role="dialog" aria-modal="true" aria-labelledby="backup-title">
+      <h3 class="modal-title" id="backup-title">备份进度</h3>
+      <p class="modal-hint">导出会把学习进度、标记、皮肤、音效和故事集存成一个 JSON 文件；导入用备份文件整包覆盖当前进度（覆盖前会先把当前进度自动另存一份）。API Key 不会包含在备份文件里，换设备后到故事生成设置里重填即可。</p>
+      <div class="backup-actions">
+        <button class="btn btn-primary" id="btn-backup-export" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-download"></use></svg> 导出进度文件</button>
+        <button class="btn btn-secondary" id="btn-backup-import" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-upload"></use></svg> 从文件导入</button>
+      </div>
+      <input type="file" id="backup-file-input" accept=".json,application/json" hidden />
+      <p class="backup-hint" id="backup-hint" role="status"></p>
+      <div class="backup-confirm" id="backup-confirm" hidden>
+        <p class="backup-confirm-text" id="backup-confirm-text"></p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="btn-backup-abort" type="button">取消</button>
+          <button class="btn btn-primary" id="btn-backup-confirm" type="button">确定导入</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-backup-close" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 轻提示 -->
   <div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="NYLkiER8CIsTokCaqF1Gss"></div>
 
@@ -263,6 +303,7 @@
   <script src="sword.js"></script>
   <script src="speak.js"></script>
   <script src="story.js"></script>
+  <script src="backup.js"></script>
   </div>
 </body>
 </html>

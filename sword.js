@@ -163,7 +163,8 @@
     var btn = document.getElementById("btn-sound");
     if (!btn) return;
     function paint() {
-      btn.textContent = soundOn ? "🔊" : "🔇";
+      /* 图标内容在 HTML 里（#i-sound-on / #i-sound-off 两个 SVG），
+         这里只切 aria-pressed：CSS 据此切换图标显隐与置灰，不覆盖 DOM。 */
       btn.setAttribute("aria-pressed", soundOn ? "true" : "false");
       btn.title = soundOn ? "挥剑音效：开（点击静音）" : "挥剑音效：关（点击开启）";
     }
