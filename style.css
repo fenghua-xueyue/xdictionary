@@ -69,6 +69,11 @@
   --logo-bg: #2E9E78;
   --logo-fg: #FFFFFF;
 
+  /* 入场动效（intro.js / style.css「入场动效」区块使用；像素皮肤不播） */
+  --intro-leaf: #2E9E78;                  /* 叶片主色 */
+  --intro-vein: #BFE8D6;                  /* 叶脉与叶柄 */
+  --intro-wind: rgba(46, 158, 120, 0.35); /* 风线与碎叶 */
+
   /* ---------- 皮肤可覆盖区（结束） ---------- */
 
   /* 字号 */
@@ -1012,6 +1017,11 @@ body {
 
 /* 皮肤 2：暖阳米黄 —— 护眼暖色，适合长时间看 */
 html[data-skin="warm"] {
+  /* 入场动效：枫叶配色（形状在 intro.js 的 MAPLE_SVG） */
+  --intro-leaf: #CE5427;
+  --intro-vein: #F8DFC0;
+  --intro-wind: rgba(174, 85, 38, 0.30);
+
   --bg-page: #FAF3E7;
   --surface: #FFFDF8;
   --bg-subtle: #F0E5D0;
@@ -1594,5 +1604,332 @@ html[data-skin="pixel"] .btn-hero {
 html[data-skin="pixel"] .btn-hero:active {
   transform: translate(3px, 3px);
   box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
+}
+
+/* ============================================================
+   入场动效（intro.js 配套，2026-10-19 新增）
+   ------------------------------------------------------------
+   从首页跳进学习页：叶片沿 offset-path 从右上扫向左下，
+   顶栏与学习界面的各区块错峰浮现。只有 mint / warm 播放
+   （intro.js 门控），像素皮肤永远走不到这段。
+   隐藏→显现的接力棒：
+     data-intro-pending（head 打标记，opacity:0）
+       → intro.js 同步换成 intro-run（各元素 animation from 态接住）
+       → 播完 1.7s 后摘类清理，之后视图切换完全不受影响。
+   ============================================================ */
+
+/* —— 隐藏态 + CSS 熔断：intro.js 万一没接住，2.4s 后强制显示 —— */
+html[data-intro-pending] .app-header,
+html[data-intro-pending] .app-main {
+  opacity: 0;
+  animation: intro-fuse .01s linear 2.4s forwards;
+}
+@keyframes intro-fuse { to { opacity: 1; } }
+
+/* —— 浮层：叶片 / 风线 / 碎叶 —— */
+.intro-fx {
+  position: fixed; inset: 0; z-index: 70;   /* 压过界面、低于弹窗(80)/toast(90) */
+  pointer-events: none; overflow: hidden;
+}
+.intro-leaf {
+  position: absolute; top: 0; left: 0;
+  width: 280px; height: 280px;             /* 基准值；实际由 intro.js 按视口三等分现算 */
+  perspective: 700px;                       /* 给中层的 rotateY 翻面提供纵深 */
+  offset-rotate: auto 24deg;                /* 叶面顺着轨迹方向再偏一点 */
+  offset-distance: 0%;
+  animation: intro-leaf-fly .9s cubic-bezier(.5, .06, .36, 1) .05s both;
+  will-change: offset-distance, opacity;
+}
+/* 中层：翻转 + 呼吸缩放。
+   右上入屏时小（scale .3 ≈ 90px），到轨迹 50%（≈屏幕中央）撑到满格，
+   向左下离屏时再缩回去；翻面安排在到达中央之前完成（35%→48%），
+   这样最大尺寸的瞬间是完整叶面，不会撞上 90° 侧棱的"消失帧"。 */
+.intro-leaf-flip {
+  width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  animation: intro-leaf-flip .9s linear .05s both;
+}
+@keyframes intro-leaf-flip {
+  0%   { transform: scale(.30) rotateY(0deg); }
+  35%  { transform: scale(.72) rotateY(0deg); }
+  48%  { transform: scale(.97) rotateY(180deg); }
+  50%  { transform: scale(1)   rotateY(180deg); }
+  65%  { transform: scale(.88) rotateY(180deg); }
+  100% { transform: scale(.30) rotateY(180deg); }
+}
+.intro-leaf-spin {
+  width: 100%; height: 100%;
+  transform-origin: 50% 50%;
+  animation: intro-leaf-spin 1.05s ease-in-out .05s both;
+}
+@keyframes intro-leaf-fly {
+  0%   { offset-distance: 0%;   opacity: 0; }
+  12%  { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@keyframes intro-leaf-spin {
+  0%   { transform: rotate(-8deg); }
+  32%  { transform: rotate(130deg); }
+  64%  { transform: rotate(235deg); }
+  100% { transform: rotate(318deg); }
+}
+
+.intro-wind {
+  position: absolute; color: var(--intro-wind); opacity: 0;
+}
+.intro-wind.w1 {
+  top: 16%; left: 32%; width: 340px;
+  animation: intro-wind-fly .72s ease-out .12s both;
+}
+.intro-wind.w2 {
+  top: 46%; left: 48%; width: 260px;
+  animation: intro-wind-fly .72s ease-out .26s both;
+}
+@keyframes intro-wind-fly {
+  0%   { opacity: 0; transform: translate(130px, -76px); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-340px, 210px); }
+}
+
+.intro-debris {
+  position: absolute; width: 26px; height: 26px; opacity: 0;
+}
+.intro-debris.d1 { top: 22%; left: 44%; animation: intro-debris-fly-1 .82s ease-in .18s both; }
+.intro-debris.d2 { top: 52%; left: 62%; width: 18px; height: 18px; animation: intro-debris-fly-2 .82s ease-in .30s both; }
+@keyframes intro-debris-fly-1 {
+  0%   { opacity: 0; transform: translate(90px, -60px) rotate(0deg); }
+  20%  { opacity: .85; }
+  100% { opacity: 0; transform: translate(-270px, 180px) rotate(210deg); }
+}
+@keyframes intro-debris-fly-2 {
+  0%   { opacity: 0; transform: translate(70px, -40px) rotate(0deg); }
+  22%  { opacity: .7; }
+  100% { opacity: 0; transform: translate(-300px, 200px) rotate(170deg); }
+}
+
+/* —— 界面浮现：顶栏先到，主内容沿风的行进方向错峰 —— */
+html.intro-run .app-header { animation: intro-drop .34s ease-out .12s both; }
+html.intro-run .app-main .view-study.view-active > * { animation: intro-drop .38s ease-out both; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(1) { animation-delay: .38s; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(2) { animation-delay: .44s; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(3) { animation-delay: .50s; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(4) { animation-delay: .56s; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(5) { animation-delay: .62s; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(6) { animation-delay: .68s; }
+html.intro-run .app-main .view-study.view-active > *:nth-child(7) { animation-delay: .74s; }
+@keyframes intro-drop {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* —— 老浏览器回退：不支持 offset-path 就走对角线直飞 —— */
+@keyframes intro-leaf-fly-fb {
+  0%   { opacity: 0; transform: translate(105vw, -10vh); }
+  12%  { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-14vw, 108vh); }
+}
+@supports not (offset-path: path("M0 0 L10 10")) {
+  .intro-leaf { animation-name: intro-leaf-fly-fb; }
+  .intro-leaf-spin { animation-duration: 1.3s; }
+}
+
+/* —— 减动效守卫（双保险，head 里已不打标记） —— */
+@media (prefers-reduced-motion: reduce) {
+  html[data-intro-pending] .app-header,
+  html[data-intro-pending] .app-main { opacity: 1; animation: none; }
+  .intro-fx { display: none; }
+  html.intro-run .app-header,
+  html.intro-run .app-main .view-study.view-active > * { animation: none; }
+}
+
+/* ============================================================
+   像素入场动效 · 「凿穿双层」（pixel-intro.js 配套）
+   ------------------------------------------------------------
+   核心概念：两层世界。像素世界是盖在上面的第一层表面（六块
+   clip-path 碎片拼成完整 px-bg，静止时严丝合缝），学习界面藏在
+   底下是第二层。入场：巨镐抡下砸在屏幕正中 → 震屏/闪光/碎屑，
+   范围裂痕在表面上裂开 → 0.75s 表面碎裂，六块碎片各自向上升起
+   渐隐，露出第二层：界面各区块快速错峰弹到位。
+   全程 steps 阶梯运动。只在 pixel 皮肤 + data-px-intro-run 同时
+   成立时生效；动画轨道就位后 pixel-intro.js 才摘 pending。
+   主时钟：镐/闪光/碎屑/震屏都是 1.3s 单动画多关键帧（steps(1,end)），
+   命中点统一在 33%（≈0.43s）；表面碎片为 delay 独立轨道（.75s 起）。
+   命中点 = 舞台左中 (470, 600)；命中时表面被凿穿一个洞，
+   洞中露出第二层学习界面。
+   ============================================================ */
+
+html[data-skin="pixel"][data-px-intro-run] #stage {
+  animation: px-shake 1.3s steps(1, end) both;
+}
+@keyframes px-shake {
+  0%, 33%  { translate: 0 0; }
+  36%      { translate: -7px 4px; }
+  43%      { translate: 6px -4px; }
+  50%      { translate: -4px 2px; }
+  55%      { translate: 0 0; }
+  58%      { translate: -5px 3px; }   /* 碎片升起一拍 */
+  64%      { translate: 4px -2px; }
+  70%, 100% { translate: 0 0; }
+}
+
+/* —— 巨镐：立在屏幕左中，支点在柄尾；起手镐头过顶（-33°），
+      从上向下顺时针大弧劈至屏幕正中（+40° 命中） —— */
+html[data-skin="pixel"] .px-intro-fx {
+  position: absolute; inset: 0; z-index: 60;   /* 压过界面、低于弹窗(80)/toast(90) */
+  pointer-events: none; overflow: hidden;
+}
+html[data-skin="pixel"] .px-intro-pick {
+  position: absolute; top: 269px; left: 90px;   /* 柄尾支点 x≈180（1/8 屏宽），命中凹弧落在 (470,600) */
+  width: 480px; height: 480px;
+  transform-origin: 90px 420px;                 /* 支点 = 柄尾 (3,14) 格 */
+  animation: px-pick 1.3s steps(1, end) both;
+}
+@keyframes px-pick {
+  0%, 7%   { opacity: 0; transform: rotate(-38deg); }
+  8%       { opacity: 1; transform: rotate(-33deg); }                   /* 立于左中，镐头过顶 */
+  16%      { transform: rotate(-16deg); }
+  24%      { transform: rotate(4deg); }
+  33%      { opacity: 1; transform: rotate(40deg); }                    /* 劈至正中，命中 */
+  55%      { opacity: 1; transform: rotate(40deg); }
+  62%      { opacity: 1; transform: rotate(18deg); }                    /* 碎屏即反向扬镐 */
+  70%, 100% { opacity: 0; transform: rotate(-24deg); }
+}
+
+/* —— 第一层表面：六块 clip-path 碎片拼成完整 px-bg，静止时严丝合缝，
+      洞口由 mask 统一凿出（命中前由塞子补片盖住）；表面碎裂时
+      各自向上升起、渐隐，露出底下的第二层（学习界面） —— */
+html[data-skin="pixel"] .px-intro-l1 {
+  position: absolute; inset: 0;
+  background-image: url("px-bg.svg");
+  background-size: 1440px 1200px; background-repeat: no-repeat;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 1200'%3E%3Cpath d='M0 0H1440V1200H0Z M620 610 576 716 464 756 352 712 312 592 362 490 478 442 586 496Z' fill='%23fff' fill-rule='evenodd'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 1200'%3E%3Cpath d='M0 0H1440V1200H0Z M620 610 576 716 464 756 352 712 312 592 362 490 478 442 586 496Z' fill='%23fff' fill-rule='evenodd'/%3E%3C/svg%3E");
+  -webkit-mask-size: 1440px 1200px; mask-size: 1440px 1200px;
+  animation: px-l1-fly .55s steps(3, end) both;
+  animation-delay: var(--d, .75s);
+}
+@keyframes px-l1-fly {
+  0%   { opacity: 1; translate: 0 0; }
+  100% { opacity: 0; translate: var(--sx, 0px) var(--sy, -200px); }
+}
+
+/* —— 洞口塞子：三块补片与表面共用同一张 px-bg，命中前无缝补住
+      洞口（外缘外推压住接缝，重叠像素不可见）；命中时被凿穿，
+      各自飞离/坠落，洞中的第二层界面就此露脸 —— */
+html[data-skin="pixel"] .px-intro-plug {
+  position: absolute; inset: 0;
+  background-image: url("px-bg.svg");
+  background-size: 1440px 1200px; background-repeat: no-repeat;
+  animation: px-plug-fly .3s steps(3, end) both;
+  animation-delay: var(--d, .43s);
+}
+@keyframes px-plug-fly {
+  0%   { opacity: 1; translate: 0 0; }
+  100% { opacity: 0; translate: var(--dx, 0px) var(--dy, -60px); }
+}
+
+/* —— 范围裂痕：放射锯齿缝 + 多边形碎环，画在第一层表面上，
+      表面碎裂时随之消失 —— */
+html[data-skin="pixel"] .px-intro-crack {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  animation: px-vanish .25s steps(2, end) .72s both;
+}
+html[data-skin="pixel"] .px-intro-crack path {
+  fill: none; stroke: #3F3F3F; stroke-width: 11;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: px-crack-grow .3s steps(6, end) .43s both;
+}
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(1) { animation-delay: .43s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(2) { animation-delay: .48s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(3) { animation-delay: .46s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(4) { animation-delay: .51s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(5) { animation-delay: .49s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(6) { animation-delay: .52s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(7) { animation-delay: .55s; }
+html[data-skin="pixel"] .px-intro-crack path:nth-of-type(8) { animation-delay: .58s; }
+html[data-skin="pixel"] .px-intro-crack .c-lite { stroke: #A6F2E6; stroke-width: 4; }
+html[data-skin="pixel"] .px-intro-crack .c-ring {
+  stroke-width: 9;
+  animation-duration: .34s; animation-timing-function: steps(8, end);
+  animation-delay: .50s;
+}
+@keyframes px-crack-grow { to { stroke-dashoffset: 0; } }
+@keyframes px-vanish { to { opacity: 0; } }
+
+/* —— 命中闪光（洞口处）与碎屏闪光（碎片升起时） —— */
+html[data-skin="pixel"] .px-intro-flash {
+  position: absolute; left: 470px; top: 596px; margin: -23px 0 0 -23px;
+  width: 46px; height: 46px; background: #A6F2E6;
+  box-shadow: 0 0 0 6px rgba(111, 224, 208, 0.45);
+  animation: px-flash 1.3s steps(1, end) both;
+}
+html[data-skin="pixel"] .px-intro-flash.b2 {
+  left: 470px; top: 540px; margin: -17px 0 0 -17px;
+  width: 34px; height: 34px; background: #FFFFFF;
+  box-shadow: 0 0 0 5px rgba(166, 242, 230, 0.4);
+  animation-name: px-flash2;
+}
+@keyframes px-flash {
+  0%, 32% { opacity: 0; transform: scale(.4); }
+  33%     { opacity: 1; transform: scale(1); }
+  40%     { opacity: 1; transform: scale(1.3); }
+  46%, 100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes px-flash2 {
+  0%, 57% { opacity: 0; transform: scale(.5); }
+  58%     { opacity: 1; transform: scale(1); }
+  63%     { opacity: 1; transform: scale(1.25); }
+  68%, 100% { opacity: 0; transform: scale(1.25); }
+}
+
+/* —— 命中碎屑：命中点向两侧迸溅再坠落 —— */
+html[data-skin="pixel"] .px-intro-debris {
+  position: absolute; width: 14px; height: 14px; background: #6FE0D0;
+  opacity: 0;
+  animation: px-debris-fly 1.3s steps(1, end) both;
+}
+html[data-skin="pixel"] .px-intro-debris:nth-child(13) { left: 440px; top: 538px; --dx: -70px;  --dy: -46px; background: #A6F2E6; }
+html[data-skin="pixel"] .px-intro-debris:nth-child(14) { left: 482px; top: 532px; --dx: 64px;   --dy: -58px; background: #FFFFFF; }
+html[data-skin="pixel"] .px-intro-debris:nth-child(15) { left: 398px; top: 558px; --dx: -110px; --dy: -12px; }
+html[data-skin="pixel"] .px-intro-debris:nth-child(16) { left: 522px; top: 554px; --dx: 108px;  --dy: -20px; background: #A6F2E6; }
+html[data-skin="pixel"] .px-intro-debris:nth-child(17) { left: 448px; top: 570px; --dx: -46px;  --dy: 34px;  background: #FFFFFF; }
+html[data-skin="pixel"] .px-intro-debris:nth-child(18) { left: 496px; top: 566px; --dx: 52px;   --dy: 30px; }
+@keyframes px-debris-fly {
+  0%, 32% { opacity: 0; translate: 0 0; }
+  33%     { opacity: 1; translate: 0 0; }
+  48%     { opacity: 1; translate: var(--dx) var(--dy); }
+  62%     { opacity: 1; translate: var(--dx) var(--dy); }
+  75%     { opacity: 0; translate: var(--dx) calc(var(--dy) + 26px); }
+  100%    { opacity: 0; translate: var(--dx) calc(var(--dy) + 26px); }
+}
+
+/* —— 方块放置：表面碎裂后第二层界面显现，各区块快速错峰弹到位 —— */
+html[data-skin="pixel"][data-px-intro-run] .app-header {
+  animation: px-block-in .22s steps(3, end) .78s both;
+}
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > * {
+  animation: px-block-in .22s steps(3, end) both;
+}
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(1) { animation-delay: .82s; }
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(2) { animation-delay: .87s; }
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(3) { animation-delay: .92s; }
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(4) { animation-delay: .97s; }
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(5) { animation-delay: 1.02s; }
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(6) { animation-delay: 1.07s; }
+html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(7) { animation-delay: 1.12s; }
+@keyframes px-block-in {
+  0%   { opacity: 0; transform: scale(.55); }
+  55%  { opacity: 1; transform: scale(1.07); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* —— 减动效守卫（双保险，head 里已不打标记） —— */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="pixel"][data-px-intro-run] #stage { animation: none; }
+  html[data-skin="pixel"][data-px-intro-run] .app-header,
+  html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > * { animation: none; }
+  html[data-skin="pixel"] .px-intro-fx { display: none; }
 }
 

@@ -16,6 +16,20 @@
       document.documentElement.setAttribute("data-skin", id || "mint");
     })();
   </script>
+  <script>
+    /* 入场动效前置标记：薄荷/暖阳（含默认未选）皮肤且未开启减动效时，
+       先把顶栏和主内容藏住（CSS 据此 opacity:0），intro.js 接手播放。
+       双保险：① 本模块任何异常，CSS 熔断约 2.4s 内强制显示内容；
+       ② prefers-reduced-motion: reduce → 不打标记，内容直接呈现。 */
+    (function () {
+      "use strict";
+      var skin = "";
+      try { skin = localStorage.getItem("english_app_skin_v1") || ""; } catch (e) {}
+      if (skin !== "mint" && skin !== "warm" && skin !== "pixel" && skin !== "") return;
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      document.documentElement.setAttribute("data-intro-pending", "");
+    })();
+  </script>
 </head>
 <body data-page-node-id="SOwlRg6s4Psc8J9JyfT8Vv">
   <!-- 全站图标 sprite：2px 线描、currentColor，三皮肤自动换色 -->
@@ -301,6 +315,8 @@
   <script src="app.js"></script>
   <script src="pixel.js"></script>
   <script src="sword.js"></script>
+  <script src="pixel-intro.js"></script>
+  <script src="intro.js"></script>
   <script src="speak.js"></script>
   <script src="story.js"></script>
   <script src="backup.js"></script>
