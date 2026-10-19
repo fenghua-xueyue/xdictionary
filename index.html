@@ -17,12 +17,27 @@
   </script>
 </head>
 <body data-page-node-id="GljrZ5SJ0uPjrievL1Z7Vz">
+  <!-- 世界门厅：地平线草坡（薄荷/暖阳；像素皮肤有自己的世界，CSS 里隐藏） -->
+  <div class="idx-ground" aria-hidden="true">
+    <svg viewBox="0 0 1440 260" preserveAspectRatio="none">
+      <path class="g2" d="M0 118 C 240 58 430 150 720 108 C 1020 66 1210 150 1440 98 L1440 260 L0 260 Z"/>
+      <path class="g1" d="M0 188 C 300 138 560 212 860 174 C 1120 142 1310 206 1440 178 L1440 260 L0 260 Z"/>
+    </svg>
+  </div>
+  <!-- 飘叶 ×2：与学习页入场动效的叶同源，缓慢循环（reduced-motion 隐藏） -->
+  <div class="idx-leaf idx-leaf-a" aria-hidden="true">
+    <svg viewBox="0 0 64 64"><path fill="var(--intro-leaf)" d="M52 10 C30 10 12 28 11 55 C36 53 54 36 54 12 Z"/><path fill="none" stroke="var(--intro-vein)" stroke-width="3" stroke-linecap="round" d="M18 48 C28 36 40 24 50 16"/></svg>
+  </div>
+  <div class="idx-leaf idx-leaf-b" aria-hidden="true">
+    <svg viewBox="0 0 64 64"><path fill="var(--intro-leaf)" d="M52 10 C30 10 12 28 11 55 C36 53 54 36 54 12 Z"/><path fill="none" stroke="var(--intro-vein)" stroke-width="3" stroke-linecap="round" d="M18 48 C28 36 40 24 50 16"/></svg>
+  </div>
+
   <div id="stage">
     <div class="px-bg" aria-hidden="true">
       <img src="px-bg.svg" width="1440" height="1200" alt="" />
     </div>
-  <main class="app-main" data-page-node-id="SNjRZLTdPw7tly0bUilHHt">
-    <!-- 第一界面：初始空状态 -->
+  <main class="app-main app-main-gate" data-page-node-id="SNjRZLTdPw7tly0bUilHHt">
+    <!-- 第一界面：初始空状态（世界门厅：无卡片壳，内容直接坐进世界） -->
     <section class="view view-empty view-active" id="view-empty" data-page-node-id="laddc7V5qauVDnkxVRmvQC">
       <div class="hero" data-page-node-id="EVA8WnEDJdJI1P7cf4esxs">
         <div class="hero-logo" aria-hidden="true" data-page-node-id="1D5RdYzVXC83O1cAC2Auur">
@@ -33,26 +48,37 @@
         </div>
         <h1 class="hero-title" data-page-node-id="BSzpXKBA9GfpU4wbN74tH1">每天 20 个四级高频词，<br  data-page-node-id="3A1r88MSqU2jGNvgu7BngO"/>用一个故事串起来。</h1>
         <p class="hero-subtitle" data-page-node-id="UGjTegXLrFs4Um5PO2cLfL">随机抽词 · 跨轮不重复 · 用词生成中英对照小故事</p>
+        <!-- 活词预览：每 2.5s 从词库抽一个词翻面（纯展示，读屏跳过） -->
+        <div class="hero-preview" aria-hidden="true">
+          <div class="preview-inner" id="preview-inner">
+            <span class="preview-word" id="preview-word"></span>
+            <span class="preview-meaning" id="preview-meaning"></span>
+          </div>
+        </div>
         <button class="btn btn-primary btn-hero" id="btn-start" data-page-node-id="JpGOZIQxuyTs6whIRHn1j5">
           <svg class="btn-icon svg-icon" data-page-node-id="RiTKGAPvpJJuRpae1XMdsr" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg> 开始背单词
         </button>
+        <p class="hero-progress" id="hero-progress" hidden></p>
         <p class="hero-footer" data-page-node-id="nnF6YVYLP1ez2wD9VZ3K4P">词库 300 词 · 学完一轮自动循环</p>
       </div>
     </section>
   </main>
 
+  <script src="words.js"></script>
   <script>
     /* 首屏：仅负责进入学习页，不再抽新一轮。
        若尚无进度，study.html 的 init() 会自动抽第 1 轮；
        已有进度则直接回到当前学习轮，避免点一下就跳到下一轮。
-       按钮文案随进度变化：无进度「开始背单词」/ 有进度「继续学习」。 */
+       按钮文案随进度变化：无进度「开始背单词」/ 有进度「继续学习」，
+       并显示足迹行（第 N 轮 · 已学 M 词，口径与 app.js 一致 = 轮数 × 20）。
+       另有「活词预览」：每 2.5s 从词库抽一个词翻面展示（纯演示）。 */
     (function () {
       "use strict";
       var LS_KEY = "english_app_v1";
       var btn = document.getElementById("btn-start");
       if (!btn) return;
 
-      // 已有学习进度 → 文案改为「继续学习」（保留箭头图标）
+      // 已有学习进度 → 文案改为「继续学习」（保留箭头图标）+ 足迹行
       try {
         var raw = localStorage.getItem(LS_KEY);
         if (raw) {
@@ -63,9 +89,43 @@
           while (btn.firstChild) btn.removeChild(btn.firstChild);
           if (icon) btn.appendChild(icon);
           btn.appendChild(document.createTextNode(" 继续学习"));
+          var prog = document.getElementById("hero-progress");
+          if (prog) {
+            prog.hidden = false;
+            prog.textContent = "第 " + d.currentRound.round + " 轮 · 已学 " + (d.currentRound.round * 20) + " 词";
+          }
           }
         }
       } catch (e) {}
+
+      // —— 活词预览：随机抽词翻面（纯展示；读屏跳过；页签隐藏时暂停） ——
+      var WORDS = window.WORDS || [];
+      var reduce = false;
+      try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { /* 保守当 false */ }
+      var pWord = document.getElementById("preview-word");
+      var pMean = document.getElementById("preview-meaning");
+      var pInner = document.getElementById("preview-inner");
+      if (pWord && pMean && pInner && WORDS.length) {
+        var lastIdx = -1;
+        var fillPreview = function () {
+          var i;
+          do { i = Math.floor(Math.random() * WORDS.length); } while (i === lastIdx && WORDS.length > 1);
+          lastIdx = i;
+          var w = WORDS[i];
+          pWord.textContent = w.word;
+          pMean.textContent = w.meaning + (w.phonetic ? " · " + w.phonetic : "");
+        };
+        fillPreview();
+        setInterval(function () {
+          if (document.hidden) return;
+          if (reduce) { fillPreview(); return; }   // 减动效：只换字不翻面
+          pInner.classList.add("is-flipping");
+          setTimeout(function () {
+            fillPreview();
+            pInner.classList.remove("is-flipping");
+          }, 240);
+        }, 2500);
+      }
 
       btn.addEventListener("click", function () {
         window.location.href = "study.html";

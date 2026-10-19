@@ -68,6 +68,9 @@
   /* 品牌 logo（内联 SVG 用 fill="currentColor"，由这里驱动） */
   --logo-bg: #2E9E78;
   --logo-fg: #FFFFFF;
+  /* 首页门厅：地平线草坡双层（仅薄荷/暖阳显示，像素皮肤用自己的世界） */
+  --idx-hill1: #A5D8BE;   /* 前坡 */
+  --idx-hill2: #C9E7D6;   /* 后坡 */
 
   /* 入场动效（intro.js / style.css「入场动效」区块使用；像素皮肤不播） */
   --intro-leaf: #2E9E78;                  /* 叶片主色 */
@@ -184,22 +187,73 @@ body {
 .view { display: none; }
 .view-active { display: block; }
 
-/* ============================ 空状态 hero ============================ */
+/* ============================ 空状态 hero（世界门厅） ============================ */
+/* 2026-10-19 重做：卸掉卡片壳，内容直接坐进世界（薄荷/暖阳有地平线草坡，
+   像素皮肤直接立在自己的世界里）。层级：.app-main 抬一层压过地面。 */
+.app-main {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+.view { display: none; }
+.view-active { display: block; }
+
+/* —— 地平线草坡（固定在视口底部，随皮肤变色） —— */
+.idx-ground {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: 24vh; min-height: 150px;
+  z-index: 0; pointer-events: none;
+}
+.idx-ground svg { display: block; width: 100%; height: 100%; }
+.idx-ground .g1 { fill: var(--idx-hill1); }
+.idx-ground .g2 { fill: var(--idx-hill2); }
+html[data-skin="pixel"] .idx-ground,
+html[data-skin="pixel"] .idx-leaf { display: none; }
+
+/* —— 飘叶 ×2：从右上缓缓落向左下，循环 —— */
+.idx-leaf {
+  position: fixed; top: -48px; z-index: 0;
+  pointer-events: none; opacity: 0;
+}
+.idx-leaf svg { display: block; width: 34px; height: 34px; }
+.idx-leaf-a { left: 14%; animation: idx-drift-a 16s linear 2s infinite; }
+.idx-leaf-b { left: 62%; animation: idx-drift-b 22s linear 9s infinite; }
+@keyframes idx-drift-a {
+  0%   { transform: translate(0, 0) rotate(0deg);   opacity: 0; }
+  10%  { opacity: .8; }
+  90%  { opacity: .5; }
+  100% { transform: translate(-16vw, 108vh) rotate(300deg); opacity: 0; }
+}
+@keyframes idx-drift-b {
+  0%   { transform: translate(0, 0) rotate(0deg);   opacity: 0; }
+  10%  { opacity: .65; }
+  90%  { opacity: .4; }
+  100% { transform: translate(14vw, 108vh) rotate(-280deg); opacity: 0; }
+}
+
 .view-empty {
-  min-height: 70vh;
+  min-height: 88vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .hero {
-  background: var(--surface);
-  border-radius: 28px;
-  box-shadow: var(--shadow-card);
-  padding: 64px 48px;
-  max-width: 640px;
+  padding: 56px 32px;
+  max-width: 720px;
   text-align: center;
 }
 .hero-logo { margin-bottom: 24px; }
+/* logo 轻微摇曳：让徽标活着 */
+.hero-logo svg {
+  transform-origin: 50% 85%;
+  animation: logo-sway 5.5s ease-in-out infinite;
+}
+@keyframes logo-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
 .hero-title {
   font-size: 32px;
   font-weight: 700;
@@ -210,13 +264,50 @@ body {
 .hero-subtitle {
   font-size: 17px;
   color: var(--text-tertiary);
-  margin-bottom: 36px;
+  margin-bottom: 30px;
 }
 .btn-hero { font-size: 20px; padding: 18px 44px; }
+.btn-hero .btn-icon { transition: transform .18s ease; }
+.btn-hero:hover .btn-icon { transform: translateX(4px); }
+.hero-progress {
+  margin-top: 18px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
 .hero-footer {
   margin-top: 26px;
   font-size: var(--fs-hint);
   color: var(--text-muted);
+}
+
+/* —— 活词预览：从词库随机抽词翻面，产品核心循环的现场演示 —— */
+.hero-preview {
+  display: flex; justify-content: center;
+  perspective: 600px;
+  margin-bottom: 34px;
+}
+.preview-inner {
+  display: inline-flex; flex-direction: column; gap: 4px;
+  min-width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 14px 28px;
+  box-shadow: var(--shadow-card);
+  transition: transform .24s ease;
+  transform-origin: 50% 50%;
+}
+.preview-inner.is-flipping { transform: rotateX(90deg); }
+.preview-word   { font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.preview-meaning{ font-size: 14px; color: var(--text-tertiary); line-height: 1.4; }
+
+/* —— 首页减动效守卫：摇曳 / 飘叶 / 翻面全关，地面保留（静态装饰） —— */
+@media (prefers-reduced-motion: reduce) {
+  .idx-leaf { display: none; }
+  .hero-logo svg { animation: none; }
+  .preview-inner { transition: none; }
+  .btn-hero .btn-icon { transition: none; }
 }
 
 /* ============================ 视图标题 ============================ */
@@ -1069,6 +1160,8 @@ html[data-skin="warm"] {
 
   --logo-bg: #AE5526;
   --logo-fg: #FFFDF8;
+  --idx-hill1: #E4C29A;   /* 前坡（暖阳杏色） */
+  --idx-hill2: #F2E3C4;   /* 后坡 */
 }
 
 /* ============================ 响应式兜底 ============================ */
@@ -1217,6 +1310,15 @@ html[data-skin="pixel"] .round-badge {
 html[data-skin="pixel"] .app-main {
   top: 124px; left: 140px; width: 1160px; height: 863px;
   display: flex; flex-direction: column; gap: 16px; padding: 28px; overflow: hidden;
+}
+/* —— 首页（.app-main-gate）：不要主面板壳，内容直接立在世界里 ——
+   必须连基础 .app-main 的 max-width / margin / padding 一起清掉：
+   绝对定位下 margin:auto 不居中，会整块贴左（max-width 1280 钳宽）。 */
+html[data-skin="pixel"] .app-main.app-main-gate {
+  background: none; border: none; box-shadow: none;
+  top: 0; left: 0; width: 100%; height: 100%;
+  max-width: none; margin: 0; padding: 0;
+  justify-content: center; overflow: hidden;
 }
 html[data-skin="pixel"] .app-main .view { display: none; }
 html[data-skin="pixel"] .app-main .view-active {
@@ -1582,20 +1684,20 @@ html[data-skin="pixel"] .px-subtitle {
 html[data-skin="pixel"] .std-label { display: none; }
 html[data-skin="pixel"] .px-label { display: inline-flex; align-items: center; gap: 8px; }
 
-/* —— 首页（index.html）像素化 —— */
+/* —— 首页（index.html）像素化：卸掉卡壳，文字直接立在世界里 —— */
 html[data-skin="pixel"] .view-empty {
   display: flex; align-items: center; justify-content: center;
   flex: 1 1 auto; min-height: 0;
 }
 html[data-skin="pixel"] .hero {
-  background: var(--px-card); border: 1px solid var(--px-edge);
-  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-  border-radius: 0; padding: 48px 40px; max-width: 760px;
+  padding: 48px 24px; max-width: 820px;
 }
 html[data-skin="pixel"] .hero-logo { margin-bottom: 20px; }
+html[data-skin="pixel"] .hero-logo svg { animation: none; }   /* 像素世界不摇摆，保持定格 */
 html[data-skin="pixel"] .hero-title { font-size: 56px; }
-html[data-skin="pixel"] .hero-subtitle { font-size: 18px; color: var(--px-text2); }
-html[data-skin="pixel"] .hero-footer { color: var(--px-text3); }
+html[data-skin="pixel"] .hero-subtitle { font-size: 18px; color: var(--px-edge); }   /* #3F3F3F 压蓝天 ≈4.9:1 */
+html[data-skin="pixel"] .hero-progress { color: var(--px-text); }
+html[data-skin="pixel"] .hero-footer { color: var(--px-dark); }   /* 小字要更高对比 */
 html[data-skin="pixel"] .btn-hero {
   font-size: 19px; padding: 18px 44px; background: var(--px-accent); color: var(--on-accent);
   border: 2px solid var(--px-accent-dk); border-radius: 0;
@@ -1605,6 +1707,14 @@ html[data-skin="pixel"] .btn-hero:active {
   transform: translate(3px, 3px);
   box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
 }
+/* 活词预览：像素世界里的小白卡（与学习页词卡同语言） */
+html[data-skin="pixel"] .preview-inner {
+  border: 2px solid var(--px-edge); border-radius: 0;
+  box-shadow: inset 3px 3px 0 var(--px-hi), inset -3px -3px 0 var(--px-lo), 4px 4px 0 rgba(0, 0, 0, 0.15);
+  transition: none;
+}
+html[data-skin="pixel"] .preview-word    { color: var(--px-text); }
+html[data-skin="pixel"] .preview-meaning { color: var(--px-text2); }
 
 /* ============================================================
    入场动效（intro.js 配套，2026-10-19 新增）
