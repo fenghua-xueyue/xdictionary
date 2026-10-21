@@ -230,6 +230,25 @@
     card.dataset.mode = state.mode;
     card.classList.toggle("show-answer", state.showAnswer);
 
+    /* 翻面状态（英文 / 中文模式）：换词 / 换模式由 renderCard 依据 showAnswer 复位；
+       翻面本身（toggleFlip / revealAnswer）不走 renderCard，动画不会被打断。
+       背单词模式：无翻面，壳层已由 CSS display:contents 拆掉。 */
+    card.classList.remove("is-flipping");
+    if (card._flipTimer) { clearTimeout(card._flipTimer); card._flipTimer = null; }
+    if (state.mode === "en" || state.mode === "zh") {
+      card.classList.toggle("is-flipped", !!state.showAnswer);
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("aria-pressed", state.showAnswer ? "true" : "false");
+      card.setAttribute("aria-label", state.mode === "en" ? "点击翻面查看中文释义" : "点击翻面查看英文单词");
+    } else {
+      card.classList.remove("is-flipped");
+      card.removeAttribute("role");
+      card.removeAttribute("tabindex");
+      card.removeAttribute("aria-pressed");
+      card.removeAttribute("aria-label");
+    }
+
     viewEl.querySelector(".card-word").textContent = w.word;
     viewEl.querySelector(".card-phonetic").textContent = w.phonetic;
     viewEl.querySelector(".card-meaning").textContent = w.meaning;
@@ -393,10 +412,13 @@
     var round = state.currentRound;
     if (!round) return;
     if (i < 0 || i >= round.words.length) return;
-    state.currentIndex = i;
-    state.showAnswer = false;
-    saveState();
-    renderCard("learn");
+    var dir = i > state.currentIndex ? 1 : -1;
+    playWordSwap(document.querySelector("#view-learn .flashcard"), dir, function () {
+      state.currentIndex = i;
+      state.showAnswer = false;
+      saveState();
+      renderCard("learn");
+    });
   }
 
   function setMode(mode) {
@@ -410,10 +432,73 @@
     if (fellBack) toast(modeLabel(mode) + "没有标记过的单词，已回到全部复习");
   }
 
+  /* 英文 / 中文模式：揭示 = 翻面（英文见释义、中文见单词）。
+     像素风不翻面：保持原 show-answer 直显逻辑（点卡片 / Enter 触发）。 */
   function revealAnswer() {
     state.showAnswer = true;
     saveState();
-    renderCard(state.view);
+    var skin = document.documentElement.getAttribute("data-skin");
+    if (skin === "pixel") { renderCard(state.view); return; }
+    var viewEl = document.getElementById(state.view === "review" ? "view-review" : "view-learn");
+    var card = viewEl && viewEl.querySelector(".flashcard");
+    if (card) setFlip(card, true);
+  }
+
+  /* ---------- 翻面（英文 / 中文模式） ----------
+     真 3D：正面单词 + 音标，背面中文释义。只切类名，不走 renderCard。
+     .is-flipping 只在动画期间挂着（下划线展开最晚 340+480=820ms 结束），
+     挂着期间播「拿起-放下」抬升与高光扫过，动画完毕摘掉，等下次翻面重播。 */
+  var FLIP_ANIM_MS = 900;
+  function setFlip(card, flipped) {
+    card.classList.toggle("is-flipped", flipped);
+    card.setAttribute("aria-pressed", flipped ? "true" : "false");
+    card.classList.remove("is-flipping");
+    // 强制重启动画：先摘掉再在下一帧挂回，连续点击也能从头播
+    void card.offsetWidth;
+    card.classList.add("is-flipping");
+    if (card._flipTimer) clearTimeout(card._flipTimer);
+    card._flipTimer = setTimeout(function () {
+      card.classList.remove("is-flipping");
+      card._flipTimer = null;
+    }, FLIP_ANIM_MS);
+  }
+  function toggleFlip(card) {
+    if ((state.mode !== "en" && state.mode !== "zh") || !card) return;
+    var flipped = !card.classList.contains("is-flipped");
+    state.showAnswer = flipped;
+    saveState();
+    setFlip(card, flipped);
+  }
+
+  /* ---------- 切词：叠卡错位（三种模式通用） ----------
+     顶层纸（背单词模式是 .card-flyer，中英文模式是整个翻转层）向右（下一个）/
+     向左（上一个）抽走 200ms，中点换词，新词带着纸从下面那张卡的位置抬上来 260ms。
+     与翻面刻意分成两类事件：翻 = 绕 Y 轴转「看另一面」，切 = 抽走 + 抬起「换一张卡」。
+     减动效 / 像素皮肤（有自己的「旧词飞出 + 新词飞入」）直接换词不播；
+     动画期间忽略连点（_swapping 占位）。 */
+  function playWordSwap(card, dir, apply) {
+    if (!card) { apply(); return; }
+    var reduce = false;
+    try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { /* 保守当 false */ }
+    var skin = document.documentElement.getAttribute("data-skin");
+    if (reduce || skin === "pixel") { apply(); return; }
+    if (card._swapping) return;
+    card._swapping = true;
+    var outCls = dir > 0 ? "swap-out-next" : "swap-out-prev";
+    var inCls = dir > 0 ? "swap-in-next" : "swap-in-prev";
+    card.classList.remove("swap-out-next", "swap-out-prev", "swap-in-next", "swap-in-prev");
+    void card.offsetWidth;
+    card.classList.add(outCls);
+    setTimeout(function () {
+      apply();                                  // 顶层纸抽到画外时换词，肉眼不可见
+      card.classList.remove(outCls);
+      void card.offsetWidth;
+      card.classList.add(inCls);
+      setTimeout(function () {
+        card.classList.remove(inCls);
+        card._swapping = false;
+      }, 300);
+    }, 205);
   }
 
   // 复习模式：在“所有学过的词”里前后翻一张
@@ -551,17 +636,108 @@
        像素风（px-label）收起时叫「展开今日故事」—— 这个按钮只管展开/收起，
        生成走面板标题行的「✨ 生成本轮故事」（story.js），展开态两边统一「收起故事」。 */
     function setGenLabel(open) {
-      setSpanText(btnGen.querySelector(".std-label"), open ? "收起故事" : "生成故事");
+      setSpanText(btnGen.querySelector(".std-label"), open ? "收起故事" : "看今日故事");
       setSpanText(btnGen.querySelector(".px-label"), open ? "收起故事" : "展开今日故事");
     }
-    btnGen.addEventListener("click", function () {
-      var open = learnView.classList.toggle("story-open");
+    /* 故事书开合：合着时整本书藏在卡片下面，只露一条丝带（#btn-book-open）；
+       翻开后书占中央，卡片区、进度、按钮条全部让位（让位规则写在 style.css 的「书桌」段）。 */
+    function setStoryOpen(open) {
+      learnView.classList.toggle("story-open", open);
+      // 开书时把主容器底部那 80px 呼吸空收掉，书才能在一屏里放平
+      var appMain = document.querySelector(".app-main");
+      if (appMain) appMain.classList.toggle("is-reading", open);
       btnGen.setAttribute("aria-expanded", open ? "true" : "false");
       setGenLabel(open);
-      if (!open) toast("已收起故事");
+      // story.js 收到后会重新量一页装不装得下
+      document.dispatchEvent(new CustomEvent("xd:book-open", { detail: { open: open } }));
+      if (!open) return;
+      // 窄屏单页时书会比视口高，带一下视野；宽屏书是等比缩放过的，不用滚
+      if (document.documentElement.getAttribute("data-skin") !== "pixel" && window.innerWidth < 1024) {
+        var panel = document.querySelector("#view-learn .story-panel");
+        if (panel && panel.scrollIntoView) {
+          var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          panel.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+        }
+      }
+    }
+    /* 书是 1080×720 的定尺纸，整本按视口等比缩，字号跟着一起缩 ——
+       这样 1440 和 1024 下看到的是同一本书，只是大小不同。 */
+    function fitBook() {
+      var panel = document.querySelector("#view-learn .story-panel");
+      if (!panel) return;
+      var s = 1;
+      if (window.innerWidth >= 1024) {
+        // 220 = 顶栏 + 面板上留白 + 工具条 + 下留白；覆盖率已经并入书内页脚，不再额外占高
+        var byW = (window.innerWidth - 96) / 1080;
+        var byH = (window.innerHeight - 220) / 720;
+        s = Math.min(byW, byH, 1);
+        // 低于 0.78 字就发糊（18px × 0.78 ≈ 14px），宁可让页面往下滚一点
+        if (s < 0.78) s = 0.78;
+      }
+      panel.style.setProperty("--book-scale", s.toFixed(4));
+    }
+    fitBook();
+    window.addEventListener("resize", function () {
+      fitBook();
+      if (learnView.classList.contains("story-open")) {
+        document.dispatchEvent(new CustomEvent("xd:book-open", { detail: { open: true } }));
+      }
+    });
+
+    btnGen.addEventListener("click", function () {
+      setStoryOpen(!learnView.classList.contains("story-open"));
+      fitBook();
+    });
+    var btnBookOpen = document.getElementById("btn-book-open");
+    if (btnBookOpen) btnBookOpen.addEventListener("click", function () { setStoryOpen(true); });
+    var btnBookClose = document.getElementById("btn-book-close");
+    if (btnBookClose) btnBookClose.addEventListener("click", function () {
+      setStoryOpen(false);
+      var card = document.querySelector("#view-learn .flashcard");
+      if (card && card.focus) card.focus({ preventScroll: true });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (!learnView.classList.contains("story-open")) return;
+      // 弹窗自己会响应 Esc，别同一次按键既关弹窗又合书
+      var m1 = document.getElementById("story-config-modal");
+      var m2 = document.getElementById("story-history-modal");
+      var bs = document.getElementById("backup-modal");
+      if ((m1 && !m1.hasAttribute("hidden")) || (m2 && !m2.hasAttribute("hidden")) || (bs && !bs.hasAttribute("hidden"))) return;
+      setStoryOpen(false);
     });
     setGenLabel(false);
     btnGen.setAttribute("aria-expanded", "false");
+
+    /* 故事 → 卡片：故事正文里的高亮词、覆盖条上的点被点中时（story.js 发自定义事件），
+       跳到对应的那张词卡，并让卡片轻亮一下。 */
+    document.addEventListener("xd:goto-word", function (e) {
+      var w = e.detail && e.detail.word;
+      if (!w) return;
+      var round = state.currentRound;
+      if (!round || !round.words || !round.words.length) return;
+      var target = -1;
+      for (var i = 0; i < round.words.length; i++) {
+        if (String(round.words[i] && round.words[i].word).toLowerCase() === String(w).toLowerCase()) {
+          target = i;
+          break;
+        }
+      }
+      if (target === -1) return;
+      if (state.view !== "learn") switchView("learn");
+      if (target !== state.currentIndex) goTo(target);
+      var card = document.querySelector("#view-learn .flashcard");
+      if (!card) return;
+      card.classList.remove("card-pulse");
+      void card.offsetWidth;
+      card.classList.add("card-pulse");
+      setTimeout(function () { card.classList.remove("card-pulse"); }, 950);
+      if (card.scrollIntoView) {
+        var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        card.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      }
+      toast("已跳到「" + round.words[target].word + "」的卡片");
+    });
 
     // 复习页：上一轮 / 下一轮 = 在复习批之间前后跳转（停留复习模式）
     document.getElementById("btn-prev-batch").addEventListener("click", reviewPrevBatch);
@@ -603,9 +779,27 @@
       });
     });
 
-    // 显示答案按钮（两个视图）
-    document.querySelectorAll(".btn-show-answer").forEach(function (btn) {
-      btn.addEventListener("click", revealAnswer);
+    // 翻面：点卡片 / Enter / Space（英文 / 中文模式；像素风不翻面，一键揭示；
+    // 卡角按钮与输入控件不触发）
+    document.querySelectorAll(".flashcard").forEach(function (card) {
+      card.addEventListener("click", function (e) {
+        if (e.target.closest(".card-mark, .card-speaker, .answer-row, .write-row")) return;
+        if (document.documentElement.getAttribute("data-skin") === "pixel") {
+          if (state.mode === "en" || state.mode === "zh") revealAnswer();
+          return;
+        }
+        toggleFlip(card);
+      });
+      card.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.target !== card) return;   // 卡内输入框等控件自己的键盘行为不抢
+        e.preventDefault();
+        if (document.documentElement.getAttribute("data-skin") === "pixel") {
+          if (state.mode === "en" || state.mode === "zh") revealAnswer();
+          return;
+        }
+        toggleFlip(card);
+      });
     });
 
     // 中文模式默写输入框：实时视觉反馈（不阻断）

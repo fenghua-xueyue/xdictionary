@@ -28,10 +28,141 @@
 
   var els = {};
   var busy = false;
+  var wordSentence = {};     // 小写单词 → 它在故事里第一次出现的句号（卡片锚点用）
+  var WORD_INFO = null;      // 词库索引：单词 → { phonetic, meaning }
 
   /* ---------- 小工具 ---------- */
   function $(sel, root) { return (root || document).querySelector(sel); }
   function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  function reducedMotion() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  function infoOf(word) {
+    if (!WORD_INFO) {
+      WORD_INFO = {};
+      var list = window.WORDS || [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].word) WORD_INFO[list[i].word.toLowerCase()] = list[i];
+      }
+    }
+    return WORD_INFO[String(word).toLowerCase()] || null;
+  }
+
+  /* ---------- 句子切分 / 中英配对 ----------
+     模型只保证「英文正文 --- 中文对照」，不保证逐句对齐；
+     这里按句数尝试对齐，对不上就退化为「英文逐句 + 中文整段」，不丢内容。 */
+  function splitParagraphs(text) {
+    var t = String(text || "").replace(/\r/g, "").trim();
+    if (!t) return [];
+    var parts = t.split(/\n{2,}/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (parts.length === 1) {
+      var lines = t.split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      if (lines.length > 1) parts = lines;
+    }
+    return parts;
+  }
+  function splitSentences(text) {
+    var t = String(text || "").replace(/\s+/g, " ").trim();
+    if (!t) return [];
+    var m = t.match(/[^.!?]+[.!?]+["'”’)\]]?|[^.!?]+$/g) || [t];
+    return m.map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+  function splitZhSentences(text) {
+    var t = String(text || "").replace(/\s+/g, "").trim();
+    if (!t) return [];
+    var m = t.match(/[^。！？；]+[。！？；]+[”’」』]?|[^。！？；]+$/g) || [t];
+    return m.map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+  function buildPairs(en, zh) {
+    var enParas = splitParagraphs(en);
+    var zhParas = zh ? splitParagraphs(zh) : [];
+    var enSentList = enParas.map(splitSentences);
+    var zhSentList = zhParas.map(splitZhSentences);
+    var enTotal = enSentList.reduce(function (n, a) { return n + a.length; }, 0);
+    var zhTotal = zhSentList.reduce(function (n, a) { return n + a.length; }, 0);
+    var out = [];
+
+    // ① 全文句数相等 → 逐句对齐，并保留段落归属（最理想的排版）
+    if (zh && zhTotal > 0 && zhTotal === enTotal) {
+      var flat = [];
+      zhSentList.forEach(function (a) { flat = flat.concat(a); });
+      var k = 0;
+      enSentList.forEach(function (arr, pi) {
+        arr.forEach(function (s) { out.push({ en: s, zh: flat[k++] || "", para: pi }); });
+      });
+      return out;
+    }
+    // ② 兜底：英文逐句，中文整段挂在每段首句（不硬拆，保证译文完整）
+    enSentList.forEach(function (arr, pi) {
+      arr.forEach(function (s, si) {
+        out.push({ en: s, zh: si === 0 ? (zhParas[pi] || (pi === 0 ? zh : "")) : "", para: pi });
+      });
+    });
+    return out;
+  }
+
+  /* ---------- 词形匹配 ----------
+     故事里常常是 achieved / abilities 这种变形，按词干 + 常见后缀匹配，
+     命中的整段文字（含后缀）包成可点的高亮词，点击仍回到原形卡片。 */
+  function wordPattern(w) {
+    var base = String(w).toLowerCase();
+    if (base.length <= 3) return "\\b" + escapeRegExp(base) + "\\b";
+    var stem = base, suffix = "s|es|ed|d|ing|ly";
+    if (/y$/.test(base) && !/[aeiou]y$/.test(base)) {
+      stem = base.slice(0, -1);
+      suffix = "y|ies|ied|ying|ily";
+    } else if (/e$/.test(base)) {
+      stem = base.slice(0, -1);
+      suffix = "e|es|ed|ing";
+    }
+    return "\\b" + escapeRegExp(stem) + "(?:" + suffix + ")?\\b";
+  }
+  function wordMatches(text, words) {
+    var hits = [];
+    words.forEach(function (w) {
+      var re = new RegExp(wordPattern(w), "gi");
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        hits.push({ start: m.index, end: m.index + m[0].length, word: w, text: m[0] });
+        if (re.lastIndex === m.index) re.lastIndex++;
+      }
+    });
+    // 长匹配优先占位，避免短词吃掉长词的一部分；然后再按出现顺序排好
+    hits.sort(function (a, b) {
+      return (b.end - b.start) - (a.end - a.start) || a.start - b.start;
+    });
+    var taken = [], out = [];
+    hits.forEach(function (h) {
+      for (var i = 0; i < taken.length; i++) {
+        if (h.start < taken[i].end && h.end > taken[i].start) return;
+      }
+      taken.push(h);
+      out.push(h);
+    });
+    out.sort(function (a, b) { return a.start - b.start; });
+    return out;
+  }
+
+  /* ---------- 渲染：一句英文（内含可点的高亮词） ---------- */
+  function renderSentence(el, text, words, used) {
+    var hits = wordMatches(text, words);
+    var cursor = 0;
+    hits.forEach(function (h) {
+      if (h.start > cursor) el.appendChild(document.createTextNode(text.slice(cursor, h.start)));
+      var info = infoOf(h.word);
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "st-word";
+      b.dataset.word = h.word;
+      b.setAttribute("aria-label", h.word + (info && info.meaning ? "，" + info.meaning : "") + "，点击查看释义");
+      b.textContent = h.text;
+      el.appendChild(b);
+      used[h.word.toLowerCase()] = true;
+      cursor = h.end;
+    });
+    if (cursor < text.length) el.appendChild(document.createTextNode(text.slice(cursor)));
+    return hits;
+  }
 
   /* ---------- 存档（独立 key；损坏 / 非法一律按无存档处理） ---------- */
   function normalizeConfig(c) {
@@ -186,34 +317,443 @@
     return { en: full.trim(), zh: "" };
   }
 
+  /* ---------- 渲染：故事正文（句对 + 覆盖条 + 卡片锚点） ---------- */
+  /* ---------- 渲染：摊开的书（左页英文 / 右页译文，段号成对） ---------- */
+  function buildStory(story, words) {
+    var pairs = buildPairs(story.en || "", story.zh || "");
+    var used = {};
+    wordSentence = {};
+    els.body.textContent = "";
+    els.body.classList.remove("is-streaming");
+    els.body.hidden = false;
+    if (els.zhBody) {
+      els.zhBody.textContent = "";
+      els.zhBody.classList.remove("is-streaming");
+      els.zhBody.hidden = false;
+    }
+
+    // 先按段归拢：同号的英文句 / 中文句落到同一段，左右页各渲染一次
+    var groups = [], byPara = {};
+    pairs.forEach(function (pair) {
+      var g = byPara[pair.para];
+      if (!g) { g = byPara[pair.para] = { en: [], zh: [] }; groups.push(g); }
+      g.en.push(pair.en);
+      if (pair.zh) g.zh.push(pair.zh);
+    });
+
+    var no = 0;
+    groups.forEach(function (g) {
+      no++;
+      var num = (no < 10 ? "0" : "") + no;
+      var hits = [];
+
+      // 左页：英文段（整段一个 <p>，词仍是行内按钮）
+      var left = document.createElement("div");
+      left.className = "bk-para";
+      left.dataset.para = no;
+      var p = document.createElement("p");
+      p.className = "bk-en";
+      g.en.forEach(function (sent, i) {
+        if (i) p.appendChild(document.createTextNode(" "));
+        var span = document.createElement("span");
+        span.className = "bk-sent";
+        hits = hits.concat(renderSentence(span, sent, words, used));
+        p.appendChild(span);
+      });
+      var noL = document.createElement("span");
+      noL.className = "bk-no";
+      noL.setAttribute("aria-hidden", "true");
+      noL.textContent = num;
+      left.appendChild(p);
+      left.appendChild(noL);
+      els.body.appendChild(left);
+
+      // 右页：中文段
+      if (els.zhBody) {
+        var right = document.createElement("div");
+        right.className = "bk-para";
+        right.dataset.para = no;
+        var z = document.createElement("p");
+        z.className = "bk-zh";
+        z.textContent = g.zh.join("");
+        var noR = document.createElement("span");
+        noR.className = "bk-no";
+        noR.setAttribute("aria-hidden", "true");
+        noR.textContent = num;
+        right.appendChild(noR);
+        right.appendChild(z);
+        els.zhBody.appendChild(right);
+      }
+
+      hits.forEach(function (h) {
+        var k = h.word.toLowerCase();
+        if (!wordSentence[k]) wordSentence[k] = no;
+      });
+    });
+
+    // 页眉的轮次 / 日期
+    var rp = readProgress();
+    if (els.kickerRound) {
+      els.kickerRound.textContent = (rp && typeof rp.round === "number") ? "第 " + rp.round + " 轮" : "本轮";
+    }
+    if (els.kickerDate) {
+      var d = story.createdAt ? new Date(story.createdAt) : null;
+      els.kickerDate.textContent = (d && !isNaN(d.getTime()))
+        ? (d.getMonth() + 1) + " 月 " + d.getDate() + " 日"
+        : "—";
+    }
+    if (els.footRound) {
+      els.footRound.textContent = "ROUND " + (rp && typeof rp.round === "number" ? (rp.round < 10 ? "0" : "") + rp.round : "—");
+    }
+
+    // 覆盖条：20 个点，实心 = 这篇用上了
+    els.dots.textContent = "";
+    var seen = {}, list = [];
+    words.forEach(function (w) {
+      var k = String(w).toLowerCase();
+      if (w && !seen[k]) { seen[k] = true; list.push(w); }
+    });
+    var hitCount = 0;
+    list.forEach(function (w) {
+      var on = !!used[String(w).toLowerCase()];
+      if (on) hitCount++;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "st-dot" + (on ? " on" : "");
+      b.dataset.word = w;
+      b.setAttribute("role", "listitem");
+      b.title = on ? "「" + w + "」在故事里 · 点一下回到卡片" : "「" + w + "」这篇没用到";
+      b.setAttribute("aria-label", b.title);
+      els.dots.appendChild(b);
+    });
+    els.coverage.textContent = "本篇用上 " + hitCount + " / " + list.length + " 词";
+    els.meta.hidden = false;
+
+    // 角卡先摆上当前这张卡片的词
+    var cur = document.querySelector("#view-learn .card-word");
+    if (cur && cur.textContent.trim()) showDock(cur.textContent.trim());
+
+    // 排完了再量：一页装不下就收字号
+    fitPages();
+  }
+
+  /* ---------- 角卡：点正文里的词，卡上换内容，不跳转 ---------- */
+  function showDock(word) {
+    if (!els.dock || !word) return;
+    var info = infoOf(word);
+    els.dock.hidden = false;
+    var w = els.dock.querySelector(".book-dock-word");
+    var p = els.dock.querySelector(".book-dock-phon");
+    var m = els.dock.querySelector(".book-dock-mean");
+    if (w) w.textContent = word;
+    if (p) p.textContent = (info && info.phonetic) ? info.phonetic : "";
+    if (m) m.textContent = (info && info.meaning) ? info.meaning : "";
+    // 正文里同一个词可能出现在多段，全标一遍
+    var old = els.panel.querySelectorAll(".st-word.is-active");
+    for (var i = 0; i < old.length; i++) old[i].classList.remove("is-active");
+    var same = els.panel.querySelectorAll('.st-word[data-word="' + word + '"]');
+    for (var j = 0; j < same.length; j++) same[j].classList.add("is-active");
+  }
+
+  /* ---------- 段号联动：两侧同号段一起浮底，点一下可以钉住 ---------- */
+  function setHot(no, on) {
+    var nodes = els.panel.querySelectorAll('.bk-para[data-para="' + no + '"]');
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.toggle("is-hot", !!on);
+  }
+  function toggleLock(node) {
+    var no = node.dataset.para;
+    var had = node.classList.contains("is-lock");
+    var locked = els.panel.querySelectorAll(".bk-para.is-lock");
+    for (var i = 0; i < locked.length; i++) locked[i].classList.remove("is-lock");
+    if (had) return;
+    var nodes = els.panel.querySelectorAll('.bk-para[data-para="' + no + '"]');
+    for (var j = 0; j < nodes.length; j++) nodes[j].classList.add("is-lock");
+  }
+
+  /* ---------- 空态：把这一轮的词先摊在桌上（前 5 个 + 余数） ---------- */
+  function fillEmptyWords() {
+    if (!els.emptyWords) return;
+    els.emptyWords.textContent = "";
+    var words = currentRoundWords();
+    var head = words.slice(0, 5);
+    head.forEach(function (w) {
+      var s = document.createElement("span");
+      s.textContent = w;
+      els.emptyWords.appendChild(s);
+    });
+    if (words.length > head.length) {
+      var more = document.createElement("span");
+      more.className = "is-more";
+      more.textContent = "+" + (words.length - head.length) + " 词";
+      els.emptyWords.appendChild(more);
+    }
+    els.emptyWords.hidden = !head.length;
+  }
+
   function render() {
     if (!els.panel) return;
     els.gen.disabled = busy;
     if (busy) { setGenLabel(null, "生成中…"); return; }   // 生成中的面板状态由 generate() 管理
     var story = currentStoryForRound();
+    var rp = readProgress();
+    if (els.kickerRound) {
+      els.kickerRound.textContent = (rp && typeof rp.round === "number") ? "第 " + rp.round + " 轮" : "本轮";
+    }
     if (story) {
-      var words = currentRoundWords();
-      renderHighlighted(els.en, story.en, words);
-      renderHighlighted(els.zh, story.zh, words);
-      els.en.hidden = false;
-      els.zh.hidden = !story.zh;
-      els.footer.hidden = false;
+      buildStory(story, currentRoundWords());
+      if (els.teaser) {
+        var t = String(story.en || "").replace(/\s+/g, " ").trim();
+        var m = t.match(/^[^.!?]+[.!?]/);
+        els.teaser.textContent = (m ? m[0] : t).slice(0, 140);
+        els.teaser.hidden = false;
+      }
       els.empty.hidden = true;
       els.status.hidden = true;
+      els.footer.hidden = false;
       setGenLabel("i-cyclic", "重新生成");
     } else {
-      els.en.hidden = true;
-      els.zh.hidden = true;
-      els.footer.hidden = true;
+      els.body.hidden = true;
+      els.body.textContent = "";
+      els.body.classList.remove("is-streaming");
+      if (els.zhBody) { els.zhBody.hidden = true; els.zhBody.textContent = ""; }
+      if (els.dock) els.dock.hidden = true;
+      els.meta.hidden = true;
       els.empty.hidden = false;
       els.status.hidden = true;
+      els.footer.hidden = true;
+      // 空态也把页码的轮次印上，别留一个没渲染过的占位符
+      if (els.footRound) {
+        els.footRound.textContent = "ROUND " + (rp && typeof rp.round === "number" ? (rp.round < 10 ? "0" : "") + rp.round : "—");
+      }
+      if (els.coverage) els.coverage.textContent = "";
+      if (els.kickerDate) {
+        var today = new Date();
+        els.kickerDate.textContent = (today.getMonth() + 1) + " 月 " + today.getDate() + " 日";
+      }
+      if (els.teaser) { els.teaser.hidden = true; els.teaser.textContent = ""; }
+      fillEmptyWords();
+      wordSentence = {};
       setGenLabel("i-spark", "生成本轮故事");
     }
+    syncCardChip();
+  }
+
+  /* ---------- 卡片上的故事锚点 ---------- */
+  function syncCardChip() {
+    var chip = document.querySelector("#view-learn .card-story");
+    if (!chip) return;
+    var wordEl = document.querySelector("#view-learn .card-word");
+    var word = wordEl ? wordEl.textContent.trim().toLowerCase() : "";
+    var sent = word ? wordSentence[word] : 0;
+    var show = !!currentStoryForRound() && !!sent;
+    chip.hidden = !show;
+    if (!show) return;
+    chip.dataset.word = word;
+    chip.dataset.sent = sent;
+    chip.querySelector(".card-story-label").textContent = "故事第 " + sent + " 段";
+    chip.title = "翻开故事，跳到「" + word + "」出现的那一段";
+    chip.setAttribute("aria-label", chip.title);
+  }
+
+  // 卡片 → 故事：翻开书，把那一页的那一段带到眼前并闪一下
+  function focusPara(no) {
+    var nodes = els.panel.querySelectorAll('.bk-para[data-para="' + no + '"]');
+    if (!nodes.length) return;
+    var learnView = document.getElementById("view-learn");
+    if (learnView && !learnView.classList.contains("story-open")) {
+      var expand = document.getElementById("btn-generate");
+      if (expand) expand.click();
+    }
+    setTimeout(function () {
+      if (nodes[0].scrollIntoView) {
+        nodes[0].scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+      }
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        n.classList.remove("is-pin");
+        void n.offsetWidth;
+        n.classList.add("is-pin");
+        clearTimeout(n._pinTimer);
+        n._pinTimer = setTimeout(function (el) {
+          return function () { el.classList.remove("is-pin"); };
+        }(n), 1900);
+      }
+    }, 80);
+  }
+
+  /* ---------- 把一页排满 ----------
+     书是定尺纸，正文既不能溢出去，也别只写半页。
+     两个连续旋钮：字号倍率 --bk-scale 与行距 --lh，先定字号、再定行距：
+       1. 基础字号下最小行距都装不下 → 收字号，但先保住舒适行距（1.66）；
+       2. 基础字号下最大行距还填不满 → 行距先放到很开（诗歌体），还不够才放字号；
+       3. 定完字号，行距在上下限之间插值，把内容精确顶到 target
+          （页高的 94.5% —— 上下各留一两行空白，正是要的效果）；
+       4. 字号收到底仍溢出 → 才允许页内滚动（两侧同步，见 syncScroll）；
+          两个旋钮都到上限仍填不满（两三行的短文）→ 版心内垂直居中。 */
+  var LH_MIN = 1.44;        // 长文允许压到这里（正常书籍行距），再紧就不像书了
+  var LH_PREF = 1.66;       // 长文也尽量守住的舒适行距：先缩字、后压行距
+  var LH_MAX_EN = 2.42, LH_HI_EN = 3.0;   // 上限 / 短文可放到「诗歌体」
+  var LH_MAX_ZH = 2.7, LH_HI_ZH = 3.2;    // 中文行短，本来就可以更开
+  var LH_TARGET = 0.945;    // 正文占页高的比例：上方留一点、下方留一点
+  var S_MIN_EN = 0.66, S_MAX_EN = 1.20;   // 18px → 11.9px ~ 21.6px（正文不超过标题 22px）
+  var S_MIN_ZH = 0.72, S_MAX_ZH = 1.44;   // 15px → 10.8px ~ 21.6px
+  var CENTER_BELOW = 0.78;  // 撑到上限还不到这个填充率 → 居中，别贴着页顶
+  var MIN_FILL = 0.80;      // 最大行距下已经填到这么多，就算「留够一两行」了，不再放大
+
+  function pageOf(el) {
+    return el && el.closest ? el.closest(".book-page") : null;
+  }
+  function setLh(page, v) {
+    if (page) page.style.setProperty("--lh", Number(v).toFixed(3));
+  }
+  function setScale(page, v) {
+    if (page) page.style.setProperty("--bk-scale", Number(v).toFixed(3));
+  }
+  /* 正文的真实高度。不能用 scrollHeight —— 内容比容器短时它是「容器高度」，
+     永远测不到短内容到底占了多高（这坑踩过）。改成量最后一段的底边：
+     offsetTop / offsetHeight 都是布局像素，和 clientHeight 同量纲，
+     也不会被书的 scale 影响。 */
+  function contentHeight(el) {
+    var pars = el.querySelectorAll(".bk-para");
+    if (!pars.length) return 0;
+    var last = pars[pars.length - 1];
+    var padBottom = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+    return (last.offsetTop + last.offsetHeight) - el.offsetTop + padBottom;
+  }
+  function measureAt(el, page, lh) {
+    setLh(page, lh);
+    return contentHeight(el);
+  }
+  /* 在 [lo, hi] 上二分找「f(s) ≤ goal」的最大 s（f 单调递增）。
+     高度对字号的响应大致是平方关系，直接解方程也行，但字宽/换行位置不是
+     连续的，二分比公式稳 —— 7 次就精确到 1% 以内。 */
+  function bisect(f, lo, hi, goal) {
+    if (f(lo) > goal) return lo;
+    if (f(hi) <= goal) return hi;
+    for (var i = 0; i < 7; i++) {
+      var mid = (lo + hi) / 2;
+      if (f(mid) <= goal) lo = mid; else hi = mid;
+    }
+    return lo;
+  }
+
+  // 返回 { fill: 实际填充率, over: 收到最小字号仍溢出（要滚动） }
+  function fitPage(el, page, o) {
+    if (!el || el.hidden || !el.clientHeight) return { fill: 1, over: false };
+    if (!el.querySelector(".bk-para")) return { fill: 1, over: false };   // 空态不参与排版
+    var avail = el.clientHeight;
+    var target = avail * LH_TARGET;
+    var lhTop = o.lhMax;
+    var at = function (lh) {
+      return function (v) { setScale(page, v); return measureAt(el, page, lh); };
+    };
+
+    setScale(page, 1);
+    var hMin = measureAt(el, page, LH_MIN);
+    var hMax = measureAt(el, page, o.lhMax);
+    var s = 1;
+    if (hMin > target) {
+      /* 太长：先保住舒适行距（LH_PREF），从字号里找空间 —— 字小一点但行间透气，
+         比字大一点却挤成一坨好读。字号收到下限还不够，才回头压行距。 */
+      s = bisect(at(LH_PREF), o.sMin, 1, target);
+    } else if (hMax < target * MIN_FILL) {
+      /* 太短：先把行距放到「很开」（诗歌体那种疏排），还不够才放大字号。
+         字号封在标题以下 —— 正文比标题大，版面就散了。 */
+      lhTop = o.lhHi;
+      if (measureAt(el, page, lhTop) < target) s = bisect(at(lhTop), 1, o.sMax, target);
+    }
+
+    setScale(page, s);
+    var hm = measureAt(el, page, LH_MIN);
+    if (hm > target) {                 // 收到下限还装不下：行距压到最小，交给滚动
+      setLh(page, LH_MIN);
+      var hh = contentHeight(el);
+      return { fill: hh / avail, over: hh > avail + 1 };
+    }
+    var hM = measureAt(el, page, lhTop);
+    var lh = hM <= target
+      ? lhTop
+      : LH_MIN + (target - hm) * (lhTop - LH_MIN) / Math.max(1, hM - hm);
+    setLh(page, Math.max(LH_MIN, Math.min(lhTop, lh)));
+    return { fill: contentHeight(el) / avail, over: false };
+  }
+
+  function fitPages() {
+    if (!els.book) return;
+    var book = els.book;
+    // 像素皮肤把书退化成单栏直读，没有定尺页，不参与排版
+    if (document.documentElement.getAttribute("data-skin") === "pixel") return;
+    // 窄屏是单页自然长高（英文在上、译文在下），没有「一页多高」这回事
+    if (window.innerWidth < 1024) {
+      [els.body, els.zhBody].forEach(function (el) {
+        if (!el) return;
+        el.classList.remove("is-scroll");
+        var p = pageOf(el);
+        if (!p) return;
+        p.style.removeProperty("--lh");
+        p.style.removeProperty("--bk-scale");
+      });
+      els.book.classList.remove("is-center");
+      return;
+    }
+    if (book.clientHeight < 100) return;   // 合着的时候不量
+    var en = els.body, zh = els.zhBody;
+    var enPage = pageOf(en), zhPage = pageOf(zh);
+    // 上一轮的渐隐内边距 / 居中都改变布局，先摘掉再量
+    if (en) en.classList.remove("is-scroll");
+    if (zh) zh.classList.remove("is-scroll");
+    book.classList.remove("is-center");
+
+    var rEn = fitPage(en, enPage, { lhMax: LH_MAX_EN, lhHi: LH_HI_EN, sMin: S_MIN_EN, sMax: S_MAX_EN });
+    var rZh = zh
+      ? fitPage(zh, zhPage, { lhMax: LH_MAX_ZH, lhHi: LH_HI_ZH, sMin: S_MIN_ZH, sMax: S_MAX_ZH })
+      : { fill: 1, over: false };
+
+    // 两侧有一侧怎么撑都填不满（多半是短译文），两页一起居中，跨页才对称
+    if (!rEn.over && !rZh.over && Math.min(rEn.fill, rZh.fill) < CENTER_BELOW) {
+      book.classList.add("is-center");
+    }
+    /* 滚动标记只认 fit 的结论：居中会把整块文字下推，此时再量 scrollHeight
+       会被这段位移误判成「装不下」（踩过）。 */
+    if (en) en.classList.toggle("is-scroll", !!rEn.over);
+    if (zh) zh.classList.toggle("is-scroll", !!rZh.over);
+  }
+
+  var syncingScroll = false;
+  function syncScroll(from, to) {
+    if (syncingScroll || !from || !to) return;
+    if (from.scrollHeight <= from.clientHeight + 1) return;
+    if (to.scrollHeight <= to.clientHeight + 1) return;
+    syncingScroll = true;
+    // 全程用 offsetTop / offsetHeight（布局像素），不能用 getBoundingClientRect：
+    // 书是 scale 过的，rect 是缩放后的视觉像素，跟 scrollTop 不是一个量纲（踩过）。
+    var fromTop = from.offsetTop;
+    var scroll = from.scrollTop;
+    var pars = from.querySelectorAll(".bk-para");
+    // 找「卡在页顶」的那一段，算出滚过这一段的多大比例；
+    // 对页同号段按同样比例落位 —— 两页段落高度不同，纯像素对齐会越滚越偏。
+    for (var i = 0; i < pars.length; i++) {
+      var top = pars[i].offsetTop - fromTop;
+      var h = pars[i].offsetHeight;
+      if (top + h <= scroll + 1) continue;
+      var local = (scroll - top) / Math.max(1, h);
+      if (local < 0) local = 0;
+      if (local > 1) local = 1;
+      var mate = to.querySelector('.bk-para[data-para="' + pars[i].dataset.para + '"]');
+      if (mate) {
+        to.scrollTop = (mate.offsetTop - to.offsetTop) + local * mate.offsetHeight;
+      }
+      break;
+    }
+    syncingScroll = false;
   }
 
   function fail(msg) {
-    els.en.hidden = true;
-    els.zh.hidden = true;
+    els.body.hidden = true;
+    els.body.textContent = "";
+    els.body.classList.remove("is-streaming");
+    if (els.zhBody) { els.zhBody.hidden = true; els.zhBody.textContent = ""; }
+    els.meta.hidden = true;
     els.footer.hidden = true;
     els.empty.hidden = true;
     setStatus(msg, true);
@@ -231,8 +771,10 @@
     return [
       { role: "system", content: "你是英语老师，用学生当天背的单词写一篇短文，英文约120词，再给中文对照。" },
       { role: "user", content:
-        "今天的单词：" + words.join(", ") + "。请写一篇连贯小故事，尽量包含所有这些词；" +
-        "个别难组合的词可省略并在文末说明。附中文对照。\n" +
+        "今天的单词：" + words.join(", ") + "。请写一篇连贯小故事，尽量包含所有这些词（可以用它们的变形）；" +
+        "个别难组合的词可省略并在文末说明。\n" +
+        "排版要求：英文写成 2~3 段，段与段之间空一行；中文对照用同样的分段，并且逐句对应，" +
+        "中文的句子数量尽量与英文一致（方便逐句对照阅读）。\n" +
         "输出格式要求：先输出英文故事正文；然后单独一行输出 ---；最后另起一段输出中文对照。" +
         "除此之外不要输出任何别的文字或标题。" }
     ];
@@ -267,13 +809,14 @@
     setGenLabel(null, "生成中…");
     els.empty.hidden = true;
     els.footer.hidden = true;
-    els.zh.hidden = true;
-    els.zh.textContent = "";
-    els.en.hidden = false;
-    els.en.textContent = "";
+    els.meta.hidden = true;
+    els.body.hidden = false;
+    els.body.textContent = "";
+    els.body.classList.add("is-streaming");
+    if (els.zhBody) { els.zhBody.hidden = true; els.zhBody.textContent = ""; }
     setStatus("正在生成，请稍候…", false);
 
-    // 像素风下面板默认收着 → 借 app.js 的展开按钮打开（纯 DOM 行为，不碰状态）
+    // 面板默认收着（三款皮肤都收）→ 借 app.js 的展开按钮打开（纯 DOM 行为，不碰状态）
     var learnView = document.getElementById("view-learn");
     var btnExpand = document.getElementById("btn-generate");
     if (learnView && btnExpand && !learnView.classList.contains("story-open")) btnExpand.click();
@@ -325,8 +868,7 @@
           } catch (e) { /* 忽略无法解析的行 */ }
         }
         var live = splitLive(full);
-        els.en.textContent = live.en;
-        if (live.zh) { els.zh.hidden = false; els.zh.textContent = live.zh; }
+        els.body.textContent = live.en + (live.zh ? "\n\n" + live.zh : "");
         setStatus("正在生成…（已收到 " + got + " 字）", false);
       }
 
@@ -443,6 +985,7 @@
   /* ---------- 事件 ---------- */
   function bind() {
     els.gen.addEventListener("click", generate);
+    if (els.emptyCta) els.emptyCta.addEventListener("click", generate);
     els.cfgBtn.addEventListener("click", function () { openConfig(""); });
     els.histBtn.addEventListener("click", openHistory);
     els.cfgCancel.addEventListener("click", closeConfig);
@@ -457,6 +1000,58 @@
         if (!els.histModal.hasAttribute("hidden")) closeHistory();
       }
     });
+
+    // 故事 → 角卡：点正文里的高亮词，右上角的卡换内容（不跳转、不滚动）
+    var onWord = function (e) {
+      var w = e.target.closest ? e.target.closest(".st-word") : null;
+      if (!w) return;
+      e.stopPropagation();
+      showDock(w.dataset.word);
+    };
+    els.body.addEventListener("click", onWord);
+    if (els.zhBody) els.zhBody.addEventListener("click", onWord);
+
+    // 覆盖点 → 卡片（这里仍然跳卡片：它本来就是「回到那张卡」的入口）
+    els.dots.addEventListener("click", function (e) {
+      var d = e.target.closest ? e.target.closest(".st-dot") : null;
+      if (!d) return;
+      document.dispatchEvent(new CustomEvent("xd:goto-word", { detail: { word: d.dataset.word } }));
+    });
+
+    // 段号 / 段落联动：悬停两侧同号段一起浮底；点一下钉住，再点取消
+    els.panel.addEventListener("mouseover", function (e) {
+      var p = e.target.closest ? e.target.closest(".bk-para") : null;
+      if (!p || p.contains(e.relatedTarget)) return;
+      setHot(p.dataset.para, true);
+    });
+    els.panel.addEventListener("mouseout", function (e) {
+      var p = e.target.closest ? e.target.closest(".bk-para") : null;
+      if (!p || p.contains(e.relatedTarget)) return;
+      setHot(p.dataset.para, false);
+    });
+    els.panel.addEventListener("click", function (e) {
+      if (e.target.closest && e.target.closest(".st-word")) return;
+      var p = e.target.closest ? e.target.closest(".bk-para") : null;
+      if (p) toggleLock(p);
+    });
+
+    // 卡片 → 故事
+    var chip = document.querySelector("#view-learn .card-story");
+    if (chip) chip.addEventListener("click", function () {
+      if (chip.dataset.sent) focusPara(Number(chip.dataset.sent));
+    });
+
+    // 长故事：两页滚动保持一致（比例对不齐，按段号对齐）
+    if (els.zhBody) {
+      els.body.addEventListener("scroll", function () { syncScroll(els.body, els.zhBody); });
+      els.zhBody.addEventListener("scroll", function () { syncScroll(els.zhBody, els.body); });
+    }
+
+    // 书翻开 / 视口变了 → 重新量一次要不要收字号（app.js 发的事件）
+    // 用 setTimeout 而不是 rAF：rAF 要等一帧，标签页在后台 / 无头截图时可能被饿死
+    document.addEventListener("xd:book-open", function () {
+      setTimeout(fitPages, 0);
+    });
   }
 
   /* ---------- 换轮感知 ---------- */
@@ -468,14 +1063,35 @@
       .observe(badge, { childList: true, characterData: true, subtree: true });
   }
 
+  // 换词后卡片顶部的「故事第 N 句」要跟着换 → 盯着单词节点（与 sword.js 同一手法）
+  function watchCard() {
+    var wordEl = document.querySelector("#view-learn .card-word");
+    if (!wordEl || typeof MutationObserver === "undefined") return;
+    new MutationObserver(function () { syncCardChip(); })
+      .observe(wordEl, { childList: true, characterData: true, subtree: true });
+  }
+
   /* ---------- 初始化 ---------- */
   function init() {
     els.panel = $("#view-learn .story-panel");
     if (!els.panel) return;   // 非 study 页面（如首页）不干活
     els.empty = $(".story-empty", els.panel);
+    els.emptyCta = $("#btn-story-empty");
+    els.emptyWords = $(".story-empty-words", els.panel);
     els.status = $(".story-status", els.panel);
-    els.en = $(".story-en", els.panel);
-    els.zh = $(".story-zh", els.panel);
+    els.body = $(".story-body-en", els.panel) || $(".story-body", els.panel);
+    els.zhBody = $(".story-body-zh", els.panel);
+    els.dock = $(".book-dock", els.panel);
+    els.book = $(".book", els.panel);
+    els.footRound = $(".book-foot-round", els.panel);
+    els.bookRibbon = document.getElementById("btn-book-open");
+    els.bookClose = document.getElementById("btn-book-close");
+    els.meta = $(".story-meta", els.panel);
+    els.dots = $(".story-dots", els.panel);
+    els.coverage = $(".story-meta-count", els.panel);
+    els.kickerRound = $(".story-round-label", els.panel);
+    els.kickerDate = $(".story-date", els.panel);
+    els.teaser = $(".story-teaser", els.panel);
     els.footer = $(".story-footer", els.panel);
     els.gen = $("#btn-story-gen");
     els.cfgBtn = $("#btn-story-config");
@@ -490,9 +1106,10 @@
     els.histModal = $("#story-history-modal");
     els.histList = $("#story-history-list");
     els.histClose = $("#btn-history-close");
-    if (!els.gen || !els.cfgModal || !els.histModal) return;
+    if (!els.gen || !els.cfgModal || !els.histModal || !els.body || !els.dots) return;
     bind();
     watchRound();
+    watchCard();
     render();
   }
 

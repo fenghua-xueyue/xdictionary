@@ -46,6 +46,8 @@
     <symbol id="i-gear" viewBox="0 0 24 24"><path d="M2 6h4"/><path d="M12 6h10"/><path d="M2 12h12"/><path d="M20 12h2"/><path d="M2 18h6"/><path d="M14 18h8"/><circle cx="9" cy="6" r="2.2"/><circle cx="17" cy="12" r="2.2"/><circle cx="11" cy="18" r="2.2"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 21h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></symbol>
   </svg>
   <div id="stage">
     <div class="px-bg" aria-hidden="true">
@@ -102,25 +104,41 @@
           <span class="px-index" aria-hidden="true"></span>
           <span class="px-eyebrow" aria-hidden="true">CET-4 高频词</span>
           <span class="px-hint-zh" aria-hidden="true">输入后按回车提交 · 答对自动翻到下一个词</span>
+          <!-- 叠卡哑层：静止时被卡面 1:1 盖住（不可见）；背单词模式切词时，
+               顶层纸随正文一起抽走 / 抬回，下面两张从卡底露头，读作「一叠待背的词」。 -->
+          <span class="card-deck" aria-hidden="true"><span class="card-deck-2"></span><span class="card-deck-1"></span></span>
+          <span class="card-flyer" aria-hidden="true"></span>
           <button class="card-mark" type="button" aria-pressed="false" aria-label="标记这个单词" title="标记这个单词">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
               <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           </button>
           <button class="card-speaker" type="button" aria-label="朗读这个单词" data-page-node-id="OpwqFQ6DCUNbEmbjLUmDMz"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-sound-on"></use></svg></button>
-          <div class="word-stack">
-            <div class="card-word" data-page-node-id="0jJie4RnRnHj5rI3ZTzREk"></div>
-            <div class="card-word-ghost" aria-hidden="true"></div>
-          </div>
-          <div class="card-phonetic" data-page-node-id="7CUycCGHjuVK9yZ8GYFKYR"></div>
-          <div class="card-meaning" data-page-node-id="2pW1K8I2xkPoyor8VcYI64"></div>
-          <div class="answer-row" data-page-node-id="8t3dCzaN0669GMNZ1ojLE0">
-            <button class="btn btn-outline btn-show-answer" data-page-node-id="zCVGddCdqhov0qB3rWA9aE">显示中文释义</button>
+          <!-- 词 ↔ 故事的锚点：本轮故事里出现过这个词时浮现，点一下跳到故事里那一句 -->
+          <button class="card-story" type="button" hidden>
+            <svg class="svg-icon" aria-hidden="true" width="13" height="13"><use href="#i-book"></use></svg><span class="card-story-label">故事里</span>
+          </button>
+          <div class="card-flip-inner">
+            <div class="card-face card-front">
+              <div class="word-stack">
+                <div class="card-word" data-page-node-id="0jJie4RnRnHj5rI3ZTzREk"></div>
+                <div class="card-word-ghost" aria-hidden="true"></div>
+              </div>
+              <div class="card-phonetic" data-page-node-id="7CUycCGHjuVK9yZ8GYFKYR"></div>
+            </div>
+            <div class="card-face card-back">
+              <div class="card-meaning" data-page-node-id="2pW1K8I2xkPoyor8VcYI64"></div>
+              <span class="card-underline" aria-hidden="true"></span>
+            </div>
           </div>
           <div class="write-row" data-page-node-id="pODEZWT2XEvGQGstCJd8At">
             <input type="text" class="write-input" placeholder="在此输入英文单词…" autocomplete="off" data-page-node-id="YbyW3qCXIyF0UVAxWcYXWf" />
-            <button class="btn btn-outline btn-show-answer" data-page-node-id="hKhp6r08ZZXgkp8f5CL56z">显示英文单词</button>
           </div>
+          <!-- 合着的书：整本藏在卡片下面，只从四边露出一圈，右侧垂一条书签丝带 -->
+          <span class="book-under" aria-hidden="true"></span>
+          <button class="book-ribbon" id="btn-book-open" type="button" aria-label="翻开今日故事" title="翻开今日故事">
+            <span>故事</span>
+          </button>
         </div>
 
         <button class="nav nav-right" id="nav-next-learn" aria-label="下一个" data-page-node-id="4OlcvaIKuKkEeBtS7lQE85"><span class="std-label">›</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#6FE0D0"/><rect x="15" y="6" width="9" height="6" fill="#A6F2E6"/><polygon points="15,2 24,2 19.5,0" fill="#6FE0D0"/><rect x="8" y="52" width="23" height="6" fill="#2B6B63"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#6FE0D0"/></svg></button>
@@ -142,22 +160,83 @@
         </button>
       </div>
 
+      <!-- ===== 故事：一本摊开的书 =====
+           合着时这整块不出现，只有卡片下缘的一条丝带；翻开后书占中央，
+           左页英文、右页译文，卡片缩成右上角的角卡。 -->
       <article class="story-panel" data-page-node-id="mjyQDDu2sDL4dVZzdsMOQm">
-        <div class="story-head">
-          <div class="story-head-text">
-            <h3 class="story-title" data-page-node-id="X2NzCOjLjAQJwW2wDt0451">今日小故事 · 中英对照</h3>
-            <p class="story-subtitle" data-page-node-id="Wcf9SKBFI1pyIKpr3T3QtV">用刚才这 20 个词写成，英文约 120 词，附中文对照</p>
-          </div>
-          <div class="story-tools">
-            <button class="btn btn-outline btn-story-gen" id="btn-story-gen" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-spark"></use></svg> 生成本轮故事</button>
-            <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-book"></use></svg></button>
-            <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-gear"></use></svg></button>
-          </div>
+
+        <div class="book-tools">
+          <button class="btn btn-outline btn-story-gen" id="btn-story-gen" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-spark"></use></svg> 生成本轮故事</button>
+          <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-book"></use></svg></button>
+          <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-gear"></use></svg></button>
+          <button class="btn-book-back" id="btn-book-close" type="button" title="合上书，回到单词卡片（Esc）">
+            <svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-back"></use></svg>返回单词
+          </button>
         </div>
-        <p class="story-empty">这一轮还没有故事。点右上角「生成本轮故事」，AI 会把这 20 个词串成一篇小短文。</p>
+
+        <div class="book-stage">
+        <div class="book">
+
+          <!-- 左页：英文原文 -->
+          <section class="book-page book-page-left">
+            <p class="story-kicker">
+              <span class="story-kicker-rule" aria-hidden="true"></span>STORY
+              <span class="story-kicker-sep" aria-hidden="true">·</span>
+              <span class="story-round-label">第 1 轮</span>
+              <span class="story-kicker-sep" aria-hidden="true">·</span>
+              <span class="story-date">—</span>
+            </p>
+            <h3 class="story-title" data-page-node-id="X2NzCOjLjAQJwW2wDt0451">今日小故事</h3>
+            <span class="book-rule" aria-hidden="true"></span>
+
+            <!-- 正文由 story.js 按段渲染：一段一行，段号贴中缝 -->
+            <div class="story-body story-body-en" data-page-node-id="WJs2mldxisQEptBOH91qv5" hidden></div>
+
+            <div class="story-empty">
+              <div class="story-empty-words" aria-hidden="true"></div>
+              <span class="story-empty-title">这一轮还没有故事</span>
+              <span class="story-empty-desc">让 AI 把这 20 个词串成一篇 120 词的小短文。每个词都会在文中被标出来，读的时候点一下就能查它的意思。</span>
+              <button class="btn btn-primary story-empty-cta" id="btn-story-empty" type="button">
+                <svg class="btn-icon svg-icon" aria-hidden="true" width="16" height="16"><use href="#i-spark"></use></svg> 生成本轮故事
+              </button>
+            </div>
+
+            <p class="book-foot">
+              <span class="book-foot-round">ROUND 01</span>
+              <span class="book-foot-page">01</span>
+            </p>
+          </section>
+
+          <!-- 右页：译文 -->
+          <section class="book-page book-page-right">
+            <p class="book-page-label">译文</p>
+            <span class="book-rule" aria-hidden="true"></span>
+            <div class="story-body story-body-zh" hidden></div>
+
+            <p class="book-foot">
+              <span class="book-foot-page">02</span>
+              <span class="story-meta-count cov"></span>
+            </p>
+          </section>
+
+          <!-- 角卡：搁在书的右上角，半悬在书口外 -->
+          <aside class="book-dock" hidden aria-live="polite">
+            <span class="book-dock-hint">点词换卡</span>
+            <span class="book-dock-word"></span>
+            <span class="book-dock-phon"></span>
+            <span class="book-dock-mean"></span>
+          </aside>
+
+        </div>
+        </div>
+
         <p class="story-status" role="status" aria-live="polite" hidden></p>
-        <p class="story-en" data-page-node-id="WJs2mldxisQEptBOH91qv5" hidden></p>
-        <p class="story-zh" data-page-node-id="e2Y2ZBszgxhJHR5aUdQSe3" hidden></p>
+        <!-- 词汇覆盖条：20 个点 = 本轮 20 个词，实心=故事里用上了 -->
+        <div class="story-meta" hidden>
+          <span class="story-meta-label">故事用上</span>
+          <div class="story-dots" role="list" aria-label="本轮单词在故事里的覆盖情况"></div>
+        </div>
+
         <p class="story-footer" data-page-node-id="3hhfp44uWpFqSTzuS1KwOb" hidden>已尽量包含全部 20 个词；个别难组合的词已省略。</p>
       </article>
     </section>
@@ -185,24 +264,31 @@
           <span class="px-index" aria-hidden="true"></span>
           <span class="px-eyebrow" aria-hidden="true">CET-4 高频词</span>
           <span class="px-hint-zh" aria-hidden="true">输入后按回车提交 · 答对自动翻到下一个词</span>
+          <!-- 叠卡哑层：静止时被卡面 1:1 盖住（不可见）；背单词模式切词时，
+               顶层纸随正文一起抽走 / 抬回，下面两张从卡底露头，读作「一叠待背的词」。 -->
+          <span class="card-deck" aria-hidden="true"><span class="card-deck-2"></span><span class="card-deck-1"></span></span>
+          <span class="card-flyer" aria-hidden="true"></span>
           <button class="card-mark" type="button" aria-pressed="false" aria-label="标记这个单词" title="标记这个单词">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
               <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           </button>
           <button class="card-speaker" type="button" aria-label="朗读这个单词" data-page-node-id="Vo3dDBP5DEXyas4v1vNkQ9"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-sound-on"></use></svg></button>
-          <div class="word-stack">
-            <div class="card-word" data-page-node-id="onsRxwTJ3N2L8YtKoLRFNh"></div>
-            <div class="card-word-ghost" aria-hidden="true"></div>
-          </div>
-          <div class="card-phonetic" data-page-node-id="pPfGQaa4oYPA3d4T794hzc"></div>
-          <div class="card-meaning" data-page-node-id="TEx80AuMEfDCwK1Q0dL4MF"></div>
-          <div class="answer-row" data-page-node-id="Vg2nAsaLOTJagrSYn1folZ">
-            <button class="btn btn-outline btn-show-answer" data-page-node-id="x49Q8b3o5MEpIBLll7nACg">显示中文释义</button>
+          <div class="card-flip-inner">
+            <div class="card-face card-front">
+              <div class="word-stack">
+                <div class="card-word" data-page-node-id="onsRxwTJ3N2L8YtKoLRFNh"></div>
+                <div class="card-word-ghost" aria-hidden="true"></div>
+              </div>
+              <div class="card-phonetic" data-page-node-id="pPfGQaa4oYPA3d4T794hzc"></div>
+            </div>
+            <div class="card-face card-back">
+              <div class="card-meaning" data-page-node-id="TEx80AuMEfDCwK1Q0dL4MF"></div>
+              <span class="card-underline" aria-hidden="true"></span>
+            </div>
           </div>
           <div class="write-row" data-page-node-id="zf4aYQkAXGFVR2f3BbdTEs">
             <input type="text" class="write-input" placeholder="在此输入英文单词…" autocomplete="off" data-page-node-id="5PWlwcBZlIhKJDt402dtQ6" />
-            <button class="btn btn-outline btn-show-answer" data-page-node-id="frMzCS54yIo7hmTGZBDllj">显示英文单词</button>
           </div>
         </div>
 
