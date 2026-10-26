@@ -38,6 +38,7 @@
     return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
   function infoOf(word) {
+    var key = String(word).toLowerCase();
     if (!WORD_INFO) {
       WORD_INFO = {};
       var list = window.WORDS || [];
@@ -45,7 +46,46 @@
         if (list[i] && list[i].word) WORD_INFO[list[i].word.toLowerCase()] = list[i];
       }
     }
-    return WORD_INFO[String(word).toLowerCase()] || null;
+    if (WORD_INFO[key]) return WORD_INFO[key];
+    // 自定义词库兜底：四级词库里没有的词，去 BANKS 里找（找到就缓存）
+    if (window.BANKS) {
+      var bank = BANKS.bankOfWord(key);
+      if (bank) {
+        var entries = BANKS.entriesOf(bank);
+        for (var j = 0; j < entries.length; j++) {
+          if (entries[j] && entries[j].word === key) {
+            WORD_INFO[key] = entries[j];
+            return entries[j];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /* ---------- 标记状态：从 app.js 拉当前模式的标记清单（同步应答） ---------- */
+  var markedWords = {};
+  function markSnapshot() {
+    var snap = { list: null };
+    document.dispatchEvent(new CustomEvent("xd:marks-snapshot", { detail: snap }));
+    markedWords = {};
+    (snap.list || []).forEach(function (w) { if (w) markedWords[String(w).toLowerCase()] = true; });
+  }
+  function applyMarkedClasses() {
+    var nodes = els.panel.querySelectorAll(".st-word, .st-any");
+    for (var i = 0; i < nodes.length; i++) {
+      var dw = nodes[i].dataset.word;
+      nodes[i].classList.toggle("is-marked", !!(dw && markedWords[dw.toLowerCase()]));
+    }
+  }
+  function setMarkedState(word, marked) {
+    var key = String(word).toLowerCase();
+    if (marked) markedWords[key] = true; else delete markedWords[key];
+    var nodes = els.panel.querySelectorAll(".st-word, .st-any");
+    for (var i = 0; i < nodes.length; i++) {
+      var dw = nodes[i].dataset.word;
+      if (dw && dw.toLowerCase() === key) nodes[i].classList.toggle("is-marked", !!marked);
+    }
   }
 
   /* ---------- 句子切分 / 中英配对 ----------
@@ -143,23 +183,37 @@
     return out;
   }
 
-  /* ---------- 渲染：一句英文（内含可点的高亮词） ---------- */
+  /* ---------- 渲染：一句英文（所有词都可点：本轮词=按钮高亮，其余=普通词） ---------- */
   function renderSentence(el, text, words, used) {
     var hits = wordMatches(text, words);
-    var cursor = 0;
-    hits.forEach(function (h) {
-      if (h.start > cursor) el.appendChild(document.createTextNode(text.slice(cursor, h.start)));
-      var info = infoOf(h.word);
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "st-word";
-      b.dataset.word = h.word;
-      b.setAttribute("aria-label", h.word + (info && info.meaning ? "，" + info.meaning : "") + "，点击查看释义");
-      b.textContent = h.text;
-      el.appendChild(b);
-      used[h.word.toLowerCase()] = true;
-      cursor = h.end;
-    });
+    var hitByStart = {};
+    hits.forEach(function (h) { hitByStart[h.start] = h; });
+    var re = /[A-Za-z][A-Za-z'’-]*/g;
+    var m, cursor = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > cursor) el.appendChild(document.createTextNode(text.slice(cursor, m.index)));
+      var h = hitByStart[m.index];
+      if (h && h.text === m[0]) {
+        // 本轮 20 词之一：保留原有的按钮 / 荧光带 / 角卡行为
+        var info = infoOf(h.word);
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "st-word" + (markedWords[h.word.toLowerCase()] ? " is-marked" : "");
+        b.dataset.word = h.word;
+        b.setAttribute("aria-label", h.word + (info && info.meaning ? "，" + info.meaning : "") + "，单击看释义，双击标记");
+        b.textContent = h.text;
+        el.appendChild(b);
+        used[h.word.toLowerCase()] = true;
+      } else {
+        // 普通词：同样可点出角卡；双击标记 / 取消标记
+        var s = document.createElement("span");
+        s.className = "st-any" + (markedWords[m[0].toLowerCase()] ? " is-marked" : "");
+        s.dataset.word = m[0].toLowerCase();
+        s.textContent = m[0];
+        el.appendChild(s);
+      }
+      cursor = m.index + m[0].length;
+    }
     if (cursor < text.length) el.appendChild(document.createTextNode(text.slice(cursor)));
     return hits;
   }
@@ -320,6 +374,7 @@
   /* ---------- 渲染：故事正文（句对 + 覆盖条 + 卡片锚点） ---------- */
   /* ---------- 渲染：摊开的书（左页英文 / 右页译文，段号成对） ---------- */
   function buildStory(story, words) {
+    markSnapshot();   // 先拿当前模式的标记清单，渲染时直接带上 is-marked
     var pairs = buildPairs(story.en || "", story.zh || "");
     var used = {};
     wordSentence = {};
@@ -449,9 +504,9 @@
     if (p) p.textContent = (info && info.phonetic) ? info.phonetic : "";
     if (m) m.textContent = (info && info.meaning) ? info.meaning : "";
     // 正文里同一个词可能出现在多段，全标一遍
-    var old = els.panel.querySelectorAll(".st-word.is-active");
+    var old = els.panel.querySelectorAll(".st-word.is-active, .st-any.is-active");
     for (var i = 0; i < old.length; i++) old[i].classList.remove("is-active");
-    var same = els.panel.querySelectorAll('.st-word[data-word="' + word + '"]');
+    var same = els.panel.querySelectorAll('.st-word[data-word="' + word + '"], .st-any[data-word="' + word + '"]');
     for (var j = 0; j < same.length; j++) same[j].classList.add("is-active");
   }
 
@@ -1001,15 +1056,35 @@
       }
     });
 
-    // 故事 → 角卡：点正文里的高亮词，右上角的卡换内容（不跳转、不滚动）
+    // 故事 → 角卡：点正文里的词（本轮高亮词或普通词），右上角的卡换内容
     var onWord = function (e) {
-      var w = e.target.closest ? e.target.closest(".st-word") : null;
+      var w = e.target.closest ? e.target.closest(".st-word, .st-any") : null;
       if (!w) return;
       e.stopPropagation();
       showDock(w.dataset.word);
     };
     els.body.addEventListener("click", onWord);
     if (els.zhBody) els.zhBody.addEventListener("click", onWord);
+
+    // 双击标记：双击任意英文词 → 落进当前模式的书签（再双击一次取消）
+    var onWordDbl = function (e) {
+      var w = e.target.closest ? e.target.closest(".st-word, .st-any") : null;
+      if (!w) return;
+      e.stopPropagation();
+      e.preventDefault();
+      if (window.getSelection) window.getSelection().removeAllRanges();   // 双击会顺带选中单词，清掉
+      var d = { word: w.dataset.word, marked: false, supported: true };
+      document.dispatchEvent(new CustomEvent("xd:mark-toggle", { detail: d }));
+      if (!d.supported) {
+        toast("暂时无法标记，请重试");
+        return;
+      }
+      setMarkedState(w.dataset.word, d.marked);
+      showDock(w.dataset.word);
+      toast(d.marked ? "已标记「" + w.dataset.word + "」· 标记模式可见" : "已取消标记「" + w.dataset.word + "」");
+    };
+    els.body.addEventListener("dblclick", onWordDbl);
+    if (els.zhBody) els.zhBody.addEventListener("dblclick", onWordDbl);
 
     // 覆盖点 → 卡片（这里仍然跳卡片：它本来就是「回到那张卡」的入口）
     els.dots.addEventListener("click", function (e) {
@@ -1030,7 +1105,7 @@
       setHot(p.dataset.para, false);
     });
     els.panel.addEventListener("click", function (e) {
-      if (e.target.closest && e.target.closest(".st-word")) return;
+      if (e.target.closest && e.target.closest(".st-word, .st-any")) return;
       var p = e.target.closest ? e.target.closest(".bk-para") : null;
       if (p) toggleLock(p);
     });
@@ -1050,6 +1125,8 @@
     // 书翻开 / 视口变了 → 重新量一次要不要收字号（app.js 发的事件）
     // 用 setTimeout 而不是 rAF：rAF 要等一帧，标签页在后台 / 无头截图时可能被饿死
     document.addEventListener("xd:book-open", function () {
+      markSnapshot();        // 开书前可能又在卡片上标记过 → 重拉清单
+      applyMarkedClasses();  // 并把正文里的标记态对齐
       setTimeout(fitPages, 0);
     });
   }

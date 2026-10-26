@@ -96,14 +96,15 @@
     if (!Array.isArray(state.pool) || state.pool.length !== list.length) return [];
     return state.pool.slice(0, Math.min(state.cursor, state.pool.length)).map(function (i) { return list[i]; });
   }
-  // 当前模式下被标记过的词（按标记先后顺序；只取词库里真实存在的）
+  // 当前模式下被标记过的词（按标记先后顺序；词库里有释义的用词条，
+  // 没有的（故事里顺手标记的生词）给一个空释义的占位词条，保证标记模式可见）
   function getMarkedWords() {
     var arr = marksFor(state.mode);
     if (!arr || !arr.length) return [];
     var out = [];
     for (var i = 0; i < arr.length; i++) {
       var w = lookupWord(arr[i]);
-      if (w) out.push(w);
+      out.push(w || { word: arr[i], meaning: "", phonetic: "" });
     }
     return out;
   }
@@ -293,8 +294,10 @@
   function mountSysCluster() {
     if (!sysCluster || !headerRightEl) return;
     if (document.getElementById("view-learn").classList.contains("story-open")) {
-      if (sysCluster.parentElement !== headerRightEl || sysCluster.nextElementSibling !== roundBadgeEl) {
-        headerRightEl.insertBefore(sysCluster, roundBadgeEl);
+      // 徽标可能包在 .source-switch（词库切换器）里 → 锚点取包裹层，保证是直接子节点
+      var anchor = (roundBadgeEl && roundBadgeEl.closest(".source-switch")) || roundBadgeEl;
+      if (anchor && (sysCluster.parentElement !== headerRightEl || sysCluster.nextElementSibling !== anchor)) {
+        headerRightEl.insertBefore(sysCluster, anchor);
       }
       return;
     }
@@ -1079,6 +1082,28 @@
     // 抽词来源切换（bank.js 的「学习 / 停用」按钮发这个事件）
     document.addEventListener("xd:switch-source", function (e) {
       switchSource(e.detail && e.detail.id);
+    });
+
+    // 故事页双击标记（story.js 发）：落进当前模式的书签，与卡片书签同源。
+    // 背单词模式没有自己的书签 → 落英文模式书签（复习进入时背单词模式
+    // 本来就会被强制切成英文模式，标记在那边可见，行为一致）。
+    document.addEventListener("xd:mark-toggle", function (e) {
+      var d = e.detail || {};
+      var word = String(d.word || "").toLowerCase().trim();
+      var mode = (state.mode === "en" || state.mode === "zh") ? state.mode : "en";
+      var arr = marksFor(mode);
+      if (!word || !arr) { d.supported = false; d.marked = false; return; }
+      d.supported = true;
+      d.marked = toggleMark(word, mode);
+      saveState();
+      renderMark("learn");
+      renderMark("review");
+    });
+    // 故事渲染 / 开书时问一遍当前模式的标记清单（同步应答）
+    document.addEventListener("xd:marks-snapshot", function (e) {
+      var mode = (state.mode === "en" || state.mode === "zh") ? state.mode : "en";
+      var arr = marksFor(mode);
+      e.detail.list = arr ? arr.slice() : [];
     });
   }
 

@@ -227,6 +227,7 @@
   var modal, btnOpen, btnClose, dropZone, fileInput, pasteBox;
   var previewWrap, previewGrid, previewSummary, btnSave, nameInput, targetSelect, targetRow;
   var bankList, banksEmpty;
+  var sourceBadge, sourceMenu;   // 顶栏快速切换：点轮次徽标弹出的词源菜单
   var parsed = [];        // 当前识别结果 [{word, meaning, phonetic, known}]
   var sourceId = "cet4";  // 当前抽词来源（app.js 通过事件同步过来）
 
@@ -252,6 +253,7 @@
     if (!parsed.length) {
       previewGrid.innerHTML = "";
       previewWrap.hidden = true;
+      updateSaveBtn();   // 修复：列表清空（保存成功后）按钮文字/禁用态要跟着复位
       return;
     }
     previewWrap.hidden = false;
@@ -421,6 +423,31 @@
     }
   }
 
+  /* ---- 顶栏词库快速切换（点轮次徽标弹出，2026-10-26） ---- */
+  function srcItemHtml(id, name, meta, active) {
+    return '<button type="button" class="src-item' + (active ? " is-active" : "") + '" data-id="' + id + '" role="menuitem">' +
+      '<span class="src-name">' + esc(name) + '</span>' +
+      '<span class="src-meta">' + esc(meta) + (active ? " · 学习中" : "") + '</span>' +
+      "</button>";
+  }
+  function renderSourceMenu() {
+    var cur = sourceId;
+    var html = srcItemHtml("cet4", "四级高频词库", window.WORDS ? window.WORDS.length + " 词" : "", cur === "cet4");
+    var banks = all();
+    for (var i = 0; i < banks.length; i++) {
+      var b = banks[i];
+      html += srcItemHtml(b.id, b.name, (b.words || []).length + " 词", b.id === cur);
+    }
+    html += '<div class="src-sep"></div>';
+    html += '<button type="button" class="src-item src-manage" data-act="manage" role="menuitem"><span class="src-name">加词 / 管理词库…</span></button>';
+    sourceMenu.innerHTML = html;
+  }
+  function toggleSourceMenu(open) {
+    if (open) renderSourceMenu();
+    sourceMenu.hidden = !open;
+    sourceBadge.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
   /* ---------- 事件绑定 ---------- */
   function bindEvents() {
     modal = $("#bank-modal");
@@ -445,7 +472,10 @@
     btnClose.addEventListener("click", closeModal);
     modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(); });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !modal.hidden) closeModal();
+      if (e.key === "Escape") {
+        if (!modal.hidden) closeModal();
+        else if (!sourceMenu.hidden) toggleSourceMenu(false);
+      }
     });
 
     // 文件：点击选择 + 拖拽
@@ -498,7 +528,37 @@
     document.addEventListener("xd:source-changed", function (e) {
       sourceId = (e.detail && e.detail.id) || "cet4";
       if (!modal.hidden) renderBankList();
+      if (!sourceMenu.hidden) renderSourceMenu();   // 菜单开着时同步高亮
     });
+
+    /* 顶栏快速切换：点徽标弹出词源菜单，点外部 / Esc 收起 */
+    sourceBadge = $("#round-badge");
+    sourceMenu = $("#source-menu");
+    if (sourceBadge && sourceMenu) {
+      sourceBadge.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleSourceMenu(sourceMenu.hidden);
+      });
+      document.addEventListener("click", function (e) {
+        if (sourceMenu.hidden) return;
+        if (sourceMenu.contains(e.target) || e.target === sourceBadge) return;
+        toggleSourceMenu(false);
+      });
+      sourceMenu.addEventListener("click", function (e) {
+        var item = e.target.closest("button[data-id], button[data-act]");
+        if (!item) return;
+        if (item.dataset.act === "manage") {
+          toggleSourceMenu(false);
+          openModal();
+          return;
+        }
+        toggleSourceMenu(false);
+        document.dispatchEvent(new CustomEvent("xd:switch-source", { detail: { id: item.dataset.id } }));
+      });
+      document.addEventListener("xd:banks-changed", function () {
+        if (!sourceMenu.hidden) renderSourceMenu();
+      });
+    }
 
     // 保存目标下拉：每次打开弹窗 / 词库变化时重建选项
     function refreshTargets() {

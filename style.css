@@ -155,6 +155,59 @@ body {
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
+/* 徽标现在是按钮（点击切换词库）：复位按钮默认样式 */
+button.round-badge {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+button.round-badge:hover { background: var(--btn-primary-bg-hover); }
+
+/* 词库快速切换菜单：挂在 .source-switch 下，徽标点开向下弹。
+   颜色 / 圆角 / 阴影全走可换肤变量 —— 像素皮肤自动得到直角平影版。 */
+.source-switch { position: relative; }
+.source-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;               /* 高于页内内容、低于弹窗(z80)与 toast(z90) */
+  min-width: 260px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-switcher);
+  box-shadow: var(--shadow-pop);
+}
+.source-menu[hidden] { display: none; }
+.src-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.src-item:hover { background: var(--bg-soft); }
+.src-item.is-active { background: var(--bg-subtle); }
+.src-name {
+  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.src-meta { flex-shrink: 0; font-size: 13px; color: var(--text-muted); }
+.src-item.is-active .src-meta { color: var(--accent-dark); font-weight: 600; }
+.src-manage .src-name { font-weight: 500; color: var(--text-secondary); }
+.src-sep { height: 1px; margin: 6px 8px; background: var(--border-soft); }
 
 /* 顶栏右侧：复习模式切换按钮 + 轮次徽标 */
 .header-right {
@@ -353,13 +406,12 @@ html:not([data-skin="pixel"]) .app-main:not(.app-main-gate) { padding-top: 40px;
   margin: 0;
   flex: 1;
 }
-/* 标题行右侧的操作按钮组（复习页：「学习」「标记」并排；
-   两视图标题行保持等高，切模式时页面不整体跳动） */
+/* 标题行右侧的操作按钮组（复习页：「学习」在上、「标记」在下） */
 .view-title-actions {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
 }
 .view-title-actions .btn { justify-content: center; }
@@ -1633,6 +1685,30 @@ html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { displa
 .st-word:hover { color: var(--accent-dark); }
 .st-word:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* 故事里的普通词（非本轮高亮词）：同样可点出角卡，双击标记 / 取消标记 */
+.st-any {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  vertical-align: baseline;
+  padding: 0 1px;
+  margin: 0;
+  border-radius: 3px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: color .16s;
+}
+.st-any:hover { color: var(--accent-dark); }
+/* 已标记：主色粗下划线 + 词色加深，跟本轮词的荧光带（整条 .52em）区分开 */
+.st-word.is-marked,
+.st-any.is-marked {
+  background-image: linear-gradient(to top, var(--accent), var(--accent));
+  background-size: 100% 0.16em;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  color: var(--accent-dark);
+}
+
 /* 从卡片跳过来时，那一句闪一下（JS 加 .is-focus，1.8s 后摘掉） */
 @keyframes st-line-focus {
   0%, 55% { background-color: var(--bg-soft); }
@@ -2896,6 +2972,7 @@ html[data-skin="pixel"] .action-bar,
 html[data-skin="pixel"] .story-panel { max-width: none; width: 100%; margin: 0 auto; }
 html[data-skin="pixel"] .view-title { font-size: var(--fs-title); text-align: left; margin: 0; }
 html[data-skin="pixel"] .view-title-row .view-title { margin: 0; }
+html[data-skin="pixel"] .view-title-actions { flex-direction: row; }
 html[data-skin="pixel"] .view-title-actions .btn { justify-content: center; }
 
 /* —— 卡下托盘在像素风里不配色、不投影，只是普通容器；
@@ -3196,12 +3273,19 @@ html[data-skin="pixel"] .st-zh {
   font-size: 18px; line-height: 1.9; color: var(--px-text2);
   padding-left: 28px; margin: 2px 0 0;
 }
-html[data-skin="pixel"] .st-word {
+html[data-skin="pixel"] .st-word,
+html[data-skin="pixel"] .st-any {
   background: var(--px-accent); color: #122103;
   border-radius: 0; padding: 0 2px; font-weight: 700;
 }
-html[data-skin="pixel"] .st-word:hover { color: #122103; }
+html[data-skin="pixel"] .st-word:hover,
+html[data-skin="pixel"] .st-any:hover { color: #122103; }
 html[data-skin="pixel"] .st-word:focus-visible { outline-color: var(--px-edge); }
+/* 像素下已标记：深一号的实心块 + 白字 */
+html[data-skin="pixel"] .st-word.is-marked,
+html[data-skin="pixel"] .st-any.is-marked {
+  background: var(--px-accent-dk); color: #FFFFFF;
+}
 html[data-skin="pixel"] .story-empty { padding: 10px 0 0; }
 html[data-skin="pixel"] .story-empty-words span {
   height: 26px; border-radius: 0; background: var(--px-sub2);

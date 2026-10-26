@@ -213,7 +213,11 @@
     <div class="header-right">
       <!-- 皮肤 / 音效 / 备份 / 重置 已挪到学习页卡下的 .card-tray（#sys-cluster），
            切视图 / 开书时由 app.js 搬运；顶栏这里只留轮次徽标。 -->
-      <div class="round-badge" id="round-badge" data-page-node-id="Kndmtq3IaAoNlK10dJABQL">第 1 轮</div>
+      <!-- 词库快速切换：点徽标弹出词源菜单（菜单内容由 bank.js 渲染） -->
+      <div class="source-switch" data-page-node-id="Kndmtq3IaAoNlK10dJABQL">
+        <button type="button" class="round-badge" id="round-badge" aria-haspopup="menu" aria-expanded="false" title="点击切换词库">第 1 轮</button>
+        <div class="source-menu" id="source-menu" hidden></div>
+      </div>
     </div>
   </header>
 
@@ -409,12 +413,12 @@
       <div class="view-title-row" data-page-node-id="Sz5Vt4NtXR9Of0cKm4DHmC">
         <h2 class="view-title" id="review-title" data-page-node-id="FCguqEEcXqGZ8vZUeHJltA">复习模式</h2>
         <div class="view-title-actions">
+          <button class="btn btn-review-toggle" id="btn-review-back" type="button">学习</button>
           <button class="btn btn-review-toggle" id="btn-mark-only" type="button" aria-pressed="false" title="只看已标记的单词">标记</button>
         </div>
       </div>
 
       <div class="mode-switcher" data-view="review" data-page-node-id="xoWJubbRAEFLhBHJbqhHAK">
-          <button class="btn btn-review-toggle" id="btn-review-back" type="button">学习</button>
         <button class="mode-btn active" data-mode="learn" data-page-node-id="XyDEUnoDwnpzXUMuDGdbPY">背单词</button>
         <button class="mode-btn" data-mode="en" data-page-node-id="wAu2K1cTVfXeoiFqL1gmhZ">英文模式</button>
         <button class="mode-btn" data-mode="zh" data-page-node-id="L4bTOByxqorvqjjvWiwFNi">中文模式</button>
