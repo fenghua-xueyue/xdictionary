@@ -1988,6 +1988,29 @@ html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { displa
 .bk-leaf-page-back { box-shadow: inset 8px 0 16px rgba(34, 48, 42, .07); }
 /* 飞行途中书不可点，免得点中还没落定的正文 */
 #view-learn.story-intro .book { pointer-events: none; }
+/* ---- 三拍入场（2026-10-26 晚重构 · 薄荷/暖阳专属）----
+   ① 卡片退场：卡片整体上移出屏（--card-exit-y 由 JS 按视口实测写入），
+      露出压在下面的横躺的书 —— 书在 JS 里临时搬出卡片、以 fixed 定位停在
+      原位（z:3），卡片（z:4）从它上面滑走，读作「拿开卡片露出书」；
+   ② 书起身：横躺的书在原地 rotate 0→-90° 立成竖向（WAAPI，带轻微超冲）；
+   ③ 摊开书接棒：起点 transform 与立着的书逐像素对齐（含 -90° 转角），
+      边飞边转正、翻页叶同步掀开 —— 「立着的书倒下摊开在桌上」。
+   退场终态仍用 CSS 规则兜底（fill:forwards 动画会被浏览器异步移除，
+   移除后效果回退，只有 CSS 规则靠得住；动感由 WAAPI 提供）。 */
+#view-learn.story-intro .flashcard {
+  transform: translateY(var(--card-exit-y, -70vh));
+  z-index: 4;
+}
+/* 卡片上滑会穿过顶栏，顶栏临时抬到卡片之上 */
+#view-learn.story-intro .app-header { position: relative; z-index: 5; }
+#view-learn.story-intro .book-ribbon { opacity: 0; }
+#view-learn.story-intro .progress-wrap,
+#view-learn.story-intro .action-bar,
+#view-learn.story-intro .view-title-row,
+#view-learn.story-intro .mode-switcher,
+#view-learn.story-intro .card-tray,
+#view-learn.story-intro .px-subtitle,
+#view-learn.story-intro .flashcard-area .nav { opacity: 0; }
 /* 像素风根本不创建叶子；减动效下再兜一层 CSS 保险 */
 html[data-skin="pixel"] .book-flip-wrap { display: none; }
 @media (prefers-reduced-motion: reduce) {

@@ -799,17 +799,20 @@
     var btnBookOpen = document.getElementById("btn-book-open");
     if (btnBookOpen) btnBookOpen.addEventListener("click", openStoryFromRibbon);
 
-    /* ---- 开书入场三幕动画（2026-10-26 · 薄荷/暖阳专属）----
-       第一幕「抽签让位」：丝带往下抽出消失，卡片上抬淡出，进度 / 按钮 / 标题 / 托盘同时退场；
-       第二幕「开书翻页」：切到展开态后，书从卡片的位置和大小升起放大（FLIP 反向补间），
-         封面叶绕书脊翻开（rotateY），再翻过一页纸 —— 没故事时露出的正是扉页；
-       第三幕「顺势进位」：飞行的末帧就是 CSS 默认态（scale(--book-scale)），cancel 后无跳变，
-         工具条与顶栏按钮簇次第淡入。
-       总时长约 1.2s；中途任意点击跳过到末态；Esc 合书先跳完再合。
+    /* ---- 开书入场三拍动画（2026-10-26 晚重构 · 薄荷/暖阳专属）----
+       ① 卡片退场（~0.6s）：丝带抽出，卡片整体上移出屏，露出压在下面的横躺的书
+          —— 书在 JS 里临时搬出卡片、fixed 定位停在原位（见 style.css 三拍段）；
+       ② 书起身（~0.8s）：横躺的书原地 rotate 0→-90° 立成竖向 —— 纯旋转不缩放，
+          转体全程尺寸不变（用户明确要求），只在角度上留超冲手感；
+       ③ 摊开进位（~1.3s）：立着的书原地「倒下摊开」—— 摊开书以统一缩放（形状
+          不失真）从立书位姿（含 -90° 转角）接棒，新书框盖住立书框，立书交叉淡出；
+          边飞向桌心边转正，封面/页纸两半张接力掀开，末段 settle 落定。
+       中途任意点击跳过到末态；Esc 合书先跳完再合。
        像素风 / 窄屏（<1024，单页版式）/ 减动效 → 走原来的直接打开。 */
     var introAnims = [];
     var introRunning = false;
     var introSkipFn = null;
+    var introBookEl = null, introBookHome = null, introBookNext = null, introBookStyle = "";
     function introTargetEnabled() {
       var skin = document.documentElement.getAttribute("data-skin");
       if (skin === "pixel") return false;
@@ -827,12 +830,38 @@
       introAnims.push(el.animate([{ opacity: 0 }, { opacity: 1 }],
         { duration: dur, delay: delay || 0, fill: "both" }));
     }
+    /* 把合书从卡片里搬到视图根、fixed 停在原位（卡片退场时它纹丝不动）；
+       cleanupIntro / 第三幕切场时 restoreIntroBook 归还原位还原样式 */
+    function detachBookUnder(bu) {
+      introBookEl = bu;
+      introBookHome = bu.parentNode;
+      introBookNext = bu.nextSibling;
+      introBookStyle = bu.style.cssText;
+      var r = bu.getBoundingClientRect();
+      bu.style.cssText = introBookStyle +
+        ";position:fixed;margin:0;z-index:3;" +
+        "left:" + r.left.toFixed(1) + "px;top:" + r.top.toFixed(1) + "px;" +
+        "width:" + r.width.toFixed(1) + "px;height:" + r.height.toFixed(1) + "px;";
+      learnView.appendChild(bu);
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
+    }
+    function restoreIntroBook() {
+      if (introBookEl && introBookHome) {
+        introBookEl.style.cssText = introBookStyle;
+        introBookHome.insertBefore(introBookEl, introBookNext);
+      }
+      introBookEl = introBookHome = introBookNext = null;
+      introBookStyle = "";
+    }
     function cleanupIntro() {
       introAnims.forEach(function (a) { try { a.cancel(); } catch (e) { /* 已结束 */ } });
       introAnims = [];
+      restoreIntroBook();
       var wrap = document.querySelector("#view-learn .book-flip-wrap");
       if (wrap && wrap.parentElement) wrap.parentElement.removeChild(wrap);
       learnView.classList.remove("story-intro");
+      var card = document.querySelector("#view-learn .flashcard");
+      if (card) card.style.removeProperty("--card-exit-y");
       if (introSkipFn) { document.removeEventListener("click", introSkipFn, true); introSkipFn = null; }
       introRunning = false;
     }
@@ -840,7 +869,7 @@
       introAnims.forEach(function (a) { try { a.finish(); } catch (e) { /* 已结束 */ } });
       cleanupIntro();
     }
-    /* 跳过 = 动画全部落到末态，书直接摊开在故事桌（不等第二三幕） */
+    /* 跳过 = 动画全部落到末态，书直接摊开在故事桌（不等二三拍） */
     function skipIntroToEnd() {
       var wasRunning = introRunning;
       finishIntroInstant();
@@ -855,25 +884,27 @@
       introRunning = true;
       var card = document.querySelector("#view-learn .flashcard");
       var ribbon = document.getElementById("btn-book-open");
-      // 卡片此刻还在文档流里，先把「合着书」的位置量下来（书沿比卡片外扩约 11/13px）
-      var fromRect = card ? card.getBoundingClientRect() : null;
-      // ── 第一幕：抽签让位 ──
-      if (card) introAnims.push(card.animate(
-        [{ transform: "translateY(0)", opacity: 1 },
-         { transform: "translateY(-10px)", opacity: 0 }],
-        { duration: 240, delay: 60, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards" }));
+      var bookUnder = document.querySelector("#view-learn .book-under");
+      if (!card || !bookUnder) { setStoryOpen(true); fitBook(); introRunning = false; return; }
+      // 先在未变换的静止态量下卡片与合书的屏幕位姿（后面全按这套坐标对齐）
+      var cardRect = card.getBoundingClientRect();
+      var buC = detachBookUnder(bookUnder);
+      learnView.classList.add("story-intro");
+      // ── ① 卡片退场：丝带抽出 + 整卡上移出屏（书留在原地，露出） ──
+      // 多退 70px：卡片的投影会盖过底边 ~40px，只退 30px 会在顶缘露出阴影边
+      var exitY = -(cardRect.bottom + 70);
+      card.style.setProperty("--card-exit-y", exitY.toFixed(0) + "px");
+      introAnims.push(card.animate(
+        [{ transform: "translateY(0px)" }, { transform: "translateY(" + exitY.toFixed(0) + "px)" }],
+        { duration: 560, delay: 60, easing: "cubic-bezier(.45,0,.6,1)", fill: "forwards" }));
       if (ribbon) introAnims.push(ribbon.animate(
         [{ transform: "translateY(3px)", opacity: 1 },
          { transform: "translateY(16px)", opacity: .85, offset: .6 },
          { transform: "translateY(22px)", opacity: 0 }],
         { duration: 280, easing: "ease-in", fill: "forwards" }));
-      ["#view-learn .progress-wrap", "#view-learn .action-bar",
-       "#view-learn .view-title-row", "#view-learn .mode-switcher",
-       "#view-learn .card-tray", "#view-learn .px-subtitle"
-      ].forEach(function (sel) { introFadeOut(document.querySelector(sel), 170); });
       Array.prototype.forEach.call(
-        document.querySelectorAll("#view-learn .flashcard-area .nav"),
-        function (n) { introFadeOut(n, 170); });
+        document.querySelectorAll("#view-learn .progress-wrap, #view-learn .action-bar, #view-learn .view-title-row, #view-learn .mode-switcher, #view-learn .card-tray, #view-learn .px-subtitle, #view-learn .flashcard-area .nav"),
+        function (el) { introFadeOut(el, 170); });
       // 中途任意点击 = 跳过，直接落到末态（capture 阶段拦下，别让这一击再触发丝带）
       introSkipFn = function (e) {
         if (!introRunning) return;
@@ -882,25 +913,54 @@
       };
       document.addEventListener("click", introSkipFn, true);
 
+      // ── ② 书起身：横躺的书在原地立成竖向（书口朝右 → 右缘翘起转正） ──
+      // 纯旋转、不带任何缩放 —— 转体全程书的尺寸不变；只在角度上留一点
+      // 超冲（-93.5° 回 -90°），给「站稳」的手感
+      if (bookUnder.animate) introAnims.push(bookUnder.animate(
+        [{ transform: "rotate(0deg)", easing: "cubic-bezier(.55,.06,.28,1)" },
+         { transform: "rotate(-93.5deg)", offset: 0.88, easing: "cubic-bezier(.3,.7,.4,1)" },
+         { transform: "rotate(-90deg)" }],
+        { duration: 760, delay: 580, fill: "forwards" }));
+
       setTimeout(function () {
-        // 第一幕里被跳过 / Esc 合书过 → introRunning 已被 cleanup 置 false，别再进第二三幕
+        // 前两拍里被跳过 / Esc 合书过 → introRunning 已被 cleanup 置 false，别再进第三拍
         if (!introRunning) return;
-        // ── 第二幕起点：切到展开态 ──
-        // 此刻卡片区 display:none，周边元素第一幕已淡到透明，display 切换无跳变
+        // ── ③ 摊开进位：立着的书原地「倒下摊开」接棒 ──
+        // 合书不在此处归位 —— 它以 fixed 停在立书位姿，在新书下方交叉淡出
+        // （cleanupIntro 统一归位还原；跳过 / Esc 路径同样走 cleanup，安全）
         setStoryOpen(true);
         fitBook();
         var book = document.querySelector("#view-learn .book");
-        if (!book || !book.animate || !fromRect) { cleanupIntro(); return; }
-        learnView.classList.add("story-intro");
+        if (!book || !book.animate) { cleanupIntro(); return; }
         var toRect = book.getBoundingClientRect();
         var s1 = toRect.width / 1080;
-        var s0 = Math.max((fromRect.width + 22) / 1080, 0.12);
-        var fx = fromRect.left + fromRect.width / 2 - (1080 * s0) / 2;
-        var fy = fromRect.top + fromRect.height / 2 - (720 * s0) / 2;
+        var tcx = toRect.left + toRect.width / 2, tcy = toRect.top + toRect.height / 2;
+        /* 接棒对齐（transform-origin 均为中心）：起点 = 平移到立书中心 + rotate(-90°)
+           + 统一缩放 s0 —— 立书（旋转后）视觉框 = (buC.h 宽, buC.w 高)；
+           摊开书旋转后视觉框 = (720·s0, 1080·s0)。s0 取「新书完全盖住立书」的最小值
+           再留 2% 余量。统一缩放保证书的形状全程不失真（横纵各异的非均匀缩放会把
+           书拉宽拉窄，弃用）；新书比立书大一圈 = 摊开的书面本就比封面大，
+           读作「这本立着的书翻开了，露出更大的书页」。 */
+        var dx = buC.x - tcx, dy = buC.y - tcy;
+        var s0 = Math.max(buC.h / 720, buC.w / 1080) * 1.02;
+        /* 飞行两段式：前 ~88% 从立书位姿飞到桌心（边转正边放大，读作「倒下摊开」），
+           带 settle 超冲 s1×1.012，末 12% ease-out 回落到精确默认值 ——
+           末帧与 CSS 默认态完全一致，fill forwards / cancel 均无跳变。 */
         introAnims.push(book.animate(
-          [{ transform: "translate(" + fx.toFixed(1) + "px," + fy.toFixed(1) + "px) scale(" + s0.toFixed(4) + ")" },
+          [{ transform: "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(-90deg) scale(" + s0.toFixed(4) + ")", easing: "cubic-bezier(.25,.6,.3,1)" },
+           { transform: "translate(0px,0px) rotate(0deg) scale(" + (s1 * 1.012).toFixed(4) + ")", offset: 0.88, easing: "ease-out" },
            { transform: "translate(0px,0px) scale(" + s1.toFixed(4) + ")" }],
-          { duration: 680, easing: "cubic-bezier(.22,.8,.28,1)", fill: "forwards" }));
+          { duration: 850, fill: "forwards" }));
+        // 立书交叉淡出：新书已在立书位姿出现，立书快速淡出交棒。
+        // onfinish 把终态写进内联样式兜底 —— fill:forwards 的已结束动画会被
+        // 浏览器按「可替换动画」异步移除，移除后 opacity 会闪回 1、绿书盖在故事页上
+        if (bookUnder.animate) {
+          var buFade = bookUnder.animate(
+            [{ opacity: 1 }, { opacity: 0 }],
+            { duration: 200, easing: "ease-out", fill: "forwards" });
+          buFade.onfinish = function () { bookUnder.style.opacity = "0"; };
+          introAnims.push(buFade);
+        }
         // 翻页叶：一页纸 + 封面，各拆前后两半张（0→-90 / -90→-180 接力，
         // 不依赖 backface —— 见 style.css「开书入场」段的说明）。
         // DOM 顺序 = 绘制顺序：页纸在下、封面在最上 —— 封面掀开先露出贴着的
@@ -919,33 +979,33 @@
           book.appendChild(wrap);
           var leaf = function (cls) { return wrap.querySelector(".bk-leaf-" + cls); };
           var flipEase = "cubic-bezier(.45,.05,.55,.95)";
-          // 封面（最上层）：绿皮翻过去，纸背摊平在左页上再淡出（露出扉页）
+          // 封面（最上层）：绿皮翻过去，纸背摊平在左页上再淡出（露出扉页）。
+          // delay 180：接棒换完立刻开翻，强化「同一本书翻开」的连续感
           introAnims.push(leaf("cover-front").animate(
             [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
-            { duration: 230, delay: 140, easing: flipEase, fill: "forwards" }));
+            { duration: 240, delay: 180, easing: flipEase, fill: "forwards" }));
           introAnims.push(leaf("cover-back").animate(
             [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
-            { duration: 230, delay: 370, easing: flipEase, fill: "both" }));
+            { duration: 240, delay: 420, easing: flipEase, fill: "both" }));
           introAnims.push(leaf("cover-back").animate(
             [{ opacity: 1 }, { opacity: 0 }],
-            { duration: 220, delay: 500, easing: "ease-out", fill: "forwards" }));
+            { duration: 200, delay: 560, easing: "ease-out", fill: "forwards" }));
           // 第二页纸：翻过去再淡出（露出译文）。前半张延迟期无变换 = 贴在
           // 右半页的「下一页」，正好给掀开的封面当露出物，不需要 fill both。
           introAnims.push(leaf("page-front").animate(
             [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
-            { duration: 210, delay: 500, easing: flipEase, fill: "forwards" }));
+            { duration: 240, delay: 620, easing: flipEase, fill: "forwards" }));
           introAnims.push(leaf("page-back").animate(
             [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
-            { duration: 210, delay: 710, easing: flipEase, fill: "both" }));
+            { duration: 240, delay: 860, easing: flipEase, fill: "both" }));
           introAnims.push(leaf("page-back").animate(
             [{ opacity: 1 }, { opacity: 0 }],
-            { duration: 180, delay: 820, easing: "ease-out", fill: "forwards" }));
+            { duration: 200, delay: 1000, easing: "ease-out", fill: "forwards" }));
         }
-        // ── 第三幕：周边次第淡入 ──
-        introFadeIn(document.querySelector("#view-learn .book-tools"), 300, 520);
-        introFadeIn(sysCluster, 280, 420);
-        setTimeout(cleanupIntro, 1000);
-      }, 230);
+        // ── 收尾：工具条浮现（顶栏按钮簇阅读态由 CSS 整簇收起，不淡入） ──
+        introFadeIn(document.querySelector("#view-learn .book-tools"), 300, 700);
+        setTimeout(cleanupIntro, 1250);
+      }, 1340);
     }
     var btnBookClose = document.getElementById("btn-book-close");
     if (btnBookClose) btnBookClose.addEventListener("click", function () {
