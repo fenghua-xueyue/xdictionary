@@ -268,6 +268,9 @@ html[data-skin="pixel"] .idx-leaf { display: none; }
   transform-origin: 50% 85%;
   animation: logo-sway 5.5s ease-in-out infinite;
 }
+/* 学习页整体下移约 1.05cm（96dpi ≈ 40px）：顶栏与内容之间松一口气。
+   首页门厅（.app-main-gate）与像素皮肤有各自的场景排版，不参与。 */
+html:not([data-skin="pixel"]) .app-main:not(.app-main-gate) { padding-top: 40px; }
 @keyframes logo-sway {
   0%, 100% { transform: rotate(-3deg); }
   50%      { transform: rotate(3deg); }
@@ -350,12 +353,13 @@ html[data-skin="pixel"] .idx-leaf { display: none; }
   margin: 0;
   flex: 1;
 }
-/* 标题行右侧的操作按钮组（复习页：「学习」在上、「标记」在下） */
+/* 标题行右侧的操作按钮组（复习页：「学习」「标记」并排；
+   两视图标题行保持等高，切模式时页面不整体跳动） */
 .view-title-actions {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   gap: 8px;
 }
 .view-title-actions .btn { justify-content: center; }
@@ -2806,7 +2810,6 @@ html[data-skin="pixel"] .action-bar,
 html[data-skin="pixel"] .story-panel { max-width: none; width: 100%; margin: 0 auto; }
 html[data-skin="pixel"] .view-title { font-size: var(--fs-title); text-align: left; margin: 0; }
 html[data-skin="pixel"] .view-title-row .view-title { margin: 0; }
-html[data-skin="pixel"] .view-title-actions { flex-direction: row; }
 html[data-skin="pixel"] .view-title-actions .btn { justify-content: center; }
 
 /* —— 卡下托盘在像素风里不配色、不投影，只是普通容器；
