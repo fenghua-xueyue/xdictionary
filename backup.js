@@ -1,13 +1,13 @@
 /* ============================================================
    backup.js — 备份进度：导出 / 导入（IIFE，2026-10-13 新增）
    ============================================================
-   背景：四个 localStorage key（进度 / 皮肤 / 音效 / 故事）都只
-   存在本机浏览器里，清缓存、换浏览器、换设备、iOS Safari 7 天
+   背景：五个 localStorage key（进度 / 皮肤 / 音效 / 故事 / 自定义词库）都
+   只存在本机浏览器里，清缓存、换浏览器、换设备、iOS Safari 7 天
    不访问都会丢。本模块把它们打包成一个 JSON 文件下载（导出），
    或从备份文件恢复（导入）。
 
    约定（与总纲 §4 / §5.4 一致）：
-   - 不碰 app.js 的状态、不新增 localStorage key；
+   - 不碰 app.js / bank.js 的状态；
    - 文件格式 { app:"xdictionary-backup", v:1, exportedAt, data }，
      data 里是四个 key 的原始字符串；缺失的 key 记 null，
      导入时 null = 删掉该 key（回到默认）。
@@ -27,7 +27,8 @@
     "english_app_v1",
     "english_app_skin_v1",
     "english_app_sound_v1",
-    "english_app_story_v1"
+    "english_app_story_v1",
+    "english_app_custom_v1"
   ];
 
   /* ---------- 轻提示（复用 #toast 节点，写法同 app.js / speak.js） ---------- */
@@ -103,6 +104,14 @@
     try {
       var s = JSON.parse(obj.data["english_app_story_v1"]);
       if (s && Array.isArray(s.history) && s.history.length) parts.push("故事 " + s.history.length + " 篇");
+    } catch (e) { /* 该 key 缺失或为空 */ }
+    try {
+      var c = JSON.parse(obj.data["english_app_custom_v1"]);
+      if (c && Array.isArray(c.banks) && c.banks.length) {
+        var total = 0;
+        c.banks.forEach(function (b) { total += (b.words || []).length; });
+        parts.push("词库 " + c.banks.length + " 个 · " + total + " 词");
+      }
     } catch (e) { /* 该 key 缺失或为空 */ }
     return parts.length ? parts.join(" · ") : "（空进度）";
   }

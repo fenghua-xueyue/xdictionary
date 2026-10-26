@@ -526,6 +526,146 @@ html[data-skin="pixel"] .idx-leaf { display: none; }
   margin-bottom: 14px;
 }
 
+/* ---- 自定义词库「加词」弹窗（bank-modal，bank.js 管理，2026-10-26 新增） ---- */
+.modal-bank { text-align: left; max-width: 620px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.modal-bank .modal-hint b { color: var(--text-secondary); }
+.modal-field textarea,
+.modal-field select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  padding: 11px 14px;
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius-btn);
+  outline: none;
+  color: var(--text-primary);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+}
+.modal-field textarea { resize: vertical; line-height: 1.6; }
+.modal-field textarea:focus,
+.modal-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ok-shadow); }
+.modal-field select { cursor: pointer; }
+
+/* 拖放区：虚线框，hover / 拖入时主色 */
+.bank-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 2px dashed var(--border-soft);
+  border-radius: var(--radius-btn);
+  background: var(--bg-subtle);
+  padding: 16px 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.bank-drop:hover,
+.bank-drop:focus-visible,
+.bank-drop.is-drag {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  background: var(--bg-soft);
+  outline: none;
+}
+
+/* 识别结果 */
+.bank-preview { margin-bottom: 14px; }
+.bank-summary {
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.bank-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-btn);
+  background: var(--bg-soft);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.bank-item.is-known { opacity: .62; background: var(--bg-subtle); }
+.bank-item-word {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 5ch;
+}
+.bank-item-meaning {
+  font-family: inherit;
+  font-size: 13.5px;
+  padding: 5px 8px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text-secondary);
+  background: var(--surface);
+  min-width: 0;
+}
+.bank-item-meaning:focus { border-color: var(--accent); color: var(--text-primary); }
+.bank-item-tag {
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.bank-item-tag.is-new { background: rgba(46, 158, 120, 0.14); color: var(--accent-dark); }
+
+/* 词库管理列表 */
+.bank-manage { margin-top: 20px; border-top: 1px solid var(--border-soft); padding-top: 16px; }
+.bank-manage-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+.bank-empty { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin: 0; }
+.bank-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+.bank-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-btn);
+  background: var(--bg-soft);
+  padding: 10px 14px;
+}
+.bank-row.is-active { border-color: var(--accent); background: rgba(46, 158, 120, 0.08); }
+.bank-row-main { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.bank-row-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bank-row.is-active .bank-row-name { color: var(--accent-dark); }
+.bank-row-meta { font-size: 12.5px; color: var(--text-tertiary); white-space: nowrap; }
+.bank-row-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.modal-bank .modal-actions { margin-top: 16px; }
+
 /* ============================ 模式切换器 ============================ */
 .mode-switcher {
   display: flex;
@@ -621,11 +761,13 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
    选择器挂在 .card-tray 下 —— 开书时按钮簇搬回顶栏，自动恢复带文字的原样。 */
 html:not([data-skin="pixel"]) .card-tray .btn-skin,
 html:not([data-skin="pixel"]) .card-tray .btn-sound,
+html:not([data-skin="pixel"]) .card-tray .btn-bank   { margin-top: -29px; --pet: 35px; }
 html:not([data-skin="pixel"]) .card-tray .btn-backup,
 html:not([data-skin="pixel"]) .card-tray .btn-reset {
   position: relative;   /* 叶柄 ::before 的定位基准 */
   font-size: 0;
   gap: 0;
+html:not([data-skin="pixel"]) .card-tray .btn-bank::before,
   padding: 14px;   /* 指头肚大小的果子：28px 图标 + 28px 内边距 ≈ 56px */
   line-height: 1;
   border-radius: var(--radius-pill);
@@ -636,13 +778,14 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset {
               box-shadow .2s ease;
 }
 /* 果子放大配粗藤：CSS 尺寸覆盖 HTML 的 width/height 属性；
-   只挂四颗果，开书搬回顶栏恢复 15~18px 原样 */
+   只挂五颗果，开书搬回顶栏恢复 15~18px 原样 */
 html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
   width: 28px;
   height: 28px;
+html:not([data-skin="pixel"]) .card-tray .btn-bank,
 }
 /* 滑过两段式：按钮先「弹出」托盘上方（上浮 + 投影浮起），
    图标延迟 ~0.09s 再放大 —— 读起来是弹出 → 放大。
@@ -661,6 +804,7 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset:hover {
   background: rgba(46, 158, 120, 0.18);   /* 果肉加深一档 */
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.10);
 }
+html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-skin:hover .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-sound:hover .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-backup:hover .svg-icon,
@@ -671,12 +815,14 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset:hover .svg-icon {
    间距给 26px —— 比按钮弹出高度（-14px）多一截，悬停时弹起的按钮
    不会顶进浮层底边。开书时按钮簇搬回顶栏，这条自动失效，浮层恢复
    默认向下（10px 间距）—— 两个位置都对。 */
+html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .skin-pop {
   top: auto;
   bottom: calc(100% + 26px);
   animation-name: skin-pop-in-up;
 }
 @keyframes skin-pop-in-up {
+html:not([data-skin="pixel"]) .card-tray .btn-bank:hover,
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -685,6 +831,7 @@ html:not([data-skin="pixel"]) .card-tray .skin-pop {
 /* 故事入口收敛到丝带（2026-10-25）：薄荷/暖阳点卡片上的丝带开书，
    操作行的「看今日故事」按钮退役；像素皮肤没有丝带，这个按钮仍是
    唯一故事入口，保留。按钮留在 DOM 里 —— story.js 生成故事时还会
+html:not([data-skin="pixel"]) .card-tray .btn-bank:hover .svg-icon,
    借它程序化展开面板（#btn-generate.click()）。 */
 html:not([data-skin="pixel"]) #btn-generate { display: none; }
 
@@ -2240,6 +2387,28 @@ html:not([data-skin="pixel"]) .btn-sound { display: none; }
 }
 .skin-pop-title {
   font-size: 13px;
+/* 加词按钮（自定义词库入口，bank.js，2026-10-26 新增）：
+   带文字的 ghost 钮，同皮肤按钮；托盘里退化成果子（见卡下托盘段） */
+.btn-bank {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  border: 2px solid transparent;      /* ghost 态，与皮肤/备份按钮一致 */
+  background: transparent;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background .15s, color .15s, transform .12s;
+}
+.btn-bank:hover { background: var(--bg-soft); color: var(--text-primary); }
+.btn-bank:active { transform: scale(0.98); }
+.btn-bank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
   color: var(--text-muted);
   padding: 0 4px 10px;
   line-height: 1.5;
@@ -2547,6 +2716,12 @@ html[data-skin="pixel"] .app-main .view-active {
    （左：今日单词…复习／右：模式切换）。标题行本来就 67 高、模式行只 52，
    并进去不增高 → 省下一整行 52 + 一个间隙 16 = 68px，全给卡片。
    ⚠️ **必须限定 .view-study.view-active**：
+html[data-skin="pixel"] .btn-bank {
+  border-radius: 0; border: 2px solid var(--px-edge2);
+  background: var(--px-sub1); color: var(--px-text);
+  padding: 8px 16px; font-size: 15px;
+}
+html[data-skin="pixel"] .btn-bank:hover { background: #F8F8F8; color: var(--px-text); }
    ① 首页 #view-empty 也带 .view-active，但它有自己的 `html[data-skin="pixel"] .view-empty{display:flex;align-items:center;…}`（特异性 0,2,1）——
       写成 .view-active 是 0,3,1，会把首页的居中顶掉，hero 跑到上面去。
    ② 复习页也带 .view-study，但它多数时候是隐藏的；只写 .view-study 会与 `.view{display:none}` 同分且排在后面
@@ -2970,22 +3145,27 @@ html[data-skin="pixel"] .btn-book-back {
 }
 html[data-skin="pixel"] .book-page .story-empty { padding: 0; }
 
-/* —— 故事生成设置弹窗 / 故事集弹窗 / 备份弹窗 —— */
+/* —— 故事生成设置弹窗 / 故事集弹窗 / 备份弹窗 / 加词弹窗 —— */
 html[data-skin="pixel"] .modal-config,
 html[data-skin="pixel"] .modal-history,
-html[data-skin="pixel"] .modal-backup {
+html[data-skin="pixel"] .modal-backup,
+html[data-skin="pixel"] .modal-bank {
   max-width: 760px; padding: 30px 34px;
   background: var(--px-card); border: 1px solid var(--px-edge); border-radius: 0;
   box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
 }
 html[data-skin="pixel"] .modal-title { color: var(--px-accent-dk); font-size: 19px; }
 html[data-skin="pixel"] .modal-field label { font-size: 14px; color: var(--px-text2); }
-html[data-skin="pixel"] .modal-field input {
+html[data-skin="pixel"] .modal-field input,
+html[data-skin="pixel"] .modal-field textarea,
+html[data-skin="pixel"] .modal-field select {
   border: 2px solid var(--px-edge2); border-radius: 0; background: #FFFFFF;
   color: var(--px-text); font-size: 15px;
   box-shadow: inset 2px 2px 0 var(--px-sub2);
 }
-html[data-skin="pixel"] .modal-field input:focus {
+html[data-skin="pixel"] .modal-field input:focus,
+html[data-skin="pixel"] .modal-field textarea:focus,
+html[data-skin="pixel"] .modal-field select:focus {
   border-color: var(--px-accent-dk); box-shadow: inset 2px 2px 0 var(--px-sub2);
 }
 html[data-skin="pixel"] .modal-field-hint { font-size: 13px; color: var(--px-text3); }
@@ -3025,6 +3205,17 @@ html[data-skin="pixel"] .skin-item { border: 2px solid transparent; border-radiu
 html[data-skin="pixel"] .skin-item.active { border-color: var(--px-accent); background: var(--px-sub1); }
 html[data-skin="pixel"] .skin-swatch { border-radius: 0; border: 1px solid var(--px-edge2); }
 
+/* 加词弹窗的拖放区 / 识别列表 / 词库行：像素风一律去圆角、硬边 */
+html[data-skin="pixel"] .bank-drop { border: 2px dashed var(--px-edge2); border-radius: 0; background: var(--px-sub2); }
+html[data-skin="pixel"] .bank-drop:hover,
+html[data-skin="pixel"] .bank-drop.is-drag { border-color: var(--px-accent-dk); color: var(--px-accent-dk); background: var(--px-sub1); }
+html[data-skin="pixel"] .bank-item,
+html[data-skin="pixel"] .bank-row { border-radius: 0; border: 1px solid var(--px-edge2); background: var(--px-sub2); }
+html[data-skin="pixel"] .bank-row.is-active { border-color: var(--px-accent-dk); background: var(--px-sub1); }
+html[data-skin="pixel"] .bank-item-meaning { border-radius: 0; border: 2px solid var(--px-edge2); background: #FFF; }
+html[data-skin="pixel"] .bank-item-tag { border-radius: 0; }
+html[data-skin="pixel"] .bank-item-tag.is-new { background: var(--px-accent); color: var(--on-accent); }
+html[data-skin="pixel"] .btn-sm { border-radius: 0; }
 /* ============================================================
    惰性钩子：默认全隐藏，像素皮肤下才显示
    ============================================================ */

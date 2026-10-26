@@ -11,13 +11,16 @@
     mode: "learn",          // learn | en | zh
     currentIndex: 0,        // 学习视图内当前翻卡索引
     showAnswer: false,      // 英文/中文模式是否已揭示答案
-    pool: [],               // 打乱后的词库索引
+    pool: [],               // 打乱后的词库索引（下标对应「当前来源」的词表）
     cursor: 0,              // 已抽取的游标
     roundCounter: 0,        // 当前轮次号
     currentRound: null,     // { round, words, createdAt }
     reviewIndex: 0,         // 复习模式下跨所有学过的词的全局索引
     reviewSource: "all",    // 复习词源：all(全部已学词) | marked(标记模式：只看已标记的词)
-    marks: { en: [], zh: [] } // 已标记的单词，按模式分开存：中文模式与英文模式互不影响
+    marks: { en: [], zh: [] }, // 已标记的单词，按模式分开存：中文模式与英文模式互不影响
+    source: "cet4",         // 抽词来源：cet4(四级词库) | 自定义词库 id（bank.js）
+    ctx: null               // 每个来源各自的进度 { [sourceId]: {pool,cursor,roundCounter,currentRound} }；
+                            // 平铺的 pool/cursor/roundCounter/currentRound 恒等于「当前来源」的进度
   };
 
   var LS_KEY = "english_app_v1";
@@ -30,11 +33,68 @@
     return map;
   })();
 
+  /* ---------- 抽词来源：四级词库 / 自定义词库（bank.js，2026-10-26） ----------
+     进度按来源隔离：切来源时把平铺字段存进 ctx[旧来源]，再取回 ctx[新来源]，
+     四级词库的「已学 N 词」不因换了自定义词库而丢。 */
+  function activeWords() {
+    if (state.source && state.source !== "cet4") {
+      var bank = window.BANKS && BANKS.byId(state.source);
+      if (bank) return BANKS.entriesOf(bank);
+      state.source = "cet4";   // 词库被删等异常 → 回四级词库
+    }
+    return WORDS;
+  }
+  function ctxFields() {
+    return {
+      pool: state.pool, cursor: state.cursor,
+      roundCounter: state.roundCounter, currentRound: state.currentRound
+    };
+  }
+  function applyCtx(c) {
+    state.pool = c.pool || [];
+    state.cursor = c.cursor || 0;
+    state.roundCounter = c.roundCounter || 0;
+    state.currentRound = c.currentRound || null;
+  }
+  function switchSource(id) {
+    if (!id || id === state.source) return;
+    if (id !== "cet4" && !(window.BANKS && BANKS.byId(id))) return;
+    state.ctx[state.source] = ctxFields();       // 旧来源进度存档
+    state.source = id;
+    if (!state.ctx[id]) {
+      state.ctx[id] = { pool: [], cursor: 0, roundCounter: 0, currentRound: null };
+    }
+    applyCtx(state.ctx[id]);
+    state.view = "learn";
+    state.showAnswer = false;
+    state.reviewIndex = 0;
+    if (!state.currentRound) {
+      document.dispatchEvent(new CustomEvent("xd:source-changed", { detail: { id: state.source } }));
+      drawRound(); return;   // 该来源第一次学：直接抽第一轮
+    }
+    saveState();
+    renderAll();
+    document.dispatchEvent(new CustomEvent("xd:source-changed", { detail: { id: state.source } }));
+    var b = id === "cet4" ? null : BANKS.byId(id);
+    toast(b ? "开始学「" + b.name + "」" : "已回到四级词库");
+  }
+  function lookupWord(text) {
+    if (WORD_BY_TEXT[text]) return WORD_BY_TEXT[text];
+    if (!window.BANKS) return null;
+    var bank = BANKS.bankOfWord(text);
+    if (!bank) return null;
+    var w = String(text).toLowerCase();
+    var list = BANKS.entriesOf(bank);
+    for (var i = 0; i < list.length; i++) if (list[i].word === w) return list[i];
+    return null;
+  }
+
   /* ---------- 复习模式：所有学过的词，按 20 个一组分页 ---------- */
   /* ---------- 复习模式的词源：全部已学词 / 只看已标记的词 ---------- */
   function getLearnedWords() {
-    if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) return [];
-    return state.pool.slice(0, state.cursor).map(function (i) { return WORDS[i]; });
+    var list = activeWords();
+    if (!Array.isArray(state.pool) || state.pool.length !== list.length) return [];
+    return state.pool.slice(0, Math.min(state.cursor, state.pool.length)).map(function (i) { return list[i]; });
   }
   // 当前模式下被标记过的词（按标记先后顺序；只取词库里真实存在的）
   function getMarkedWords() {
@@ -42,7 +102,7 @@
     if (!arr || !arr.length) return [];
     var out = [];
     for (var i = 0; i < arr.length; i++) {
-      var w = WORD_BY_TEXT[arr[i]];
+      var w = lookupWord(arr[i]);
       if (w) out.push(w);
     }
     return out;
@@ -66,8 +126,9 @@
 
   /* ---------- 抽词：Fisher-Yates 打乱 ---------- */
   function freshPool() {
+    var list = activeWords();
     var pool = [];
-    for (var i = 0; i < WORDS.length; i++) pool.push(i);
+    for (var i = 0; i < list.length; i++) pool.push(i);
     for (var k = pool.length - 1; k > 0; k--) {
       var j = Math.floor(Math.random() * (k + 1));
       var tmp = pool[k]; pool[k] = pool[j]; pool[j] = tmp;
@@ -76,19 +137,20 @@
   }
 
   function drawRound() {
-    if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) {
+    var list = activeWords();
+    if (!Array.isArray(state.pool) || state.pool.length !== list.length) {
       state.pool = freshPool();
       state.cursor = 0;
     }
-    // 跨轮不重复；抽完一轮（15 轮）后重新打乱循环
-    if (state.cursor + ROUND_SIZE > WORDS.length) {
+    // 跨轮不重复；抽完一轮后重新打乱循环（词库比一轮还小时，每轮都重新洗牌）
+    if (state.cursor + ROUND_SIZE > list.length) {
       state.pool = freshPool();
       state.cursor = 0;
     }
     var indices = state.pool.slice(state.cursor, state.cursor + ROUND_SIZE);
     state.cursor += ROUND_SIZE;
 
-    var words = indices.map(function (i) { return WORDS[i]; });
+    var words = indices.map(function (i) { return list[i]; });
     state.roundCounter += 1;
 
     state.currentRound = {
@@ -107,6 +169,8 @@
 
   /* ---------- 持久化 ---------- */
   function saveState() {
+    // 当前来源的进度随时写回 ctx，切来源时才不会丢
+    if (state.ctx && state.source) state.ctx[state.source] = ctxFields();
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
         view: state.view,
@@ -119,7 +183,9 @@
         currentRound: state.currentRound,
         reviewIndex: state.reviewIndex,
         reviewSource: state.reviewSource,
-        marks: state.marks
+        marks: state.marks,
+        source: state.source,
+        ctx: state.ctx
       }));
     } catch (e) { /* 无痕模式等：降级为内存态 */ }
   }
@@ -132,6 +198,15 @@
       if (d && typeof d === "object") Object.assign(state, d);
       state.marks = normalizeMarks(state.marks, d && d.mode);
       if (state.reviewSource !== "marked") state.reviewSource = "all";
+      // 来源与按来源隔离的进度：老存档没有 → 平铺字段整体迁入 cet4 名下
+      if (typeof state.source !== "string" || !state.source) state.source = "cet4";
+      if (state.source !== "cet4" && !(window.BANKS && BANKS.byId(state.source))) state.source = "cet4";
+      if (!state.ctx || typeof state.ctx !== "object") state.ctx = {};
+      if (!state.ctx[state.source]) {
+        state.ctx[state.source] = ctxFields();
+      } else {
+        applyCtx(state.ctx[state.source]);
+      }
       return true;
     } catch (e) { return false; }
   }
@@ -333,8 +408,13 @@
   function renderRoundBadge() {
     var badge = document.getElementById("round-badge");
     var round = state.currentRound ? state.currentRound.round : 1;
-    var learned = state.currentRound ? round * ROUND_SIZE : 0;
-    badge.textContent = "第 " + round + " 轮 · 已学 " + learned + " 词";
+    var learned = state.currentRound ? Math.min(round * ROUND_SIZE, activeWords().length) : 0;
+    var srcLabel = "";
+    if (state.source !== "cet4" && window.BANKS) {
+      var b = BANKS.byId(state.source);
+      if (b) srcLabel = "「" + b.name + "」 · ";
+    }
+    badge.textContent = srcLabel + "第 " + round + " 轮 · 已学 " + learned + " 词";
   }
 
   /* ---------- 故事面板 ----------
@@ -597,6 +677,9 @@
     state.currentIndex = 0;
     state.showAnswer = false;
     // state.marks 刻意保留：标记是用户自己整理的「重点词」，不随学习进度重置而清空
+    // 抽词来源也回到四级词库，但只清当前来源的进度（其他词库的进度保留）
+    state.source = "cet4";
+    state.ctx = { cet4: { pool: [], cursor: 0, roundCounter: 0, currentRound: null } };
     closeResetModal();
     if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) state.pool = freshPool();
     drawRound(); // 抽第 1 轮并渲染
@@ -723,7 +806,9 @@
       var m1 = document.getElementById("story-config-modal");
       var m2 = document.getElementById("story-history-modal");
       var bs = document.getElementById("backup-modal");
-      if ((m1 && !m1.hasAttribute("hidden")) || (m2 && !m2.hasAttribute("hidden")) || (bs && !bs.hasAttribute("hidden"))) return;
+      var bk = document.getElementById("bank-modal");
+      if ((m1 && !m1.hasAttribute("hidden")) || (m2 && !m2.hasAttribute("hidden")) ||
+          (bs && !bs.hasAttribute("hidden")) || (bk && !bk.hasAttribute("hidden"))) return;
       setStoryOpen(false);
     });
     setGenLabel(false);
@@ -837,16 +922,27 @@
         else { input.classList.add("wrong"); input.classList.remove("correct"); }
       });
     });
+
+    // 抽词来源切换（bank.js 的「学习 / 停用」按钮发这个事件）
+    document.addEventListener("xd:switch-source", function (e) {
+      switchSource(e.detail && e.detail.id);
+    });
   }
 
   /* ---------- 初始化 ---------- */
+  function ensureCtx() {
+    if (!state.ctx || typeof state.ctx !== "object") state.ctx = {};
+    if (!state.ctx[state.source]) state.ctx[state.source] = ctxFields();
+  }
   function init() {
     loadState();
-    if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) {
+    ensureCtx();   // 首次打开（无存档）也要有 ctx，切词库才不会踩空
+    if (!Array.isArray(state.pool) || state.pool.length !== activeWords().length) {
       state.pool = freshPool(); state.cursor = 0;
     }
     bindEvents();                                // 先绑定事件，保证任何分支按钮都可用
     mountSysCluster();                           // 系统按钮簇就位（托盘 / 顶栏）
+    document.dispatchEvent(new CustomEvent("xd:source-changed", { detail: { id: state.source } }));
     if (!state.currentRound) { drawRound(); return; } // 直接打开学习页时自动抽第一轮
     // 复习模式下不允许停留在被隐藏的“背单词”模式
     if (state.view === "review" && state.mode === "learn") state.mode = "en";

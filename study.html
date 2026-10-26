@@ -38,6 +38,8 @@
     <symbol id="i-sound-on" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></symbol>
     <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></symbol>
     <symbol id="i-backup" viewBox="0 0 24 24"><path d="M8 3v13"/><path d="M4 8l4-4 4 4"/><path d="M16 21V8"/><path d="M12 16l4 4 4-4"/></symbol>
+    <!-- 加词：一本小书 + 加号（自定义词库入口，bank.js） -->
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 7v6"/><path d="M9 10h6"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
     <!-- 托盘主藤（薄荷/暖阳）：1440×64 设计稿，经 preserveAspectRatio="none" 横向
          拉伸贯穿全屏（描边加 vector-effect 保持粗细不随拉伸变化）。
@@ -314,6 +316,7 @@
           <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-book"></use></svg></button>
           <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-gear"></use></svg></button>
           <button class="btn-book-back" id="btn-book-close" type="button" title="合上书，回到单词卡片（Esc）">
+          <button class="btn-bank" id="btn-bank" type="button" title="加词：导入自己的词库" aria-haspopup="dialog"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-bank"></use></svg><span class="std-label"> 加词</span></button>
             <svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-back"></use></svg>返回单词
           </button>
         </div>
@@ -524,7 +527,7 @@
   <div class="modal-overlay" id="backup-modal" hidden>
     <div class="modal modal-backup" role="dialog" aria-modal="true" aria-labelledby="backup-title">
       <h3 class="modal-title" id="backup-title">备份进度</h3>
-      <p class="modal-hint">导出会把学习进度、标记、皮肤、音效和故事集存成一个 JSON 文件；导入用备份文件整包覆盖当前进度（覆盖前会先把当前进度自动另存一份）。API Key 不会包含在备份文件里，换设备后到故事生成设置里重填即可。</p>
+      <p class="modal-hint">导出会把学习进度、标记、皮肤、音效、故事集和自定义词库存成一个 JSON 文件；导入用备份文件整包覆盖当前进度（覆盖前会先把当前进度自动另存一份）。API Key 不会包含在备份文件里，换设备后到故事生成设置里重填即可。</p>
       <div class="backup-actions">
         <button class="btn btn-primary" id="btn-backup-export" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-download"></use></svg> 导出进度文件</button>
         <button class="btn btn-secondary" id="btn-backup-import" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-upload"></use></svg> 从文件导入</button>
@@ -559,4 +562,48 @@
   <script src="backup.js"></script>
   </div>
 </body>
+  <!-- 自定义词库「加词」弹窗（bank.js 管理） -->
+  <div class="modal-overlay" id="bank-modal" hidden>
+    <div class="modal modal-bank" role="dialog" aria-modal="true" aria-labelledby="bank-modal-title">
+      <h3 class="modal-title" id="bank-modal-title">加词 · 我的词库</h3>
+      <p class="modal-hint">把自己的词变成词库来学习：拖入文档或直接粘贴文本，识别后勾选保存。行首英文 + 中文释义的行会连释义一起收下（如 <b>harvest 收获</b>），纯文章则自动抽出单词。暂支持 txt / csv / md 与粘贴文本，图片识别将在后续版本加入；pdf / docx 请先另存为 txt。</p>
+
+      <div class="bank-drop" id="bank-drop" role="button" tabindex="0" aria-label="选择或拖入文本文件">
+        <svg class="svg-icon" aria-hidden="true" width="20" height="20"><use href="#i-upload"></use></svg>
+        <span>把文件拖到这里，或点击选择（txt / csv / md）</span>
+      </div>
+      <input type="file" id="bank-file" accept=".txt,.csv,.md,.markdown,.tsv,text/*" hidden />
+
+      <div class="modal-field">
+        <textarea id="bank-paste" rows="3" placeholder="或在此粘贴英文文本 / 词表…&#10;示例：harvest 收获（一行一词一释义）"></textarea>
+      </div>
+
+      <div class="bank-preview" id="bank-preview" hidden>
+        <p class="bank-summary" id="bank-summary"></p>
+        <div class="bank-grid" id="bank-grid"></div>
+      </div>
+
+      <div class="modal-field">
+        <label for="bank-target">保存到</label>
+        <select id="bank-target"></select>
+      </div>
+      <div class="modal-field" id="bank-target-row">
+        <label for="bank-name">词库名称</label>
+        <input type="text" id="bank-name" placeholder="如：农场与耕作（留空自动命名）" autocomplete="off" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-bank-close" type="button">关闭</button>
+        <button class="btn btn-primary" id="btn-bank-save" type="button" disabled>先勾选要保存的词</button>
+      </div>
+
+      <div class="bank-manage">
+        <p class="bank-manage-title">我的词库</p>
+        <p class="bank-empty" id="bank-list-empty" hidden>还没有自定义词库 —— 从上面导入第一批词吧。</p>
+        <div class="bank-list" id="bank-list"></div>
+      </div>
+    </div>
+  </div>
+
 </html>
+  <script src="bank.js"></script>
