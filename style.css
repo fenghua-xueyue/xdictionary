@@ -1863,6 +1863,60 @@ html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { displa
 .book-ribbon:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 3px; }
 .book-ribbon[hidden] { display: none; }
 
+/* ---- 开书入场三幕动画（2026-10-26 · 仅薄荷/暖阳，节点由 app.js 动态创建）----
+   第一幕「抽签让位」与第三幕「落定」全是 WAAPI 临时动画，CSS 只管翻页叶的长相。
+   每一「页」拆成前后两半张：前半张（贴右半页）从 0 翻到 -90°（侧棱，宽度归零），
+   后半张从 -90° 接力翻到 -180°（摊平到左页上）。
+   不用 backface-visibility：overflow:hidden 会把 wrap 压平成 2D 上下文，
+   背面剔除在压平后不可靠（两面混渲染、绿皮糊上左页，踩过）；
+   两半张方案在压平上下文里也完全确定。 */
+.book-flip-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  /* 只管裁剪：overflow:hidden 会把所在元素压平成 2D 上下文，
+     透视必须交给内层 .book-flip-persp（压平 + 透视同层会互相吃掉，踩过） */
+  overflow: hidden;
+}
+.book-flip-persp {
+  position: absolute;
+  inset: 0;
+  perspective: 2400px;
+}
+.bk-leaf {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  transform-origin: left center;
+  will-change: transform;
+}
+.bk-leaf-cover-front {
+  background: linear-gradient(152deg, var(--accent) 0%, var(--accent-dark) 62%);
+  box-shadow: 0 6px 20px rgba(20, 46, 36, .28);
+  border-radius: 0 6px 6px 0;
+}
+.bk-leaf-cover-back {
+  background: var(--surface);
+  box-shadow: inset 0 0 24px rgba(34, 48, 42, .08);
+  border-radius: 0 6px 6px 0;
+}
+.bk-leaf-page-front,
+.bk-leaf-page-back {
+  background: var(--surface);
+  border-radius: 0 6px 6px 0;
+}
+.bk-leaf-page-back { box-shadow: inset 8px 0 16px rgba(34, 48, 42, .07); }
+/* 飞行途中书不可点，免得点中还没落定的正文 */
+#view-learn.story-intro .book { pointer-events: none; }
+/* 像素风根本不创建叶子；减动效下再兜一层 CSS 保险 */
+html[data-skin="pixel"] .book-flip-wrap { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .book-flip-wrap { display: none; }
+}
+
 /* ---- 展开态：让位 ---- */
 html:not([data-skin="pixel"]) #view-learn.story-open .flashcard-area,
 html:not([data-skin="pixel"]) #view-learn.story-open .card-tray,
@@ -1876,12 +1930,44 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 36px;
-  padding-bottom: 24px;
+  padding-top: 0;
+  padding-bottom: 0;
   --book-scale: 1;
 }
 /* 开书时主容器不再留 80px 页脚空（那一截会把书挤出视口） */
 html:not([data-skin="pixel"]) .app-main.is-reading { padding-bottom: 8px; }
+
+/* ---- 阅读态整页（2026-10-26）：顶栏收起系统按钮簇 + 书桌竖向居中 ----
+   像素皮肤一律不参与（保持既有布局与按钮）。 */
+/* 系统按钮簇（皮肤 / 音效 / 备份 / 加词 / 重置）开书时被 mountSysCluster 搬进
+   顶栏，读书时整簇收起 —— 合书即恢复（搬回卡下托盘）。
+   词库徽标与「复习」切换按钮不动，只收系统工具。 */
+html:not([data-skin="pixel"]) body.story-reading .app-header #sys-cluster { display: none; }
+/* 书 + 工具条整体落到屏幕中间：header 与主区一起参与纵向 flex，
+   主区吃掉剩余高度、故事面板在其中垂直居中。只作用于 ≥1024 的定尺纸布局 ——
+   窄屏是单页自然长高 + 页面滚动（flex 居中会把书顶出可视区上沿），
+   像素风有 1440×1200 固定舞台，都不参与。 */
+@media (min-width: 1024px) {
+  html:not([data-skin="pixel"]) body.story-reading {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  html:not([data-skin="pixel"]) body.story-reading .app-main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  html:not([data-skin="pixel"]) body.story-reading #view-learn.story-open {
+    flex: 1 1 auto;
+    display: flex;          /* 压过 .view-active 的 display:block */
+    flex-direction: column;
+  }
+  html:not([data-skin="pixel"]) #view-learn.story-open .story-panel {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
 
 /* 覆盖率按规格退到书内页脚（「本篇用上 18 / 20 词」），书外不再挂一条点阵；
    页脚说明同理。留在 DOM 里只是为了像素皮肤那边的旧版式。 */

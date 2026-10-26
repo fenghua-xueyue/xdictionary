@@ -749,6 +749,8 @@
       // 开书时把主容器底部那 80px 呼吸空收掉，书才能在一屏里放平
       var appMain = document.querySelector(".app-main");
       if (appMain) appMain.classList.toggle("is-reading", open);
+      // body 级阅读态标记：CSS 据此收起顶栏系统按钮簇、把书桌竖向居中（书桌段）
+      document.body.classList.toggle("story-reading", open);
       btnGen.setAttribute("aria-expanded", open ? "true" : "false");
       setGenLabel(open);
       // story.js 收到后会重新量一页装不装得下
@@ -792,7 +794,156 @@
       fitBook();
     });
     var btnBookOpen = document.getElementById("btn-book-open");
-    if (btnBookOpen) btnBookOpen.addEventListener("click", function () { setStoryOpen(true); });
+    if (btnBookOpen) btnBookOpen.addEventListener("click", openStoryFromRibbon);
+
+    /* ---- 开书入场三幕动画（2026-10-26 · 薄荷/暖阳专属）----
+       第一幕「抽签让位」：丝带往下抽出消失，卡片上抬淡出，进度 / 按钮 / 标题 / 托盘同时退场；
+       第二幕「开书翻页」：切到展开态后，书从卡片的位置和大小升起放大（FLIP 反向补间），
+         封面叶绕书脊翻开（rotateY），再翻过一页纸 —— 没故事时露出的正是扉页；
+       第三幕「顺势进位」：飞行的末帧就是 CSS 默认态（scale(--book-scale)），cancel 后无跳变，
+         工具条与顶栏按钮簇次第淡入。
+       总时长约 1.2s；中途任意点击跳过到末态；Esc 合书先跳完再合。
+       像素风 / 窄屏（<1024，单页版式）/ 减动效 → 走原来的直接打开。 */
+    var introAnims = [];
+    var introRunning = false;
+    var introSkipFn = null;
+    function introTargetEnabled() {
+      var skin = document.documentElement.getAttribute("data-skin");
+      if (skin === "pixel") return false;
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+      return window.innerWidth >= 1024;
+    }
+    function introFadeOut(el, dur) {
+      if (!el || !el.animate) return;
+      introAnims.push(el.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: dur, fill: "forwards" }));
+    }
+    function introFadeIn(el, dur, delay) {
+      if (!el || !el.animate) return;
+      // fill "both"：延迟期间就保持透明，落定后 hold 到 cleanup 再交还 CSS
+      introAnims.push(el.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: dur, delay: delay || 0, fill: "both" }));
+    }
+    function cleanupIntro() {
+      introAnims.forEach(function (a) { try { a.cancel(); } catch (e) { /* 已结束 */ } });
+      introAnims = [];
+      var wrap = document.querySelector("#view-learn .book-flip-wrap");
+      if (wrap && wrap.parentElement) wrap.parentElement.removeChild(wrap);
+      learnView.classList.remove("story-intro");
+      if (introSkipFn) { document.removeEventListener("click", introSkipFn, true); introSkipFn = null; }
+      introRunning = false;
+    }
+    function finishIntroInstant() {
+      introAnims.forEach(function (a) { try { a.finish(); } catch (e) { /* 已结束 */ } });
+      cleanupIntro();
+    }
+    /* 跳过 = 动画全部落到末态，书直接摊开在故事桌（不等第二三幕） */
+    function skipIntroToEnd() {
+      var wasRunning = introRunning;
+      finishIntroInstant();
+      if (wasRunning && !learnView.classList.contains("story-open")) {
+        setStoryOpen(true); fitBook();
+      }
+    }
+    function openStoryFromRibbon() {
+      if (introRunning || !introTargetEnabled() || !learnView.animate) {
+        setStoryOpen(true); fitBook(); return;
+      }
+      introRunning = true;
+      var card = document.querySelector("#view-learn .flashcard");
+      var ribbon = document.getElementById("btn-book-open");
+      // 卡片此刻还在文档流里，先把「合着书」的位置量下来（书沿比卡片外扩约 11/13px）
+      var fromRect = card ? card.getBoundingClientRect() : null;
+      // ── 第一幕：抽签让位 ──
+      if (card) introAnims.push(card.animate(
+        [{ transform: "translateY(0)", opacity: 1 },
+         { transform: "translateY(-10px)", opacity: 0 }],
+        { duration: 240, delay: 60, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards" }));
+      if (ribbon) introAnims.push(ribbon.animate(
+        [{ transform: "translateY(3px)", opacity: 1 },
+         { transform: "translateY(16px)", opacity: .85, offset: .6 },
+         { transform: "translateY(22px)", opacity: 0 }],
+        { duration: 280, easing: "ease-in", fill: "forwards" }));
+      ["#view-learn .progress-wrap", "#view-learn .action-bar",
+       "#view-learn .view-title-row", "#view-learn .mode-switcher",
+       "#view-learn .card-tray", "#view-learn .px-subtitle"
+      ].forEach(function (sel) { introFadeOut(document.querySelector(sel), 170); });
+      Array.prototype.forEach.call(
+        document.querySelectorAll("#view-learn .flashcard-area .nav"),
+        function (n) { introFadeOut(n, 170); });
+      // 中途任意点击 = 跳过，直接落到末态（capture 阶段拦下，别让这一击再触发丝带）
+      introSkipFn = function (e) {
+        if (!introRunning) return;
+        if (e && e.stopPropagation) e.stopPropagation();
+        skipIntroToEnd();
+      };
+      document.addEventListener("click", introSkipFn, true);
+
+      setTimeout(function () {
+        // 第一幕里被跳过 / Esc 合书过 → introRunning 已被 cleanup 置 false，别再进第二三幕
+        if (!introRunning) return;
+        // ── 第二幕起点：切到展开态 ──
+        // 此刻卡片区 display:none，周边元素第一幕已淡到透明，display 切换无跳变
+        setStoryOpen(true);
+        fitBook();
+        var book = document.querySelector("#view-learn .book");
+        if (!book || !book.animate || !fromRect) { cleanupIntro(); return; }
+        learnView.classList.add("story-intro");
+        var toRect = book.getBoundingClientRect();
+        var s1 = toRect.width / 1080;
+        var s0 = Math.max((fromRect.width + 22) / 1080, 0.12);
+        var fx = fromRect.left + fromRect.width / 2 - (1080 * s0) / 2;
+        var fy = fromRect.top + fromRect.height / 2 - (720 * s0) / 2;
+        introAnims.push(book.animate(
+          [{ transform: "translate(" + fx.toFixed(1) + "px," + fy.toFixed(1) + "px) scale(" + s0.toFixed(4) + ")" },
+           { transform: "translate(0px,0px) scale(" + s1.toFixed(4) + ")" }],
+          { duration: 680, easing: "cubic-bezier(.22,.8,.28,1)", fill: "forwards" }));
+        // 翻页叶：一页纸 + 封面，各拆前后两半张（0→-90 / -90→-180 接力，
+        // 不依赖 backface —— 见 style.css「开书入场」段的说明）。
+        // DOM 顺序 = 绘制顺序：页纸在下、封面在最上 —— 封面掀开先露出贴着的
+        // 扉页纸，扉页纸再掀开才露出最终内容，与现实翻书一致。
+        // （层序反了会被延迟期的整页白纸盖住，绿皮完全看不见，踩过）
+        if (toRect.width > 500) {
+          var wrap = document.createElement("div");
+          wrap.className = "book-flip-wrap";
+          wrap.innerHTML =
+            '<div class="book-flip-persp">' +
+              '<div class="bk-leaf bk-leaf-page-front"></div>' +
+              '<div class="bk-leaf bk-leaf-page-back"></div>' +
+              '<div class="bk-leaf bk-leaf-cover-front"></div>' +
+              '<div class="bk-leaf bk-leaf-cover-back"></div>' +
+            '</div>';
+          book.appendChild(wrap);
+          var leaf = function (cls) { return wrap.querySelector(".bk-leaf-" + cls); };
+          var flipEase = "cubic-bezier(.45,.05,.55,.95)";
+          // 封面（最上层）：绿皮翻过去，纸背摊平在左页上再淡出（露出扉页）
+          introAnims.push(leaf("cover-front").animate(
+            [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
+            { duration: 230, delay: 140, easing: flipEase, fill: "forwards" }));
+          introAnims.push(leaf("cover-back").animate(
+            [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
+            { duration: 230, delay: 370, easing: flipEase, fill: "both" }));
+          introAnims.push(leaf("cover-back").animate(
+            [{ opacity: 1 }, { opacity: 0 }],
+            { duration: 220, delay: 500, easing: "ease-out", fill: "forwards" }));
+          // 第二页纸：翻过去再淡出（露出译文）。前半张延迟期无变换 = 贴在
+          // 右半页的「下一页」，正好给掀开的封面当露出物，不需要 fill both。
+          introAnims.push(leaf("page-front").animate(
+            [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
+            { duration: 210, delay: 500, easing: flipEase, fill: "forwards" }));
+          introAnims.push(leaf("page-back").animate(
+            [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
+            { duration: 210, delay: 710, easing: flipEase, fill: "both" }));
+          introAnims.push(leaf("page-back").animate(
+            [{ opacity: 1 }, { opacity: 0 }],
+            { duration: 180, delay: 820, easing: "ease-out", fill: "forwards" }));
+        }
+        // ── 第三幕：周边次第淡入 ──
+        introFadeIn(document.querySelector("#view-learn .book-tools"), 300, 520);
+        introFadeIn(sysCluster, 280, 420);
+        setTimeout(cleanupIntro, 1000);
+      }, 230);
+    }
     var btnBookClose = document.getElementById("btn-book-close");
     if (btnBookClose) btnBookClose.addEventListener("click", function () {
       setStoryOpen(false);
@@ -802,6 +953,8 @@
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
       if (!learnView.classList.contains("story-open")) return;
+      // 入场动画没放完：先跳到末态再合书，别让两套状态打架
+      if (introRunning) finishIntroInstant();
       // 弹窗自己会响应 Esc，别同一次按键既关弹窗又合书
       var m1 = document.getElementById("story-config-modal");
       var m2 = document.getElementById("story-history-modal");
