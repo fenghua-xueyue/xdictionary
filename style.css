@@ -704,6 +704,27 @@ html[data-skin="pixel"] .idx-leaf { display: none; }
    两端叶簇 + 卷须），按钮簇照旧由 app.js 搬运（学习页挂果、复习页
    只留一段空藤）。像素皮肤整块 passthrough（.tray-vine 走惰性钩子隐藏）。
    位置：丝带垂出卡底 82px，托盘顶边距卡 92px；宽度与进度条同宽。 */
+/* ── 藤蔓配色（画稿颜色全走变量，两皮肤共用同一份画稿）──
+   薄荷默认 = 深绿春藤；暖阳 = 深棕树枝 + 秋叶 + 枫叶点缀（见 warm 覆写块）。
+   小花与枫叶在画稿里同位堆叠，切换靠「颜料开关」：把对方的花色设成
+   transparent 即隐身。不用 display:none —— 它穿不透 <use> 嵌套克隆
+   （实测 2026-10-26：克隆体照常渲染），而 var() 填色可以正常传播。
+   注意：这些原件都住在 study.html 顶部的 symbol 里（不在 .tray-vine 子树），
+   选择器直接匹配原件，计算样式随 <use> 克隆生效。 */
+:root {
+  --vine-ink: #2E6B4F;    /* 枝干 / 叶脉 / 果柄 */
+  --vine-lf1: #4C9273;
+  --vine-lf2: #3F8767;
+  --vine-lf3: #5EA184;
+  --vine-ml1: transparent;    /* 枫叶 · 薄荷下隐身 */
+  --vine-ml2: transparent;
+  --vine-fla: #FFF7EA;    /* 小花 · 奶油白花瓣 */
+  --vine-flb: #F6CFD8;    /* 小花 · 淡粉花瓣 */
+  --vine-flca: #F2B84B;   /* 小花花心 ×2 */
+  --vine-flcb: #E8A23F;
+  --fruit-bg: rgba(46, 158, 120, 0.10);    /* 果肉底 */
+  --fruit-bg-h: rgba(46, 158, 120, 0.18);  /* 果肉 hover 加深 */
+}
 html:not([data-skin="pixel"]) .card-tray {
   position: relative;
   width: min(var(--max-width), 100%);
@@ -740,11 +761,13 @@ html:not([data-skin="pixel"]) .card-tray .sys-cluster {
 html:not([data-skin="pixel"]) .card-tray .btn-skin   { margin-top: -30px; --pet: 34px; }
 html:not([data-skin="pixel"]) .card-tray .btn-sound  { margin-top: -27px; --pet: 37px; }
 html:not([data-skin="pixel"]) .card-tray .btn-backup { margin-top: -25px; --pet: 39px; }
+html:not([data-skin="pixel"]) .card-tray .btn-bank   { margin-top: -29px; --pet: 35px; }
 html:not([data-skin="pixel"]) .card-tray .btn-reset  { margin-top: -28px; --pet: 36px; }
 /* 叶柄：从按钮顶边向上连到主藤；hover 摘果时连柄一起离开 */
 html:not([data-skin="pixel"]) .card-tray .btn-skin::before,
 html:not([data-skin="pixel"]) .card-tray .btn-sound::before,
 html:not([data-skin="pixel"]) .card-tray .btn-backup::before,
+html:not([data-skin="pixel"]) .card-tray .btn-bank::before,
 html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
   content: "";
   position: absolute;
@@ -753,7 +776,7 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
   margin-left: -1.5px;
   width: 3px;
   height: var(--pet);
-  background: #2E6B4F;
+  background: var(--vine-ink, #2E6B4F);   /* 果柄颜色 = 枝干色，暖阳下自动转棕 */
   border-radius: 2px;
 }
 /* 托盘内按钮改纯图标：font-size:0 藏掉文字节点（图标是 svg，不吃 font-size），
@@ -761,17 +784,16 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
    选择器挂在 .card-tray 下 —— 开书时按钮簇搬回顶栏，自动恢复带文字的原样。 */
 html:not([data-skin="pixel"]) .card-tray .btn-skin,
 html:not([data-skin="pixel"]) .card-tray .btn-sound,
-html:not([data-skin="pixel"]) .card-tray .btn-bank   { margin-top: -29px; --pet: 35px; }
 html:not([data-skin="pixel"]) .card-tray .btn-backup,
+html:not([data-skin="pixel"]) .card-tray .btn-bank,
 html:not([data-skin="pixel"]) .card-tray .btn-reset {
   position: relative;   /* 叶柄 ::before 的定位基准 */
   font-size: 0;
   gap: 0;
-html:not([data-skin="pixel"]) .card-tray .btn-bank::before,
   padding: 14px;   /* 指头肚大小的果子：28px 图标 + 28px 内边距 ≈ 56px */
   line-height: 1;
   border-radius: var(--radius-pill);
-  background: rgba(46, 158, 120, 0.10);   /* 浅薄荷果肉底，果子有可见的圆身 */
+  background: var(--fruit-bg, rgba(46, 158, 120, 0.10));   /* 果肉底，暖阳转赭橙 */
   border-color: transparent;
   transition: background .15s, color .15s,
               transform .2s cubic-bezier(.34, 1.56, .64, 1),
@@ -782,10 +804,10 @@ html:not([data-skin="pixel"]) .card-tray .btn-bank::before,
 html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
   width: 28px;
   height: 28px;
-html:not([data-skin="pixel"]) .card-tray .btn-bank,
 }
 /* 滑过两段式：按钮先「弹出」托盘上方（上浮 + 投影浮起），
    图标延迟 ~0.09s 再放大 —— 读起来是弹出 → 放大。
@@ -793,21 +815,23 @@ html:not([data-skin="pixel"]) .card-tray .btn-bank,
 html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
   transition: transform .18s cubic-bezier(.34, 1.56, .64, 1) .09s;
 }
 html:not([data-skin="pixel"]) .card-tray .btn-skin:hover,
 html:not([data-skin="pixel"]) .card-tray .btn-sound:hover,
 html:not([data-skin="pixel"]) .card-tray .btn-backup:hover,
+html:not([data-skin="pixel"]) .card-tray .btn-bank:hover,
 html:not([data-skin="pixel"]) .card-tray .btn-reset:hover {
   transform: translateY(-14px);
-  background: rgba(46, 158, 120, 0.18);   /* 果肉加深一档 */
+  background: var(--fruit-bg-h, rgba(46, 158, 120, 0.18));   /* 果肉加深一档 */
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.10);
 }
-html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-skin:hover .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-sound:hover .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-backup:hover .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-bank:hover .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .btn-reset:hover .svg-icon {
   transform: scale(1.3);
 }
@@ -815,14 +839,12 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset:hover .svg-icon {
    间距给 26px —— 比按钮弹出高度（-14px）多一截，悬停时弹起的按钮
    不会顶进浮层底边。开书时按钮簇搬回顶栏，这条自动失效，浮层恢复
    默认向下（10px 间距）—— 两个位置都对。 */
-html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
 html:not([data-skin="pixel"]) .card-tray .skin-pop {
   top: auto;
   bottom: calc(100% + 26px);
   animation-name: skin-pop-in-up;
 }
 @keyframes skin-pop-in-up {
-html:not([data-skin="pixel"]) .card-tray .btn-bank:hover,
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -831,7 +853,6 @@ html:not([data-skin="pixel"]) .card-tray .btn-bank:hover,
 /* 故事入口收敛到丝带（2026-10-25）：薄荷/暖阳点卡片上的丝带开书，
    操作行的「看今日故事」按钮退役；像素皮肤没有丝带，这个按钮仍是
    唯一故事入口，保留。按钮留在 DOM 里 —— story.js 生成故事时还会
-html:not([data-skin="pixel"]) .card-tray .btn-bank:hover .svg-icon,
    借它程序化展开面板（#btn-generate.click()）。 */
 html:not([data-skin="pixel"]) #btn-generate { display: none; }
 
@@ -2366,27 +2387,6 @@ html:not([data-skin="pixel"]) .btn-sound { display: none; }
 .btn-backup:active { transform: scale(0.98); }
 .btn-backup:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* 皮肤选择浮层：贴在按钮下方，抬高 z-index 盖住下方内容（不挪动位置，避免遮住标题行） */
-.skin-pop {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 250px;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-pop);
-  padding: 12px;
-  z-index: 70;
-  animation: skin-pop-in .14s ease;
-}
-.skin-pop[hidden] { display: none; }
-@keyframes skin-pop-in {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.skin-pop-title {
-  font-size: 13px;
 /* 加词按钮（自定义词库入口，bank.js，2026-10-26 新增）：
    带文字的 ghost 钮，同皮肤按钮；托盘里退化成果子（见卡下托盘段） */
 .btn-bank {
@@ -2409,6 +2409,27 @@ html:not([data-skin="pixel"]) .btn-sound { display: none; }
 .btn-bank:active { transform: scale(0.98); }
 .btn-bank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* 皮肤选择浮层：贴在按钮下方，抬高 z-index 盖住下方内容（不挪动位置，避免遮住标题行） */
+.skin-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 250px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-pop);
+  padding: 12px;
+  z-index: 70;
+  animation: skin-pop-in .14s ease;
+}
+.skin-pop[hidden] { display: none; }
+@keyframes skin-pop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.skin-pop-title {
+  font-size: 13px;
   color: var(--text-muted);
   padding: 0 4px 10px;
   line-height: 1.5;
@@ -2538,6 +2559,22 @@ html[data-skin="warm"] {
   /* 故事页：赭橙荧光笔（暖阳世界的批注笔） */
   --st-mark: rgba(174, 85, 38, 0.15);
   --st-mark-on: rgba(174, 85, 38, 0.24);
+
+  /* 卡下托盘：藤蔓 → 手绘树枝（深棕枝干），叶子转秋色，
+     小花换枫叶（形状切换靠下方 .vn-fl / .vn-ml 显隐），
+     果肉底同步转赭橙，整条托盘呼应暖阳的棕色调 */
+  --vine-ink: #6E4A28;
+  --vine-lf1: #C97F3D;   /* 秋叶 · 琥珀 */
+  --vine-lf2: #B5692E;   /* 秋叶 · 锈橙 */
+  --vine-lf3: #D89A4C;   /* 秋叶 · 金黄 */
+  --vine-ml1: #CE5427;   /* 枫叶 · 橙红（与暖阳主色同源） */
+  --vine-ml2: #D9962E;   /* 枫叶 · 金黄 */
+  --vine-fla: transparent;   /* 小花隐身（颜料开关，见托盘区说明） */
+  --vine-flb: transparent;
+  --vine-flca: transparent;
+  --vine-flcb: transparent;
+  --fruit-bg: rgba(174, 85, 38, 0.10);
+  --fruit-bg-h: rgba(174, 85, 38, 0.18);
 }
 
 /* ============================ 响应式兜底 ============================ */
@@ -2679,6 +2716,12 @@ html[data-skin="pixel"] .btn-backup {
   padding: 8px 12px; font-size: 16px;
 }
 html[data-skin="pixel"] .btn-backup:hover { background: #F8F8F8; color: var(--px-text); }
+html[data-skin="pixel"] .btn-bank {
+  border-radius: 0; border: 2px solid var(--px-edge2);
+  background: var(--px-sub1); color: var(--px-text);
+  padding: 8px 16px; font-size: 15px;
+}
+html[data-skin="pixel"] .btn-bank:hover { background: #F8F8F8; color: var(--px-text); }
 html[data-skin="pixel"] .btn-sound[aria-pressed="false"] {
   background: var(--px-card); color: var(--px-text4);
 }
@@ -2716,12 +2759,6 @@ html[data-skin="pixel"] .app-main .view-active {
    （左：今日单词…复习／右：模式切换）。标题行本来就 67 高、模式行只 52，
    并进去不增高 → 省下一整行 52 + 一个间隙 16 = 68px，全给卡片。
    ⚠️ **必须限定 .view-study.view-active**：
-html[data-skin="pixel"] .btn-bank {
-  border-radius: 0; border: 2px solid var(--px-edge2);
-  background: var(--px-sub1); color: var(--px-text);
-  padding: 8px 16px; font-size: 15px;
-}
-html[data-skin="pixel"] .btn-bank:hover { background: #F8F8F8; color: var(--px-text); }
    ① 首页 #view-empty 也带 .view-active，但它有自己的 `html[data-skin="pixel"] .view-empty{display:flex;align-items:center;…}`（特异性 0,2,1）——
       写成 .view-active 是 0,3,1，会把首页的居中顶掉，hero 跑到上面去。
    ② 复习页也带 .view-study，但它多数时候是隐藏的；只写 .view-study 会与 `.view{display:none}` 同分且排在后面
@@ -3168,6 +3205,17 @@ html[data-skin="pixel"] .modal-field textarea:focus,
 html[data-skin="pixel"] .modal-field select:focus {
   border-color: var(--px-accent-dk); box-shadow: inset 2px 2px 0 var(--px-sub2);
 }
+/* 加词弹窗的拖放区 / 识别列表 / 词库行：像素风一律去圆角、硬边 */
+html[data-skin="pixel"] .bank-drop { border: 2px dashed var(--px-edge2); border-radius: 0; background: var(--px-sub2); }
+html[data-skin="pixel"] .bank-drop:hover,
+html[data-skin="pixel"] .bank-drop.is-drag { border-color: var(--px-accent-dk); color: var(--px-accent-dk); background: var(--px-sub1); }
+html[data-skin="pixel"] .bank-item,
+html[data-skin="pixel"] .bank-row { border-radius: 0; border: 1px solid var(--px-edge2); background: var(--px-sub2); }
+html[data-skin="pixel"] .bank-row.is-active { border-color: var(--px-accent-dk); background: var(--px-sub1); }
+html[data-skin="pixel"] .bank-item-meaning { border-radius: 0; border: 2px solid var(--px-edge2); background: #FFF; }
+html[data-skin="pixel"] .bank-item-tag { border-radius: 0; }
+html[data-skin="pixel"] .bank-item-tag.is-new { background: var(--px-accent); color: var(--on-accent); }
+html[data-skin="pixel"] .btn-sm { border-radius: 0; }
 html[data-skin="pixel"] .modal-field-hint { font-size: 13px; color: var(--px-text3); }
 html[data-skin="pixel"] .history-list { max-height: 520px; padding-right: 0; }
 html[data-skin="pixel"] .history-item {
@@ -3205,17 +3253,6 @@ html[data-skin="pixel"] .skin-item { border: 2px solid transparent; border-radiu
 html[data-skin="pixel"] .skin-item.active { border-color: var(--px-accent); background: var(--px-sub1); }
 html[data-skin="pixel"] .skin-swatch { border-radius: 0; border: 1px solid var(--px-edge2); }
 
-/* 加词弹窗的拖放区 / 识别列表 / 词库行：像素风一律去圆角、硬边 */
-html[data-skin="pixel"] .bank-drop { border: 2px dashed var(--px-edge2); border-radius: 0; background: var(--px-sub2); }
-html[data-skin="pixel"] .bank-drop:hover,
-html[data-skin="pixel"] .bank-drop.is-drag { border-color: var(--px-accent-dk); color: var(--px-accent-dk); background: var(--px-sub1); }
-html[data-skin="pixel"] .bank-item,
-html[data-skin="pixel"] .bank-row { border-radius: 0; border: 1px solid var(--px-edge2); background: var(--px-sub2); }
-html[data-skin="pixel"] .bank-row.is-active { border-color: var(--px-accent-dk); background: var(--px-sub1); }
-html[data-skin="pixel"] .bank-item-meaning { border-radius: 0; border: 2px solid var(--px-edge2); background: #FFF; }
-html[data-skin="pixel"] .bank-item-tag { border-radius: 0; }
-html[data-skin="pixel"] .bank-item-tag.is-new { background: var(--px-accent); color: var(--on-accent); }
-html[data-skin="pixel"] .btn-sm { border-radius: 0; }
 /* ============================================================
    惰性钩子：默认全隐藏，像素皮肤下才显示
    ============================================================ */
