@@ -7,3 +7,6 @@
 # 依赖与系统缓存
 node_modules/
 .DS_Store
+
+# 本地验证/生成脚本与产物（不入库）
+.verify/

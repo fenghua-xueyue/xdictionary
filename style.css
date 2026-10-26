@@ -116,6 +116,10 @@
 /* ============================ 基础重置 ============================ */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* 全宽藤蔓用 100vw 定位，滚动条占宽会带来 ~15px 横向溢出 —— 一律剪掉
+   （用 clip 而不是 hidden：不产生滚动容器，纵向滚动行为不变） */
+html { overflow-x: clip; }
+
 body {
   background: var(--bg-page);
   color: var(--text-primary);
@@ -550,6 +554,139 @@ html[data-skin="pixel"] .idx-leaf { display: none; }
   background: var(--accent-dark);
   color: var(--on-accent);
 }
+
+/* ============================ 卡下托盘（藤蔓 · 薄荷/暖阳） ============================
+   2026-10-25 晚改版：玻璃托盘退役，换成一条横向藤蔓 —— 呼应薄荷皮肤
+   的春天与绿色元素，系统按钮（皮肤 / 音效 / 备份 / 重置）像果子一样
+   挂在藤上：每个按钮顶上连一根细叶柄（::before），高低微错落；
+   滑过时按钮连柄一起「摘离」藤面（上浮 -14px），图标再放大。
+   结构：study.html 里 .card-tray 内放 <svg class="tray-vine">（主藤 +
+   两端叶簇 + 卷须），按钮簇照旧由 app.js 搬运（学习页挂果、复习页
+   只留一段空藤）。像素皮肤整块 passthrough（.tray-vine 走惰性钩子隐藏）。
+   位置：丝带垂出卡底 82px，托盘顶边距卡 92px；宽度与进度条同宽。 */
+html:not([data-skin="pixel"]) .card-tray {
+  position: relative;
+  width: min(var(--max-width), 100%);
+  margin: 92px auto 12px;
+  padding: 0 24px 8px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* 主藤：手绘风 SVG（symbol#vine-art），贯穿全屏宽（100vw 居中），
+   按 1440×64 设计、preserveAspectRatio="none" 横向铺满。
+   top=-60：藤悬在卡片与托盘之间的空隙，果子用长柄垂下来 */
+html:not([data-skin="pixel"]) .card-tray .tray-vine {
+  display: block;
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  height: 64px;
+  pointer-events: none;
+}
+html:not([data-skin="pixel"]) .card-tray .sys-cluster {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 56px;
+  padding-top: 34px;   /* 藤线 y≈30，按钮从藤上垂下来 */
+}
+/* 挂果：短柄垂挂 —— 柄长为长柄版的一半，果子用等量负 margin 上提，
+   柄尖仍精确落在藤走廊 y≈-30（34 + m' − pet' = -30，pet' = 旧值/2） */
+html:not([data-skin="pixel"]) .card-tray .btn-skin   { margin-top: -30px; --pet: 34px; }
+html:not([data-skin="pixel"]) .card-tray .btn-sound  { margin-top: -27px; --pet: 37px; }
+html:not([data-skin="pixel"]) .card-tray .btn-backup { margin-top: -25px; --pet: 39px; }
+html:not([data-skin="pixel"]) .card-tray .btn-reset  { margin-top: -28px; --pet: 36px; }
+/* 叶柄：从按钮顶边向上连到主藤；hover 摘果时连柄一起离开 */
+html:not([data-skin="pixel"]) .card-tray .btn-skin::before,
+html:not([data-skin="pixel"]) .card-tray .btn-sound::before,
+html:not([data-skin="pixel"]) .card-tray .btn-backup::before,
+html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--pet));
+  left: 50%;
+  margin-left: -1.5px;
+  width: 3px;
+  height: var(--pet);
+  background: #2E6B4F;
+  border-radius: 2px;
+}
+/* 托盘内按钮改纯图标：font-size:0 藏掉文字节点（图标是 svg，不吃 font-size），
+   统一成方形小圆钮；重置的白底 + 浅描边也在托盘里去掉（三钮统一 ghost）。
+   选择器挂在 .card-tray 下 —— 开书时按钮簇搬回顶栏，自动恢复带文字的原样。 */
+html:not([data-skin="pixel"]) .card-tray .btn-skin,
+html:not([data-skin="pixel"]) .card-tray .btn-sound,
+html:not([data-skin="pixel"]) .card-tray .btn-backup,
+html:not([data-skin="pixel"]) .card-tray .btn-reset {
+  position: relative;   /* 叶柄 ::before 的定位基准 */
+  font-size: 0;
+  gap: 0;
+  padding: 14px;   /* 指头肚大小的果子：28px 图标 + 28px 内边距 ≈ 56px */
+  line-height: 1;
+  border-radius: var(--radius-pill);
+  background: rgba(46, 158, 120, 0.10);   /* 浅薄荷果肉底，果子有可见的圆身 */
+  border-color: transparent;
+  transition: background .15s, color .15s,
+              transform .2s cubic-bezier(.34, 1.56, .64, 1),
+              box-shadow .2s ease;
+}
+/* 果子放大配粗藤：CSS 尺寸覆盖 HTML 的 width/height 属性；
+   只挂四颗果，开书搬回顶栏恢复 15~18px 原样 */
+html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
+  width: 28px;
+  height: 28px;
+}
+/* 滑过两段式：按钮先「弹出」托盘上方（上浮 + 投影浮起），
+   图标延迟 ~0.09s 再放大 —— 读起来是弹出 → 放大。
+   图标过渡带同样延迟，离开时按原曲线缩回。 */
+html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
+  transition: transform .18s cubic-bezier(.34, 1.56, .64, 1) .09s;
+}
+html:not([data-skin="pixel"]) .card-tray .btn-skin:hover,
+html:not([data-skin="pixel"]) .card-tray .btn-sound:hover,
+html:not([data-skin="pixel"]) .card-tray .btn-backup:hover,
+html:not([data-skin="pixel"]) .card-tray .btn-reset:hover {
+  transform: translateY(-14px);
+  background: rgba(46, 158, 120, 0.18);   /* 果肉加深一档 */
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.10);
+}
+html:not([data-skin="pixel"]) .card-tray .btn-skin:hover .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-sound:hover .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-backup:hover .svg-icon,
+html:not([data-skin="pixel"]) .card-tray .btn-reset:hover .svg-icon {
+  transform: scale(1.3);
+}
+/* 托盘里的皮肤浮层向上展开：按钮在页面底部，向下弹会贴地甚至出屏。
+   间距给 26px —— 比按钮弹出高度（-14px）多一截，悬停时弹起的按钮
+   不会顶进浮层底边。开书时按钮簇搬回顶栏，这条自动失效，浮层恢复
+   默认向下（10px 间距）—— 两个位置都对。 */
+html:not([data-skin="pixel"]) .card-tray .skin-pop {
+  top: auto;
+  bottom: calc(100% + 26px);
+  animation-name: skin-pop-in-up;
+}
+@keyframes skin-pop-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* 开书时整块托盘让位 —— 隐藏规则在「书桌」段（app.js 同时把按钮簇搬回顶栏）。 */
+
+/* 故事入口收敛到丝带（2026-10-25）：薄荷/暖阳点卡片上的丝带开书，
+   操作行的「看今日故事」按钮退役；像素皮肤没有丝带，这个按钮仍是
+   唯一故事入口，保留。按钮留在 DOM 里 —— story.js 生成故事时还会
+   借它程序化展开面板（#btn-generate.click()）。 */
+html:not([data-skin="pixel"]) #btn-generate { display: none; }
 
 /* ============================ 翻卡区 ============================ */
 .flashcard-area {
@@ -1556,6 +1693,7 @@ html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { displa
 
 /* ---- 展开态：让位 ---- */
 html:not([data-skin="pixel"]) #view-learn.story-open .flashcard-area,
+html:not([data-skin="pixel"]) #view-learn.story-open .card-tray,
 html:not([data-skin="pixel"]) #view-learn.story-open .progress-wrap,
 html:not([data-skin="pixel"]) #view-learn.story-open .action-bar,
 html:not([data-skin="pixel"]) #view-learn.story-open .view-title-row,
@@ -2244,6 +2382,11 @@ html[data-skin="warm"] {
   .hero-title { font-size: 26px; }
   .flashcard { padding: 36px 22px; min-height: 240px; }
   .flashcard-area { gap: 10px; }
+  /* 窄屏托盘竖排，进度居中；藤蔓段收窄间距，
+     藤改固定 1200px 居中裁边 —— 免得 1440 的画稿在窄屏被压扁变形 */
+  html:not([data-skin="pixel"]) .card-tray { padding: 0 12px 8px; }
+  html:not([data-skin="pixel"]) .card-tray .sys-cluster { gap: 24px; }
+  html:not([data-skin="pixel"]) .card-tray .tray-vine { width: 1200px; }
   .nav { width: 46px; height: 46px; font-size: 24px; }
   .app-header { padding: 18px 20px; }
   /* 故事页：窄屏收紧留白与句号栏（桌面端为主，这里只兜底不破版） */
@@ -2413,18 +2556,17 @@ html[data-skin="pixel"] .app-main .view-study.view-active {
   display: grid; grid-template-columns: 1fr auto; align-content: start; gap: 16px;
 }
 html[data-skin="pixel"] .app-main .view-study > .view-title-row { grid-column: 1; grid-row: 1; }
-html[data-skin="pixel"] .app-main .view-study > .mode-switcher {
-  grid-column: 2; grid-row: 1; align-self: center; justify-self: end;
-}
+/* 2026-10-25 卡下托盘：顶栏系统按钮（皮肤/音效/备份/重置）挪进 .card-tray，
+   学习/复习两页各多一个直接子元素；像素风里托盘只是普通容器（见下方 passthrough），
+   按钮簇沿用像素自己的样式，排在操作行之下。 */
 html[data-skin="pixel"] .app-main .view-study > .px-subtitle,
 html[data-skin="pixel"] .app-main .view-study > .flashcard-area,
-html[data-skin="pixel"] .app-main .view-study > .progress-wrap,
-html[data-skin="pixel"] .app-main .view-study > .action-bar,
+html[data-skin="pixel"] .app-main .view-study > .card-tray,
 html[data-skin="pixel"] .app-main .view-study > .story-panel { grid-column: 1 / -1; }
 /* 最后一行（故事面板）要吃掉剩余高度：grid 里没有 flex:1，得显式给 1fr。
    两个视图的直接子元素个数不同（学习页多一行 .px-subtitle），所以分开写。 */
-html[data-skin="pixel"] #view-learn.view-active  { grid-template-rows: repeat(5, min-content) 1fr; }
-html[data-skin="pixel"] #view-review.view-active { grid-template-rows: repeat(4, min-content) 1fr; }
+html[data-skin="pixel"] #view-learn.view-active  { grid-template-rows: repeat(6, min-content) 1fr; }
+html[data-skin="pixel"] #view-review.view-active { grid-template-rows: repeat(5, min-content) 1fr; }
 
 /* —— 生成故事：点按钮把故事面板展开（设计稿 07：面板在操作行下方展开） ——
    展开不靠「挤」而靠「长」：故事那一行从 `1fr`（吃掉剩余、被压扁）
@@ -2432,7 +2574,7 @@ html[data-skin="pixel"] #view-review.view-active { grid-template-rows: repeat(4,
    跟薄荷一样用鼠标滚轮往下看完整故事。卡片保持 428 不缩、其余各行也不动。
    （早先那版是「缩卡片到 410 + 收起副标题和进度区」把故事挤到 213px，
      已被这套替代 —— 那种做法故事仍然看不全，只是没那么挤。） */
-html[data-skin="pixel"] #view-learn.story-open { grid-template-rows: repeat(5, min-content) 540px; }
+html[data-skin="pixel"] #view-learn.story-open { grid-template-rows: repeat(6, min-content) 540px; }
 /* 为什么是固定 540px 而不是 `auto`：grid 的 `auto` 轨道取的是 max-content ——
    对一整段文字来说 max-content 意味着「不换行」，于是只算出 ~102px，还是被压扁。
    固定行高是这里唯一能表达「按当前宽度排完的高度」的办法（实测故事内容 495px）。
@@ -2454,6 +2596,19 @@ html[data-skin="pixel"] .view-title { font-size: var(--fs-title); text-align: le
 html[data-skin="pixel"] .view-title-row .view-title { margin: 0; }
 html[data-skin="pixel"] .view-title-actions { flex-direction: row; }
 html[data-skin="pixel"] .view-title-actions .btn { justify-content: center; }
+
+/* —— 卡下托盘在像素风里不配色、不投影，只是普通容器；
+      按钮簇（皮肤 / 音效 / 备份 / 重置）沿用像素自己的样式 —— */
+html[data-skin="pixel"] .card-tray {
+  display: block;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+  margin: 0 auto 16px;
+  max-width: none;
+  width: 100%;
+}
 
 html[data-skin="pixel"] .mode-switcher {
   background: var(--px-sub1); border: 1px solid var(--px-edge);
@@ -2873,7 +3028,7 @@ html[data-skin="pixel"] .skin-swatch { border-radius: 0; border: 1px solid var(-
 /* ============================================================
    惰性钩子：默认全隐藏，像素皮肤下才显示
    ============================================================ */
-.px-bg, .px-sword, .px-eyebrow, .px-hint-zh, .px-index, .px-subtitle, .px-label { display: none; }
+.px-bg, .px-sword, .px-eyebrow, .px-hint-zh, .px-index, .px-subtitle, .px-label, .tray-vine { display: none; }
 
 html[data-skin="pixel"] .px-index {
   display: block; position: absolute; top: 24px; left: 24px;

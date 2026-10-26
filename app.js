@@ -209,12 +209,31 @@
     return out;
   }
 
+  /* ---------- 系统按钮簇（皮肤 / 音效 / 备份 / 重置）：托盘 ↔ 顶栏 搬运 ----------
+     按钮常驻当前视图卡下的 .card-tray（HTML 里初始放在学习页的 .sys-slot）；
+     切视图时搬进新视图的槽；开故事书时托盘整块隐藏，搬回顶栏，功能不断。 */
+  var sysCluster = document.getElementById("sys-cluster");
+  var headerRightEl = document.querySelector(".header-right");
+  var roundBadgeEl = document.getElementById("round-badge");
+  function mountSysCluster() {
+    if (!sysCluster || !headerRightEl) return;
+    if (document.getElementById("view-learn").classList.contains("story-open")) {
+      if (sysCluster.parentElement !== headerRightEl || sysCluster.nextElementSibling !== roundBadgeEl) {
+        headerRightEl.insertBefore(sysCluster, roundBadgeEl);
+      }
+      return;
+    }
+    var slot = document.querySelector(".view-active .sys-slot");
+    if (slot && sysCluster.parentElement !== slot) slot.appendChild(sysCluster);
+  }
+
   /* ---------- 视图切换 ---------- */
   function switchView(name) {
     state.view = name;
     document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("view-active"); });
     document.getElementById(name === "review" ? "view-review" : "view-learn").classList.add("view-active");
     document.getElementById("app-header").style.display = "flex";
+    mountSysCluster();
   }
 
   /* ---------- 渲染：卡片 ---------- */
@@ -643,6 +662,7 @@
        翻开后书占中央，卡片区、进度、按钮条全部让位（让位规则写在 style.css 的「书桌」段）。 */
     function setStoryOpen(open) {
       learnView.classList.toggle("story-open", open);
+      mountSysCluster();
       // 开书时把主容器底部那 80px 呼吸空收掉，书才能在一屏里放平
       var appMain = document.querySelector(".app-main");
       if (appMain) appMain.classList.toggle("is-reading", open);
@@ -826,6 +846,7 @@
       state.pool = freshPool(); state.cursor = 0;
     }
     bindEvents();                                // 先绑定事件，保证任何分支按钮都可用
+    mountSysCluster();                           // 系统按钮簇就位（托盘 / 顶栏）
     if (!state.currentRound) { drawRound(); return; } // 直接打开学习页时自动抽第一轮
     // 复习模式下不允许停留在被隐藏的“背单词”模式
     if (state.view === "review" && state.mode === "learn") state.mode = "en";
