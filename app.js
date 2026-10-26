@@ -5,7 +5,7 @@
 (function () {
   "use strict";
   /* 版本指纹：F12 控制台可确认浏览器实际加载的 app.js 是哪一版（排查缓存用） */
-  console.log("[xdictionary] app.js v202610262 · 开书三拍(纯旋转+统一缩放接棒)");
+  console.log("[xdictionary] app.js v202610263 · 开书三拍(纯旋转+统一缩放接棒)");
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -861,6 +861,8 @@
       restoreIntroBook();
       var wrap = document.querySelector("#view-learn .book-flip-wrap");
       if (wrap && wrap.parentElement) wrap.parentElement.removeChild(wrap);
+      var bookEl = document.querySelector("#view-learn .book");
+      if (bookEl) bookEl.style.removeProperty("transform-origin");
       learnView.classList.remove("story-intro");
       var card = document.querySelector("#view-learn .flashcard");
       if (card) card.style.removeProperty("--card-exit-y");
@@ -936,22 +938,22 @@
         if (!book || !book.animate) { cleanupIntro(); return; }
         var toRect = book.getBoundingClientRect();
         var s1 = toRect.width / 1080;
-        var tcx = toRect.left + toRect.width / 2, tcy = toRect.top + toRect.height / 2;
-        /* 接棒对齐（transform-origin 均为中心）：起点 = 平移到立书中心 + rotate(-90°)
-           + 统一缩放 s0 —— 立书（旋转后）视觉框 = (buC.h 宽, buC.w 高)；
-           摊开书旋转后视觉框 = (720·s0, 1080·s0)。s0 取「新书完全盖住立书」的最小值
-           再留 2% 余量。统一缩放保证书的形状全程不失真（横纵各异的非均匀缩放会把
-           书拉宽拉窄，弃用）；新书比立书大一圈 = 摊开的书面本就比封面大，
-           读作「这本立着的书翻开了，露出更大的书页」。 */
-        var dx = buC.x - tcx, dy = buC.y - tcy;
+        /* 关键：.book 的 CSS transform-origin 是 0 0（定尺纸排版锚点，见 style.css）。
+           飞行动画期间临时改为中心原点 —— 起点对接与「倒下」旋转都以书中心为基准，
+           不会绕左上角甩出去；cleanup 时摘掉内联 origin，CSS 默认
+           scale(--book-scale) · origin 0 0 的视觉与末帧完全一致，无跳变。 */
+        book.style.transformOrigin = "50% 50%";
+        var ecx = toRect.left + 540, ecy = toRect.top + 360;   /* 未缩放元素中心 */
+        var dx = buC.x - ecx, dy = buC.y - ecy;
         var s0 = Math.max(buC.h / 720, buC.w / 1080) * 1.02;
-        /* 飞行两段式：前 ~88% 从立书位姿飞到桌心（边转正边放大，读作「倒下摊开」），
-           带 settle 超冲 s1×1.012，末 12% ease-out 回落到精确默认值 ——
-           末帧与 CSS 默认态完全一致，fill forwards / cancel 均无跳变。 */
+        /* 中心原点下视觉框 = 中心 ± (540·s, 360·s)；后两帧的 translate 恰好补回
+           缩放差，使 settle 与末帧的视觉左上角钉在 CSS 默认位 (toRect.left/top)。
+           飞行两段式：前 ~88% 从立书位姿飞到桌心（边转正边放大，「倒下摊开」），
+           末段 settle 超冲 s1×1.012 后回落 —— 末帧与 CSS 默认态一致，cancel 无跳变。 */
         introAnims.push(book.animate(
           [{ transform: "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(-90deg) scale(" + s0.toFixed(4) + ")", easing: "cubic-bezier(.25,.6,.3,1)" },
-           { transform: "translate(0px,0px) rotate(0deg) scale(" + (s1 * 1.012).toFixed(4) + ")", offset: 0.88, easing: "ease-out" },
-           { transform: "translate(0px,0px) scale(" + s1.toFixed(4) + ")" }],
+           { transform: "translate(" + (540 * s1 * 1.012 - 540).toFixed(1) + "px," + (360 * s1 * 1.012 - 360).toFixed(1) + "px) rotate(0deg) scale(" + (s1 * 1.012).toFixed(4) + ")", offset: 0.88, easing: "ease-out" },
+           { transform: "translate(" + (540 * s1 - 540).toFixed(1) + "px," + (360 * s1 - 360).toFixed(1) + "px) rotate(0deg) scale(" + s1.toFixed(4) + ")" }],
           { duration: 850, fill: "forwards" }));
         // 立书交叉淡出：新书已在立书位姿出现，立书快速淡出交棒。
         // onfinish 把终态写进内联样式兜底 —— fill:forwards 的已结束动画会被
