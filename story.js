@@ -63,6 +63,32 @@
     return null;
   }
 
+  /* ---------- 手填释义（词库外的词，2026-10-26）----------
+     localStorage key：english_app_dict_v1 = { "小写单词": "释义" }。
+     四级词库 + 自定义词库都查不到的词，角卡给输入行让用户自己补释义；
+     保存后随点随显（loadUserDict 带缓存），备份整包带走（见 backup.js）。 */
+  var LS_DICT = "english_app_dict_v1";
+  var userDict = null;       // 懒加载缓存：小写单词 → 释义
+  var dockWord = null;       // 角卡当前展示的词（原文大小写，保存 / 还原时用）
+  function loadUserDict() {
+    if (userDict) return userDict;
+    try {
+      var obj = JSON.parse(localStorage.getItem(LS_DICT) || "null");
+      userDict = (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { userDict = {}; }
+    for (var k in userDict) if (typeof userDict[k] !== "string") delete userDict[k];
+    return userDict;
+  }
+  function saveUserDict() {
+    try { localStorage.setItem(LS_DICT, JSON.stringify(userDict)); } catch (e) { /* 无痕模式 */ }
+  }
+  function userMeanOf(word) {
+    return loadUserDict()[String(word).toLowerCase()] || "";
+  }
+  /* 暴露给 app.js：标记模式的生词卡自动带上手填释义。
+     app.js 先于本模块加载，但只在渲染时取值 → 无时序问题；取值方需判空。 */
+  window.UserDict = { meanOf: userMeanOf };
+
   /* ---------- 标记状态：从 app.js 拉当前模式的标记清单（同步应答） ---------- */
   var markedWords = {};
   function markSnapshot() {
@@ -492,22 +518,58 @@
     fitPages();
   }
 
-  /* ---------- 角卡：点正文里的词，卡上换内容，不跳转 ---------- */
+  /* ---------- 角卡：点正文里的词，卡上换内容，不跳转 ----------
+     词库外的词（四级 + 自定义都查不到）→ 直接给输入行让用户补释义；
+     已有手填释义 → 显示释义 + 编辑笔，点笔再改。 */
   function showDock(word) {
     if (!els.dock || !word) return;
+    var key = String(word).toLowerCase();
     var info = infoOf(word);
+    var isBank = !!(info && info.meaning);
+    var uMean = isBank ? "" : userMeanOf(key);
+    var editing = !isBank && !uMean;   // 词库外且还没有释义 → 进可填状态
+    dockWord = word;
     els.dock.hidden = false;
     var w = els.dock.querySelector(".book-dock-word");
     var p = els.dock.querySelector(".book-dock-phon");
     var m = els.dock.querySelector(".book-dock-mean");
     if (w) w.textContent = word;
     if (p) p.textContent = (info && info.phonetic) ? info.phonetic : "";
-    if (m) m.textContent = (info && info.meaning) ? info.meaning : "";
+    if (m) { m.textContent = isBank ? info.meaning : uMean; m.hidden = editing; }
+    if (els.dockEdit) els.dockEdit.hidden = isBank || editing;
+    if (els.dockEditRow) {
+      els.dockEditRow.hidden = !editing;
+      if (editing && els.dockInput) els.dockInput.value = "";
+    }
     // 正文里同一个词可能出现在多段，全标一遍
     var old = els.panel.querySelectorAll(".st-word.is-active, .st-any.is-active");
     for (var i = 0; i < old.length; i++) old[i].classList.remove("is-active");
     var same = els.panel.querySelectorAll('.st-word[data-word="' + word + '"], .st-any[data-word="' + word + '"]');
     for (var j = 0; j < same.length; j++) same[j].classList.add("is-active");
+  }
+
+  /* 角卡编辑笔 / 输入行：打开输入行（预填现有释义并聚焦） */
+  function openDockEditor() {
+    if (!dockWord || !els.dockEditRow) return;
+    var m = els.dock.querySelector(".book-dock-mean");
+    els.dockEditRow.hidden = false;
+    if (m) m.hidden = true;
+    if (els.dockEdit) els.dockEdit.hidden = true;
+    if (els.dockInput) {
+      els.dockInput.value = userMeanOf(dockWord);
+      setTimeout(function () { els.dockInput.focus(); }, 0);
+    }
+  }
+  /* 保存：非空存入（截 120 字），空 = 清除该词释义；完成后回展示态 */
+  function saveDockEditor() {
+    if (!dockWord || !els.dockInput) return;
+    var key = String(dockWord).toLowerCase();
+    var val = els.dockInput.value.replace(/\s+/g, " ").trim().slice(0, 120);
+    loadUserDict();
+    if (val) userDict[key] = val; else delete userDict[key];
+    saveUserDict();
+    showDock(dockWord);
+    if (val) toast("已记下「" + dockWord + "」的释义");
   }
 
   /* ---------- 段号联动：两侧同号段一起浮底，点一下可以钉住 ---------- */
@@ -1066,6 +1128,25 @@
     els.body.addEventListener("click", onWord);
     if (els.zhBody) els.zhBody.addEventListener("click", onWord);
 
+    // 角卡 · 手填释义：编辑笔 / 存按钮（点击不冒泡进段落钉选逻辑）
+    if (els.dock) {
+      els.dock.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest(".book-dock-edit")) { openDockEditor(); return; }
+        if (e.target.closest && e.target.closest(".book-dock-save")) { saveDockEditor(); }
+      });
+    }
+    if (els.dockInput) {
+      // 输入行里的 Enter / Esc 不冒泡：Esc 全局会合书、Enter 可能触发别的快捷键
+      els.dockInput.addEventListener("keydown", function (e) {
+        e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); saveDockEditor(); }
+        else if (e.key === "Escape") {
+          els.dockInput.value = userMeanOf(dockWord);
+          showDock(dockWord);   // 还原到展示态（有释义显释义，没有回到空输入行）
+        }
+      });
+    }
+
     // 双击标记：双击任意英文词 → 落进当前模式的书签（再双击一次取消）
     var onWordDbl = function (e) {
       var w = e.target.closest ? e.target.closest(".st-word, .st-any") : null;
@@ -1159,6 +1240,9 @@
     els.body = $(".story-body-en", els.panel) || $(".story-body", els.panel);
     els.zhBody = $(".story-body-zh", els.panel);
     els.dock = $(".book-dock", els.panel);
+    els.dockEdit = $(".book-dock-edit", els.panel);
+    els.dockEditRow = $(".book-dock-editrow", els.panel);
+    els.dockInput = $("#book-dock-input");
     els.book = $(".book", els.panel);
     els.footRound = $(".book-foot-round", els.panel);
     els.bookRibbon = document.getElementById("btn-book-open");

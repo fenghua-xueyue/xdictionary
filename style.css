@@ -1988,13 +1988,13 @@ html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { displa
 .bk-leaf-page-back { box-shadow: inset 8px 0 16px rgba(34, 48, 42, .07); }
 /* 飞行途中书不可点，免得点中还没落定的正文 */
 #view-learn.story-intro .book { pointer-events: none; }
-/* ---- 三拍入场（2026-10-26 晚重构 · 薄荷/暖阳专属）----
+/* ---- 两拍入场（2026-10-26 深夜重构 · 薄荷/暖阳专属）----
    ① 卡片退场：卡片整体上移出屏（--card-exit-y 由 JS 按视口实测写入），
-      露出压在下面的横躺的书 —— 书在 JS 里临时搬出卡片、以 fixed 定位停在
+      露出压在下面的合书 —— 书在 JS 里临时搬出卡片、以 fixed 定位停在
       原位（z:3），卡片（z:4）从它上面滑走，读作「拿开卡片露出书」；
-   ② 书起身：横躺的书在原地 rotate 0→-90° 立成竖向（WAAPI，带轻微超冲）；
-   ③ 摊开书接棒：起点 transform 与立着的书逐像素对齐（含 -90° 转角），
-      边飞边转正、翻页叶同步掀开 —— 「立着的书倒下摊开在桌上」。
+   ② 转向与翻书同时进行：摊开书以立书位姿（rotate -90°）淡入接棒，
+      一段 WAAPI 里转正、飞向桌心、放大同步完成，翻页叶全程掀开 ——
+      只有这一次旋转，没有「先立起、再倒下」的两段旋转观感。
    退场终态仍用 CSS 规则兜底（fill:forwards 动画会被浏览器异步移除，
    移除后效果回退，只有 CSS 规则靠得住；动感由 WAAPI 提供）。 */
 #view-learn.story-intro .flashcard {
@@ -2358,6 +2358,58 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer 
   color: var(--text-secondary);
   overflow: hidden;
 }
+/* ---- 角卡 · 手填释义（词库外的词）----
+   编辑笔：有手填释义时亮在右下角；输入行：无释义时直接铺开，填完 Enter / 存。
+   颜色全走变量（换肤安全）；像素风整个角卡 display:none（.book-dock 已有规则）。 */
+.book-dock-edit {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease;
+}
+.book-dock-edit:hover { color: var(--accent-dark); border-color: var(--accent); }
+.book-dock-edit:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+.book-dock-editrow {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.book-dock-editrow[hidden] { display: none; }   /* flex 会盖过 [hidden] 的 UA 规则，钉一条 */
+.book-dock-editrow input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+.book-dock-editrow input::placeholder { color: var(--text-muted); }
+.book-dock-editrow input:focus { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+.book-dock-editrow .book-dock-save {
+  flex: 0 0 auto;
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+.book-dock-editrow .book-dock-save:hover { filter: brightness(1.06); }
+.book-dock-editrow .book-dock-save:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
 
 /* ---- 空态：左页一张还没写字的稿纸 ---- */
 .book-page .story-empty {

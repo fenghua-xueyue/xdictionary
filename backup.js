@@ -28,7 +28,8 @@
     "english_app_skin_v1",
     "english_app_sound_v1",
     "english_app_story_v1",
-    "english_app_custom_v1"
+    "english_app_custom_v1",
+    "english_app_dict_v1"
   ];
 
   /* ---------- 轻提示（复用 #toast 节点，写法同 app.js / speak.js） ---------- */
@@ -112,6 +113,11 @@
         c.banks.forEach(function (b) { total += (b.words || []).length; });
         parts.push("词库 " + c.banks.length + " 个 · " + total + " 词");
       }
+    } catch (e) { /* 该 key 缺失或为空 */ }
+    try {
+      var d = JSON.parse(obj.data["english_app_dict_v1"]);
+      var n = (d && typeof d === "object" && !Array.isArray(d)) ? Object.keys(d).length : 0;
+      if (n) parts.push("手填释义 " + n + " 条");
     } catch (e) { /* 该 key 缺失或为空 */ }
     return parts.length ? parts.join(" · ") : "（空进度）";
   }
