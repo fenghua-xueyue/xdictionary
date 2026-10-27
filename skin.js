@@ -29,12 +29,6 @@
       name: "暖阳米黄",
       desc: "护眼暖色 · 久看不累",
       swatch: ["#FAF3E7", "#FFFDF8", "#AE5526"]
-    },
-    {
-      id: "pixel",
-      name: "像素风",
-      desc: "我的世界像素 · 方角积木",
-      swatch: ["#8FBEF0", "#FFFFFF", "#7ADB2B"]
     }
   ];
 
@@ -53,11 +47,15 @@
 
   /* ---------- 读取 / 应用 / 保存 ---------- */
   function readSkin() {
-    try {
-      return normalize(localStorage.getItem(LS_SKIN));
-    } catch (e) {
-      return DEFAULT_SKIN;   /* 无痕模式等：降级为默认皮肤 */
+    var raw = "";
+    try { raw = localStorage.getItem(LS_SKIN) || ""; } catch (e) { return DEFAULT_SKIN; }
+    var id2 = normalize(raw);
+    /* 存档里可能是已经下线的皮肤 id（或手工写坏的值）：
+       静默改写回默认，免得每次读都要兜一次底。 */
+    if (raw && raw !== id2) {
+      try { localStorage.setItem(LS_SKIN, id2); } catch (e) { /* 忽略 */ }
     }
+    return id2;
   }
 
   function applySkin(id) {
@@ -150,10 +148,21 @@
       if (!item) return;
       var id = item.getAttribute("data-skin-id");
       if (!id) return;
+      var prev = current;
+      // 浮层列表马上会被重绘，按钮会从文档里摘掉 —— 先把位置量下来，
+      // 换肤入场的光晕要从这颗按钮的位置铺开。
+      var r = item.getBoundingClientRect();
+      var origin = { left: r.left, top: r.top, width: r.width, height: r.height };
       current = saveSkin(id);            // 立刻换色 + 存档
       renderList(pop.querySelector(".skin-list"), current);
       close();
       toast("已切换到「" + byId[current].name + "」皮肤");
+      // 换肤入场（intro.js 接手）：只有真的换了才播，点当前皮肤不播
+      if (prev !== current) {
+        document.dispatchEvent(new CustomEvent("xd:skin-change", {
+          detail: { from: prev, to: current, origin: origin }
+        }));
+      }
     });
 
     // 点浮层外面 / 按 Esc 收起

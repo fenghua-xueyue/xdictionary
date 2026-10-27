@@ -68,16 +68,17 @@
   /* 品牌 logo（内联 SVG 用 fill="currentColor"，由这里驱动） */
   --logo-bg: #2E9E78;
   --logo-fg: #FFFFFF;
-  /* 首页门厅：地平线草坡双层（仅薄荷/暖阳显示，像素皮肤用自己的世界） */
+  /* 首页门厅：地平线草坡双层 */
   --idx-hill1: #A5D8BE;   /* 前坡 */
   --idx-hill2: #C9E7D6;   /* 后坡 */
 
-  /* 入场动效（intro.js / style.css「入场动效」区块使用；像素皮肤不播） */
+  /* 入场动效（intro.js / style.css「入场动效」区块使用） */
   --intro-leaf: #2E9E78;                  /* 叶片主色 */
   --intro-vein: #BFE8D6;                  /* 叶脉与叶柄 */
   --intro-wind: rgba(46, 158, 120, 0.35); /* 风线与碎叶 */
+  --intro-bloom: rgba(46, 158, 120, 0.24);/* 换肤时从按钮铺开的光晕 */
 
-  /* 翻面 / 切词动效（薄荷/暖阳；像素皮肤不播，有自己的飞词） */
+  /* 翻面 / 切词动效 */
   --flip-dur: 600ms;                      /* 翻面时长：450 利落 / 600 从容 */
   --flip-ease: cubic-bezier(0.4, 0, 0.2, 1); /* 匀加速起手、缓减速收尾，无回弹 */
   --card-back-bg: #F7FAF8;                /* 卡背面的薄荷微染 */
@@ -90,6 +91,15 @@
   --swap-in: 260ms;                       /* 切词翻页：新词翻入 */
   --swap-ease-in: cubic-bezier(0.55, 0, 1, 1);   /* 起手加速 */
   --swap-ease-out: cubic-bezier(0, 0, 0.2, 1);   /* 落定减速 */
+
+  /* 首页双窗（2026-10-27）：玻璃投影的墨色用 RGB 三值，配 rgba(var(--…), α) 使用，
+     这样暖阳能把投影调成暖棕，而不是硬塞一层绿色阴影 */
+  --idx-shadow-ink: 34, 48, 42;
+  --idx-glow: rgba(46, 158, 120, 0.24);      /* 玻璃背后的光斑：给玻璃一点可折射的东西 */
+  --idx-pin-halo: rgba(46, 158, 120, 0.14);  /* 引线端点那圈晕 */
+  /* 两扇窗里的截图：按皮肤换（薄荷 / 暖阳各一套，见 shots/） */
+  --idx-shot-l: url("shots/study.png");
+  --idx-shot-r: url("shots/story.png");
 
   /* ---------- 皮肤可覆盖区（结束） ---------- */
 
@@ -165,7 +175,7 @@ button.round-badge {
 button.round-badge:hover { background: var(--btn-primary-bg-hover); }
 
 /* 词库快速切换菜单：挂在 .source-switch 下，徽标点开向下弹。
-   颜色 / 圆角 / 阴影全走可换肤变量 —— 像素皮肤自动得到直角平影版。 */
+   颜色 / 圆角 / 阴影全走可换肤变量 —— 加新皮肤只需改变量。 */
 .source-switch { position: relative; }
 .source-menu {
   position: absolute;
@@ -259,8 +269,8 @@ button.round-badge:hover { background: var(--btn-primary-bg-hover); }
 .view-active { display: block; }
 
 /* ============================ 空状态 hero（世界门厅） ============================ */
-/* 2026-10-19 重做：卸掉卡片壳，内容直接坐进世界（薄荷/暖阳有地平线草坡，
-   像素皮肤直接立在自己的世界里）。层级：.app-main 抬一层压过地面。 */
+/* 2026-10-19 重做：卸掉卡片壳，内容直接坐进世界（地平线草坡）。
+   层级：.app-main 抬一层压过地面。 */
 .app-main {
   position: relative;
   z-index: 1;
@@ -280,9 +290,6 @@ button.round-badge:hover { background: var(--btn-primary-bg-hover); }
 .idx-ground svg { display: block; width: 100%; height: 100%; }
 .idx-ground .g1 { fill: var(--idx-hill1); }
 .idx-ground .g2 { fill: var(--idx-hill2); }
-html[data-skin="pixel"] .idx-ground,
-html[data-skin="pixel"] .idx-leaf { display: none; }
-
 /* —— 飘叶 ×2：从右上缓缓落向左下，循环 —— */
 .idx-leaf {
   position: fixed; top: -48px; z-index: 0;
@@ -322,8 +329,8 @@ html[data-skin="pixel"] .idx-leaf { display: none; }
   animation: logo-sway 5.5s ease-in-out infinite;
 }
 /* 学习页整体下移约 1.05cm（96dpi ≈ 40px）：顶栏与内容之间松一口气。
-   首页门厅（.app-main-gate）与像素皮肤有各自的场景排版，不参与。 */
-html:not([data-skin="pixel"]) .app-main:not(.app-main-gate) { padding-top: 40px; }
+   首页门厅（.app-main-gate）有自己的场景排版，不参与。 */
+html .app-main:not(.app-main-gate) { padding-top: 40px; }
 @keyframes logo-sway {
   0%, 100% { transform: rotate(-3deg); }
   50%      { transform: rotate(3deg); }
@@ -384,6 +391,244 @@ html:not([data-skin="pixel"]) .app-main:not(.app-main-gate) { padding-top: 40px;
   .btn-hero .btn-icon { transition: none; }
 }
 
+/* ============================ 第一界面 · 双窗（2026-10-27） ============================
+   两扇玻璃窗里各放一张真实界面截图，两句短注用引线「交叉」连到对面的窗
+   （左字 → 右窗，右字 → 左窗）。
+
+   ★ 坐标体系：整块按 1440×494 的设计稿写成百分比 / 比例（6.25 边距 · 37.5 窗宽 ·
+     12.5 中缝 · 80.97 窗高），再用 aspect-ratio 把 stage 锁成 1440:494。
+     比例锁死了，引线的 SVG 才能用 preserveAspectRatio="none" 拉伸而不走形；
+     端点小圆点不放 SVG 里（会被拉成椭圆），另用 .idx-pin 按百分比定位。
+   ★ 双窗版式专用：老文案与老预览整块隐藏，DOM 原样保留（窄屏与门厅另有排版）。
+   ---------------------------------------------------------------------------- */
+
+/* 门厅整幅铺满：内容列不再受 1280 限制，双窗才能按「屏幕八分之三」切分 */
+html .app-main.app-main-gate {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+/* 底色：中间一团白光 + 上下渐变。玻璃背后得有东西可折射，否则 blur 什么都不发生 */
+html body.page-gate {
+  background:
+    radial-gradient(1100px 640px at 50% 26%, #FFFFFF 0%, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, var(--bg-page) 0%, var(--bg-subtle) 100%);
+}
+html .hero {
+  max-width: none;
+  width: 100%;
+  padding: 40px 0 56px;
+}
+html .hero-logo { margin-bottom: 34px; }
+/* 零文案：标题 / 副标题 / 活词预览 / 足迹行全部退场。
+   DOM 原样保留 —— 窗口过窄时退回老排版还要用它们。 */
+html .hero-title,
+html .hero-subtitle,
+html .hero-preview,
+html .hero-footer,
+html .hero-progress { display: none; }
+html .hero .btn-hero {
+  margin-top: 40px;
+  font-size: 20px;
+  padding: 0 52px;
+  height: 68px;
+  border-radius: 16px;
+}
+
+/* —— 舞台：1440:494 的比例盒，宽度同时受「视口宽 / 1440 / 视口高」三重约束 —— */
+.idx-stage {
+  position: relative;
+  width: min(100%, 1440px, calc((100vh - 300px) * 2.915));
+  margin: 0 auto;
+  aspect-ratio: 1440 / 494;
+}
+
+/* —— 玻璃背后的光斑 —— */
+.idx-glow {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(56px);
+  background: var(--idx-glow);
+  pointer-events: none;
+}
+.idx-glow-a { left: 0; top: -10%; width: 44%; height: 97%; }
+.idx-glow-b { right: 0; top: 12%; width: 46%; height: 93%; }
+
+/* —— 玻璃窗 —— */
+.idx-win {
+  position: absolute;
+  z-index: 1;
+  width: 37.5%;
+  height: 80.97%;
+  padding: 12px;
+  border-radius: 28px;
+  background: linear-gradient(158deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.42) 46%,
+    rgba(255, 255, 255, 0.58) 100%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  box-shadow:
+    0 46px 90px -34px rgba(var(--idx-shadow-ink), 0.55),
+    0 10px 24px -14px rgba(var(--idx-shadow-ink), 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.60);
+  outline: 1px solid rgba(var(--idx-shadow-ink), 0.06);
+  outline-offset: -1px;
+  overflow: hidden;
+}
+.idx-win-l { left: 6.25%; top: 0; }
+.idx-win-r { left: 56.25%; top: 19.03%; }   /* 比左窗低 94px（设计稿的错落） */
+
+/* —— 微浮：两扇玻璃各自缓慢上下 ——
+   幅度 10px / 周期 9.5s、12.5s，且用负延迟把相位错开。
+   为什么不用同一个周期：同步升降会被读成「一起动的机械感」，
+   错开之后才像两块各自悬浮的玻璃，偶尔同相也不会撞拍。
+   为什么只动玻璃：光斑与引线保持静止 —— 玻璃比背后的光和连线更「近」，
+   动的只有它，纵深才成立；反过来整体一起动就成了一张晃动的图片。
+   端点小圆点会随玻璃沿边滑 10px，但始终落在玻璃范围内，肉眼看不出脱开。
+   只走 transform（合成层，不触发重排）。
+   窄屏（<1100）退回竖排长图，这里不播 —— 看长图时被晃会烦。 */
+@keyframes idx-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -10px, 0); }
+}
+@media (min-width: 1100px) {
+  .idx-win { animation: idx-float 9.5s ease-in-out infinite; }
+  .idx-win-l { animation-duration: 9.5s;  animation-delay: -.7s; }
+  .idx-win-r { animation-duration: 12.5s; animation-delay: -4.4s; }
+}
+/* 减动效守卫必须写在上面那条之后：同为 .idx-win、特异性相同，靠顺序取胜 */
+@media (prefers-reduced-motion: reduce) {
+  .idx-win { animation: none; }
+}
+
+/* 截图：走背景图而不是 <img>，这样每款皮肤能换自己那两张（薄荷绿的截图放进暖阳
+   世界里会很跳），而且没命中的那张不会被下载。语义交给 figure 的 role="img"。 */
+.idx-shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.75),
+    0 2px 12px rgba(var(--idx-shadow-ink), 0.08);
+}
+.idx-shot-l { background-image: var(--idx-shot-l); }
+.idx-shot-r { background-image: var(--idx-shot-r); }
+
+/* 玻璃的两层：①顶边渐隐高光（玻璃有厚度）②斜向反光（这一层最关键，加与不加差一档） */
+.idx-win::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0), #FFFFFF 20%, rgba(255, 255, 255, 0.92) 60%, rgba(255, 255, 255, 0)),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 22%,
+                    rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0) 78%, rgba(255, 255, 255, 0.06) 100%);
+  background-size: calc(100% - 36px) 1.5px, auto;
+  background-position: 18px 0, 0 0;
+  background-repeat: no-repeat, no-repeat;
+}
+/* ③细颗粒噪点：去掉塑料感，四条里最容易被忽略、却最有效的一条 */
+.idx-win::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  background-size: 140px 140px;
+}
+
+/* —— 短注：一句短话 + 一个重音，字号跟着视口轻微缩放 —— */
+.idx-note {
+  position: absolute;
+  z-index: 3;
+  margin: 0;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.idx-note b { font-weight: 600; letter-spacing: 0; color: var(--accent-dark); }
+/* 两句都朝中缝开口：左句右端锚在 31.11%、右句左端锚在 71.39%，
+   句子变长时向外侧生长，引线起点永远不动 */
+.idx-note-l { right: 68.89%; top: 89.47%; }
+.idx-note-r { left: 71.39%; top: 7.49%; }
+
+/* —— 引线：拉伸铺满舞台，viewBox 与舞台同比例，所以坐标 1:1 —— */
+.idx-lead {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* —— 端点：钉在对面玻璃的内侧边上（圆点不进 SVG，避免被拉成椭圆） —— */
+.idx-pin {
+  position: absolute;
+  z-index: 3;
+  width: 4.4px;
+  height: 4.4px;
+  margin: -2.2px 0 0 -2.2px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: var(--accent-dark);
+  box-shadow: 0 0 0 3.2px var(--idx-pin-halo);
+}
+.idx-pin-a { left: 56.25%; top: 55.06%; }   /* 右窗左沿 */
+.idx-pin-b { left: 43.75%; top: 36.03%; }   /* 左窗右沿 */
+
+/* —— 窄屏：双窗竖排，并让两句注变回普通图注 ——
+   注要跟着它「描述」的那张图走：右句讲的是背单词窗、左句讲的是故事窗，
+   所以顺序是 图A → 右句 → 图B → 左句（交叉关系在这里仍然成立）。 */
+@media (max-width: 1099px) {
+  html .hero { padding-left: 24px; padding-right: 24px; }
+  .idx-stage {
+    width: 100%;
+    aspect-ratio: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .idx-win {
+    position: static;
+    width: 100%;
+    max-width: 720px;
+    height: auto;
+    aspect-ratio: 1238 / 900;
+    margin: 0 auto;
+  }
+  .idx-win-l { order: 1; }
+  .idx-win-r { order: 3; }
+  .idx-note {
+    position: static;
+    order: 2;
+    width: 100%;
+    max-width: 720px;
+    margin: 14px auto 30px;
+    white-space: normal;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .idx-note-l { order: 4; }
+  .idx-glow, .idx-lead, .idx-pin { display: none; }
+}
+
+/* 窄屏退回老门厅（双窗放不下） */
 /* ============================ 视图标题 ============================ */
 .view-title {
   text-align: left;
@@ -754,12 +999,12 @@ html:not([data-skin="pixel"]) .app-main:not(.app-main-gate) { padding-top: 40px;
 
 /* ============================ 卡下托盘（藤蔓 · 薄荷/暖阳） ============================
    2026-10-25 晚改版：玻璃托盘退役，换成一条横向藤蔓 —— 呼应薄荷皮肤
-   的春天与绿色元素，系统按钮（皮肤 / 音效 / 备份 / 重置）像果子一样
+   的春天与绿色元素，系统按钮（皮肤 / 备份 / 加词 / 重置）像果子一样
    挂在藤上：每个按钮顶上连一根细叶柄（::before），高低微错落；
    滑过时按钮连柄一起「摘离」藤面（上浮 -14px），图标再放大。
    结构：study.html 里 .card-tray 内放 <svg class="tray-vine">（主藤 +
    两端叶簇 + 卷须），按钮簇照旧由 app.js 搬运（学习页挂果、复习页
-   只留一段空藤）。像素皮肤整块 passthrough（.tray-vine 走惰性钩子隐藏）。
+   只留一段空藤）。
    位置：丝带垂出卡底 82px，托盘顶边距卡 92px；宽度与进度条同宽。 */
 /* ── 藤蔓配色（画稿颜色全走变量，两皮肤共用同一份画稿）──
    薄荷默认 = 深绿春藤；暖阳 = 深棕树枝 + 秋叶 + 枫叶点缀（见 warm 覆写块）。
@@ -782,7 +1027,7 @@ html:not([data-skin="pixel"]) .app-main:not(.app-main-gate) { padding-top: 40px;
   --fruit-bg: rgba(46, 158, 120, 0.10);    /* 果肉底 */
   --fruit-bg-h: rgba(46, 158, 120, 0.18);  /* 果肉 hover 加深 */
 }
-html:not([data-skin="pixel"]) .card-tray {
+html .card-tray {
   position: relative;
   width: min(var(--max-width), 100%);
   margin: 92px auto 12px;
@@ -795,7 +1040,7 @@ html:not([data-skin="pixel"]) .card-tray {
 /* 主藤：手绘风 SVG（symbol#vine-art），贯穿全屏宽（100vw 居中），
    按 1440×64 设计、preserveAspectRatio="none" 横向铺满。
    top=-60：藤悬在卡片与托盘之间的空隙，果子用长柄垂下来 */
-html:not([data-skin="pixel"]) .card-tray .tray-vine {
+html .card-tray .tray-vine {
   display: block;
   position: absolute;
   top: -60px;
@@ -805,7 +1050,7 @@ html:not([data-skin="pixel"]) .card-tray .tray-vine {
   height: 64px;
   pointer-events: none;
 }
-html:not([data-skin="pixel"]) .card-tray .sys-cluster {
+html .card-tray .sys-cluster {
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -815,17 +1060,15 @@ html:not([data-skin="pixel"]) .card-tray .sys-cluster {
 }
 /* 挂果：短柄垂挂 —— 柄长为长柄版的一半，果子用等量负 margin 上提，
    柄尖仍精确落在藤走廊 y≈-30（34 + m' − pet' = -30，pet' = 旧值/2） */
-html:not([data-skin="pixel"]) .card-tray .btn-skin   { margin-top: -30px; --pet: 34px; }
-html:not([data-skin="pixel"]) .card-tray .btn-sound  { margin-top: -27px; --pet: 37px; }
-html:not([data-skin="pixel"]) .card-tray .btn-backup { margin-top: -25px; --pet: 39px; }
-html:not([data-skin="pixel"]) .card-tray .btn-bank   { margin-top: -29px; --pet: 35px; }
-html:not([data-skin="pixel"]) .card-tray .btn-reset  { margin-top: -28px; --pet: 36px; }
+html .card-tray .btn-skin   { margin-top: -30px; --pet: 34px; }
+html .card-tray .btn-backup { margin-top: -25px; --pet: 39px; }
+html .card-tray .btn-bank   { margin-top: -29px; --pet: 35px; }
+html .card-tray .btn-reset  { margin-top: -28px; --pet: 36px; }
 /* 叶柄：从按钮顶边向上连到主藤；hover 摘果时连柄一起离开 */
-html:not([data-skin="pixel"]) .card-tray .btn-skin::before,
-html:not([data-skin="pixel"]) .card-tray .btn-sound::before,
-html:not([data-skin="pixel"]) .card-tray .btn-backup::before,
-html:not([data-skin="pixel"]) .card-tray .btn-bank::before,
-html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
+html .card-tray .btn-skin::before,
+html .card-tray .btn-backup::before,
+html .card-tray .btn-bank::before,
+html .card-tray .btn-reset::before {
   content: "";
   position: absolute;
   top: calc(-1 * var(--pet));
@@ -839,11 +1082,10 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset::before {
 /* 托盘内按钮改纯图标：font-size:0 藏掉文字节点（图标是 svg，不吃 font-size），
    统一成方形小圆钮；重置的白底 + 浅描边也在托盘里去掉（三钮统一 ghost）。
    选择器挂在 .card-tray 下 —— 开书时按钮簇搬回顶栏，自动恢复带文字的原样。 */
-html:not([data-skin="pixel"]) .card-tray .btn-skin,
-html:not([data-skin="pixel"]) .card-tray .btn-sound,
-html:not([data-skin="pixel"]) .card-tray .btn-backup,
-html:not([data-skin="pixel"]) .card-tray .btn-bank,
-html:not([data-skin="pixel"]) .card-tray .btn-reset {
+html .card-tray .btn-skin,
+html .card-tray .btn-backup,
+html .card-tray .btn-bank,
+html .card-tray .btn-reset {
   position: relative;   /* 叶柄 ::before 的定位基准 */
   font-size: 0;
   gap: 0;
@@ -857,46 +1099,42 @@ html:not([data-skin="pixel"]) .card-tray .btn-reset {
               box-shadow .2s ease;
 }
 /* 果子放大配粗藤：CSS 尺寸覆盖 HTML 的 width/height 属性；
-   只挂五颗果，开书搬回顶栏恢复 15~18px 原样 */
-html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
+   只挂四颗果，开书搬回顶栏恢复 15~18px 原样 */
+html .card-tray .btn-skin .svg-icon,
+html .card-tray .btn-backup .svg-icon,
+html .card-tray .btn-bank .svg-icon,
+html .card-tray .btn-reset .svg-icon {
   width: 28px;
   height: 28px;
 }
 /* 滑过两段式：按钮先「弹出」托盘上方（上浮 + 投影浮起），
    图标延迟 ~0.09s 再放大 —— 读起来是弹出 → 放大。
    图标过渡带同样延迟，离开时按原曲线缩回。 */
-html:not([data-skin="pixel"]) .card-tray .btn-skin .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-sound .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-backup .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-bank .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-reset .svg-icon {
+html .card-tray .btn-skin .svg-icon,
+html .card-tray .btn-backup .svg-icon,
+html .card-tray .btn-bank .svg-icon,
+html .card-tray .btn-reset .svg-icon {
   transition: transform .18s cubic-bezier(.34, 1.56, .64, 1) .09s;
 }
-html:not([data-skin="pixel"]) .card-tray .btn-skin:hover,
-html:not([data-skin="pixel"]) .card-tray .btn-sound:hover,
-html:not([data-skin="pixel"]) .card-tray .btn-backup:hover,
-html:not([data-skin="pixel"]) .card-tray .btn-bank:hover,
-html:not([data-skin="pixel"]) .card-tray .btn-reset:hover {
+html .card-tray .btn-skin:hover,
+html .card-tray .btn-backup:hover,
+html .card-tray .btn-bank:hover,
+html .card-tray .btn-reset:hover {
   transform: translateY(-14px);
   background: var(--fruit-bg-h, rgba(46, 158, 120, 0.18));   /* 果肉加深一档 */
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.10);
 }
-html:not([data-skin="pixel"]) .card-tray .btn-skin:hover .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-sound:hover .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-backup:hover .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-bank:hover .svg-icon,
-html:not([data-skin="pixel"]) .card-tray .btn-reset:hover .svg-icon {
+html .card-tray .btn-skin:hover .svg-icon,
+html .card-tray .btn-backup:hover .svg-icon,
+html .card-tray .btn-bank:hover .svg-icon,
+html .card-tray .btn-reset:hover .svg-icon {
   transform: scale(1.3);
 }
 /* 托盘里的皮肤浮层向上展开：按钮在页面底部，向下弹会贴地甚至出屏。
    间距给 26px —— 比按钮弹出高度（-14px）多一截，悬停时弹起的按钮
    不会顶进浮层底边。开书时按钮簇搬回顶栏，这条自动失效，浮层恢复
    默认向下（10px 间距）—— 两个位置都对。 */
-html:not([data-skin="pixel"]) .card-tray .skin-pop {
+html .card-tray .skin-pop {
   top: auto;
   bottom: calc(100% + 26px);
   animation-name: skin-pop-in-up;
@@ -908,10 +1146,10 @@ html:not([data-skin="pixel"]) .card-tray .skin-pop {
 /* 开书时整块托盘让位 —— 隐藏规则在「书桌」段（app.js 同时把按钮簇搬回顶栏）。 */
 
 /* 故事入口收敛到丝带（2026-10-25）：薄荷/暖阳点卡片上的丝带开书，
-   操作行的「看今日故事」按钮退役；像素皮肤没有丝带，这个按钮仍是
-   唯一故事入口，保留。按钮留在 DOM 里 —— story.js 生成故事时还会
-   借它程序化展开面板（#btn-generate.click()）。 */
-html:not([data-skin="pixel"]) #btn-generate { display: none; }
+   操作行的「看今日故事」按钮退役，故事入口收敛到丝带。
+   按钮留在 DOM 里 —— story.js 生成故事时还会借它程序化展开面板
+   （#btn-generate.click()），只是不再显示。 */
+html #btn-generate { display: none; }
 
 /* ============================ 翻卡区 ============================ */
 .flashcard-area {
@@ -952,7 +1190,7 @@ html:not([data-skin="pixel"]) #btn-generate { display: none; }
   line-height: 1;
   transition: background .15s, color .15s;
 }
-/* 播放中：喇叭转主色（颜色走变量，三款皮肤自动适配） */
+/* 播放中：喇叭转主色（颜色走变量，随皮肤自动适配） */
 .card-speaker.active {
   background: var(--accent);
   color: var(--on-accent);
@@ -1035,10 +1273,9 @@ html:not([data-skin="pixel"]) #btn-generate { display: none; }
   .flashcard.card-pulse { animation: none; }
   .st-dot:hover { transform: none; }
 }
-/* 词槽：像素风下要做「旧词飞出 + 新词飞入」的双层叠放，
-   所以单词外面套了一层 .word-stack。
-   非像素皮肤用 display:contents —— 盒子本身不参与布局，
-   里面的 .card-word 仍然是 .flashcard 的直接 flex 项，布局与以前逐像素一致。 */
+/* 词槽：单词外面套了一层 .word-stack（为切词动画准备的两层结构）。
+   display:contents 让盒子本身不参与布局 —— 里面的 .card-word 仍然是
+   .flashcard 的直接 flex 项，布局与套壳之前逐像素一致。 */
 .word-stack { display: contents; }
 .card-word-ghost { display: none; }
 
@@ -1111,7 +1348,7 @@ html:not([data-skin="pixel"]) #btn-generate { display: none; }
    点卡片 / Enter / Space 翻面（app.js 切 .is-flipped，附 .is-flipping 播伴随动画）；
    切词 / 切模式由 renderCard() 依据 showAnswer 复位回默认面。
    层级：卡角发音 / 标记按钮与默写输入框是「钉在卡上的部件」，恒在旋转层之上。
-   像素风在下方像素段把翻转壳整层 display:contents 拆掉，揭示走 show-answer（点卡片触发）。 */
+   减动效模式下 app.js 会跳过翻面动画，直接换状态。 */
 .flashcard[data-mode="en"],
 .flashcard[data-mode="zh"] {
   perspective: 1400px;   /* 有 3D 纵深但不产生鱼眼畸变 */
@@ -1224,9 +1461,9 @@ html:not([data-skin="pixel"]) #btn-generate { display: none; }
    顶层纸按模式分工：背单词模式用 .card-flyer（正文无纸底）；
    英文 / 中文模式的卡面自带纸底，直接抽整个翻转层 .card-flip-inner。
    时序由 app.js 驱动（抽走 200ms → 中点换词 → 抬起 260ms）。
-   像素风有自己的「旧词飞出 + 新词飞入」，这里整层隐藏（见像素段与 app.js 守卫）。 */
+   两层哑层的显隐规则在下方「哑层」段。 */
 
-/* 哑层默认不生成（像素皮肤） */
+/* 哑层默认不生成，只在切词动画期间临时上场 */
 .card-flyer,
 .card-deck { display: none; }
 
@@ -1540,7 +1777,7 @@ html:not([data-skin="pixel"]) #btn-generate { display: none; }
   --st-serif: Georgia, "Iowan Old Style", "Times New Roman", "Noto Serif SC", "Songti SC", serif;
 }
 /* 合书态：书回到卡片下面去了，这块整个不占位 */
-html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { display: none; }
+html #view-learn:not(.story-open) .story-panel { display: none; }
 
 /* 页眉：一条主色短线 + 大写小标签，给面板一个「书的页码」的气质 */
 .story-kicker {
@@ -2009,24 +2246,21 @@ html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { displa
 #view-learn.story-intro .view-title-row,
 #view-learn.story-intro .mode-switcher,
 #view-learn.story-intro .card-tray,
-#view-learn.story-intro .px-subtitle,
 #view-learn.story-intro .flashcard-area .nav { opacity: 0; }
-/* 像素风根本不创建叶子；减动效下再兜一层 CSS 保险 */
-html[data-skin="pixel"] .book-flip-wrap { display: none; }
+/* 减动效下书页翻动直接收掉 */
 @media (prefers-reduced-motion: reduce) {
   .book-flip-wrap { display: none; }
 }
 
 /* ---- 展开态：让位 ---- */
-html:not([data-skin="pixel"]) #view-learn.story-open .flashcard-area,
-html:not([data-skin="pixel"]) #view-learn.story-open .card-tray,
-html:not([data-skin="pixel"]) #view-learn.story-open .progress-wrap,
-html:not([data-skin="pixel"]) #view-learn.story-open .action-bar,
-html:not([data-skin="pixel"]) #view-learn.story-open .view-title-row,
-html:not([data-skin="pixel"]) #view-learn.story-open .mode-switcher,
-html:not([data-skin="pixel"]) #view-learn.story-open .px-subtitle { display: none; }
+html #view-learn.story-open .flashcard-area,
+html #view-learn.story-open .card-tray,
+html #view-learn.story-open .progress-wrap,
+html #view-learn.story-open .action-bar,
+html #view-learn.story-open .view-title-row,
+html #view-learn.story-open .mode-switcher { display: none; }
 
-html:not([data-skin="pixel"]) #view-learn.story-open .story-panel {
+html #view-learn.story-open .story-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2035,44 +2269,51 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel {
   --book-scale: 1;
 }
 /* 开书时主容器不再留 80px 页脚空（那一截会把书挤出视口） */
-html:not([data-skin="pixel"]) .app-main.is-reading { padding-bottom: 8px; }
+html .app-main.is-reading { padding-bottom: 8px; }
 
 /* ---- 阅读态整页（2026-10-26）：顶栏收起系统按钮簇 + 书桌竖向居中 ----
-   像素皮肤一律不参与（保持既有布局与按钮）。 */
+   */
 /* 系统按钮簇（皮肤 / 音效 / 备份 / 加词 / 重置）开书时被 mountSysCluster 搬进
    顶栏，读书时整簇收起 —— 合书即恢复（搬回卡下托盘）。
    词库徽标与「复习」切换按钮不动，只收系统工具。 */
-html:not([data-skin="pixel"]) body.story-reading .app-header #sys-cluster { display: none; }
+html body.story-reading .app-header #sys-cluster { display: none; }
 /* 书 + 工具条整体落到屏幕中间：header 与主区一起参与纵向 flex，
    主区吃掉剩余高度、故事面板在其中垂直居中。只作用于 ≥1024 的定尺纸布局 ——
    窄屏是单页自然长高 + 页面滚动（flex 居中会把书顶出可视区上沿），
-   像素风有 1440×1200 固定舞台，都不参与。 */
+   窄屏不参与。 */
 @media (min-width: 1024px) {
-  html:not([data-skin="pixel"]) body.story-reading {
+  html body.story-reading {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
   }
-  html:not([data-skin="pixel"]) body.story-reading .app-main {
+  /* body 一旦变成纵向 flex，顶栏与主区就成了 flex item：
+     带 auto 外边距的元素按规范不参与拉伸，会被压成「内容宽度」——
+     顶栏会缩成中间一小条。显式给宽度，恢复「max-width 1280 + 左右居中」。
+     （2026-10-27 拆掉像素舞台壳 #stage 后暴露：此前它们是 #stage 的
+       普通块级子元素，块级布局里 auto 外边距照样撑满并居中。） */
+  html body.story-reading .app-header,
+  html body.story-reading .app-main { width: min(1280px, 100%); }
+  html body.story-reading .app-main {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
   }
-  html:not([data-skin="pixel"]) body.story-reading #view-learn.story-open {
+  html body.story-reading #view-learn.story-open {
     flex: 1 1 auto;
     display: flex;          /* 压过 .view-active 的 display:block */
     flex-direction: column;
   }
-  html:not([data-skin="pixel"]) #view-learn.story-open .story-panel {
+  html #view-learn.story-open .story-panel {
     flex: 1 1 auto;
     justify-content: center;
   }
 }
 
 /* 覆盖率按规格退到书内页脚（「本篇用上 18 / 20 词」），书外不再挂一条点阵；
-   页脚说明同理。留在 DOM 里只是为了像素皮肤那边的旧版式。 */
-html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-meta,
-html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer { display: none; }
+   页脚说明同理，样式收在下面的隐藏规则里。 */
+html #view-learn.story-open .story-panel .story-meta,
+html #view-learn.story-open .story-panel .story-footer { display: none; }
 
 /* ---- 工具条：浮在书顶上方，左缘与书口对齐 ---- */
 .book-tools {
@@ -2360,7 +2601,7 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer 
 }
 /* ---- 角卡 · 手填释义（词库外的词）----
    编辑笔：有手填释义时亮在右下角；输入行：无释义时直接铺开，填完 Enter / 存。
-   颜色全走变量（换肤安全）；像素风整个角卡 display:none（.book-dock 已有规则）。 */
+   颜色全走变量（换肤安全）。 */
 .book-dock-edit {
   position: absolute;
   right: 12px;
@@ -2462,7 +2703,7 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer 
 
 /* ---- < 1024：单页 720，英文在上、译文在下 ---- */
 @media (max-width: 1023px) {
-  html:not([data-skin="pixel"]) #view-learn.story-open .story-panel { padding-top: 44px; }
+  html #view-learn.story-open .story-panel { padding-top: 44px; }
   .book-tools { width: 100%; }
   .book-stage { --book-scale: 1; width: 100%; height: auto; }
   .book {
@@ -2552,7 +2793,7 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer 
 .hero-logo .logo-bg { fill: var(--logo-bg); }
 
 /* ============================ 皮肤切换 ============================ */
-/* 内联 SVG 图标基线：2px 描边、跟随文字色（currentColor），三皮肤自动换色 */
+/* 内联 SVG 图标基线：2px 描边、跟随文字色（currentColor），随皮肤自动换色 */
 .svg-icon {
   fill: none;
   stroke: currentColor;
@@ -2566,8 +2807,7 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer 
   position: relative;
   flex: 0 0 auto;
 }
-.btn-skin,
-.btn-sound {
+.btn-skin {
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -2583,33 +2823,17 @@ html:not([data-skin="pixel"]) #view-learn.story-open .story-panel .story-footer 
   gap: 7px;
   transition: background .15s, color .15s, transform .12s;
 }
-.btn-skin:hover,
-.btn-sound:hover { background: var(--bg-soft); color: var(--text-primary); }
-.btn-skin:active,
-.btn-sound:active { transform: scale(0.98); }
-.btn-skin:focus-visible,
-.btn-sound:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-skin:hover { background: var(--bg-soft); color: var(--text-primary); }
+.btn-skin:active { transform: scale(0.98); }
+.btn-skin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn-skin .btn-icon { font-size: 16px; line-height: 1; }
 .btn-skin[aria-expanded="true"] {
   background: var(--bg-soft);
   color: var(--text-primary);
   border-color: var(--border-soft);
 }
-/* 挥剑音效开关：纯图标按钮，比皮肤按钮窄 */
-.btn-sound { padding: 8px 12px; font-size: 17px; line-height: 1; }
-.btn-sound[aria-pressed="false"] {
-  color: var(--text-muted);
-  background: var(--bg-soft);
-}
-/* 静音态图标切换：aria-pressed 驱动，JS 只改属性不改内容 */
-.btn-sound .icon-off { display: none; }
-.btn-sound[aria-pressed="false"] .icon-on { display: none; }
-.btn-sound[aria-pressed="false"] .icon-off { display: inline-block; }
-/* 薄荷 / 暖阳不挂这个开关：顶栏只留「皮肤 / 备份 / 重置」三件，
-   音效仍按 sword.js 的存档走（默认开）。像素皮肤的像素喇叭保留。 */
-html:not([data-skin="pixel"]) .btn-sound { display: none; }
 
-/* 备份进度按钮：纯图标，与音效按钮同宽窄（backup.js，2026-10-13 新增） */
+/* 备份进度按钮：纯图标，与皮肤按钮同高（backup.js，2026-10-13 新增） */
 .btn-backup {
   font-family: inherit;
   font-size: 17px;
@@ -2747,6 +2971,7 @@ html[data-skin="warm"] {
   --intro-leaf: #CE5427;
   --intro-vein: #F8DFC0;
   --intro-wind: rgba(174, 85, 38, 0.30);
+  --intro-bloom: rgba(198, 106, 52, 0.22);
 
   --bg-page: #FAF3E7;
   --surface: #FFFDF8;
@@ -2798,6 +3023,13 @@ html[data-skin="warm"] {
   --idx-hill1: #E4C29A;   /* 前坡（暖阳杏色） */
   --idx-hill2: #F2E3C4;   /* 后坡 */
 
+  /* 首页双窗：投影转暖棕，光斑转赭橙 —— 玻璃不能沿用薄荷的绿投影 */
+  --idx-shadow-ink: 90, 66, 38;
+  --idx-glow: rgba(174, 85, 38, 0.16);
+  --idx-pin-halo: rgba(174, 85, 38, 0.14);
+  --idx-shot-l: url("shots/study-warm.png");
+  --idx-shot-r: url("shots/story-warm.png");
+
   /* 故事页：赭橙荧光笔（暖阳世界的批注笔） */
   --st-mark: rgba(174, 85, 38, 0.15);
   --st-mark-on: rgba(174, 85, 38, 0.24);
@@ -2832,14 +3064,14 @@ html[data-skin="warm"] {
   .flashcard-area { gap: 10px; }
   /* 窄屏托盘竖排，进度居中；藤蔓段收窄间距，
      藤改固定 1200px 居中裁边 —— 免得 1440 的画稿在窄屏被压扁变形 */
-  html:not([data-skin="pixel"]) .card-tray { padding: 0 12px 8px; }
-  html:not([data-skin="pixel"]) .card-tray .sys-cluster { gap: 24px; }
-  html:not([data-skin="pixel"]) .card-tray .tray-vine { width: 1200px; }
+  html .card-tray { padding: 0 12px 8px; }
+  html .card-tray .sys-cluster { gap: 24px; }
+  html .card-tray .tray-vine { width: 1200px; }
   .nav { width: 46px; height: 46px; font-size: 24px; }
   .app-header { padding: 18px 20px; }
   /* 故事页：窄屏收紧留白与句号栏（桌面端为主，这里只兜底不破版） */
   .story-panel { padding: 26px 22px; }
-  html:not([data-skin="pixel"]) #view-learn:not(.story-open) .story-panel { padding: 20px 22px; }
+  html #view-learn:not(.story-open) .story-panel { padding: 20px 22px; }
   .st-line { padding-left: 28px; font-size: 17px; }
   .st-zh { padding-left: 28px; }
   .story-head { gap: 10px; }
@@ -2847,728 +3079,15 @@ html[data-skin="warm"] {
 }
 
 /* ============================================================
-   像素风主题（第三款皮肤 · 我的世界像素）
-   ------------------------------------------------------------
-   作用域：仅 html[data-skin="pixel"]。薄荷 / 米黄 零影响。
-   布局：固定 1440×1200 舞台 + 等比缩放（系数由 pixel.js 写入 --px-scale）。
-   所有规则均挂在 pixel 作用域下；新增的惰性钩子默认隐藏。
-   背景与宝剑的少量写死色值仅存在于像素作用域内（约定 §4-10 的有意例外）。
-   ============================================================ */
-html[data-skin="pixel"] {
-  /* —— 像素专用变量（仅在 pixel 作用域引用，不影响另两款） —— */
-  --px-panel: #F2F2F2;   --px-card: #FFFFFF;
-  --px-sub1: #EDEDED;    --px-sub2: #E3E3E3;
-  --px-hi: #FFFFFF;      --px-lo: #B4B4B4;
-  --px-edge: #3F3F3F;    --px-edge2: #A8A8A8;
-  --px-accent: #7ADB2B;  --px-bar: #5FB81C;  --px-bar-hi: #8CE03E;  --px-accent-dk: #1F4A0B;
-  --px-text: #232323;    --px-text2: #6E6E6E; --px-text3: #8A8A8A;   --px-text4: #9A9A9A;
-  --px-cyan: #16A393;    --px-gold: #F0C24A;  --px-gold-dk: #8A6A15;  --px-dark: #2B2B2B;
-  --px-danger: #B5564F;  --px-danger-bd: #E2C9C9; --px-danger-bg: #FCEFEF;
-
-  /* —— 复用可换肤变量，把颜色换成像素色板、面积归零 —— */
-  --bg-page: #8FBEF0;    --surface: #FFFFFF;   --bg-subtle: #DCDCDC;
-  --bg-soft: #F8F8F8;    --bg-soft-2: #EFEFEF; --track-bg: #C4C4C4;
-  --border-soft: #A8A8A8; --border-muted: #A8A8A8;
-  --text-primary: #232323; --text-secondary: #6E6E6E; --text-tertiary: #8A8A8A;
-  --text-muted: #6E6E6E;   --on-accent: #122103;
-  --accent: #7ADB2B;     --accent-dark: #1F4A0B; --accent-hover: #8CE03E;
-  --btn-primary-bg: var(--px-accent);  --btn-primary-bg-hover: var(--px-bar); /* 原引用的 --px-accent-hover 未定义，补上 */
-  --mark-bg: #EDEDED;    --mark-bg-hover: #F8F8F8; --mark-stroke: #8A6A15;
-  --mark-bg-on: #F0C24A; --mark-bg-on-hover: #F7DCC6; --mark-fg: #8A6A15;
-  --ok: #5FB81C;         --ok-shadow: rgba(95,184,28,.2);
-  --bad: #D9534F;        --bad-shadow: rgba(217,83,79,.18);
-  --danger: #B5564F;     --danger-border: #E2C9C9; --danger-bg: #FCEFEF;
-  --overlay: rgba(0,0,0,.45); --toast-bg: #2B2B2B;
-  --shadow-card: 0 0 0 0; --shadow-btn: 0 0 0 0; --shadow-modal: 0 0 0 0;
-  --shadow-toast: 0 0 0 0; --shadow-pop: 0 0 0 0;
-  --logo-bg: #7ADB2B;    --logo-fg: #122103;
-
-  /* —— 圆角归零 / 字号放大 —— */
-  --radius-card: 0; --radius-btn: 0; --radius-switcher: 0; --radius-pill: 0;
-  --fs-word: 160px; --fs-meaning: 30px; --fs-phonetic: 19px; --fs-title: 30px;
-  --fs-hint: 13px; --fs-button: 19px; --fs-body: 16px;
-
-  /* —— 挥剑翻页时长：单一真相，只改 --sword-k 就能整体慢放 ——
-     其余用 calc() 派生，JS 不再重复这些数字（调试慢放 = 给 <html> 加 .sword-slow）。 */
-  --sword-k: 1;
-  --sword-swing:  calc(460ms * var(--sword-k));   /* 剑：起势→挥出→归位 */
-  --sword-wdelay: calc(170ms * var(--sword-k));   /* 剑先动，词后随 */
-  --sword-win:    calc(300ms * var(--sword-k));   /* 新词飞入 */
-  --sword-wout:   calc(210ms * var(--sword-k));   /* 旧词甩出 */
-  --sword-infoin: calc(240ms * var(--sword-k));   /* 音标/释义落定后淡入 */
-}
-html[data-skin="pixel"].sword-slow { --sword-k: 2.4; }   /* 调试用慢放 */
-
-/* —— 舞台：固定 1440×1200 + 等比缩放 —— */
-html[data-skin="pixel"] body { background: #8FBEF0; overflow: hidden; }
-html[data-skin="pixel"] #stage {
-  position: fixed; left: 50%; top: 50%; width: 1440px; height: 1200px;
-  margin: -600px 0 0 -720px;
-  transform: scale(var(--px-scale, 1));
-  transform-origin: center center;
-}
-html[data-skin="pixel"] .px-bg {
-  display: block; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-}
-/* 背景是共享的 px-bg.svg（1440×1200，含太阳/云/远山/树/矿脉/草方块/钻石镐），
-   两个页面引用同一份，避免再次漂移。 */
-html[data-skin="pixel"] .px-bg > img { display: block; width: 100%; height: 100%; }
-html[data-skin="pixel"] .app-header,
-html[data-skin="pixel"] .app-main { position: absolute; z-index: 1; }
-/* 皮肤浮层 #skin-pop 挂在 .app-header 内部，其 z-index 再大也只在顶栏这一层里生效。
-   顶栏与主面板同为 z-index:1 且主面板在 DOM 里靠后 → 会把浮层盖住，点不到。
-   所以顶栏必须比主面板高一层，浮层才能盖到面板之上。 */
-html[data-skin="pixel"] .app-header { z-index: 2; }
-/* 皮肤浮层挂 .app-header 内部，顶栏必须高于主面板：
-   两者若同为 z-index:1，DOM 靠后的 .app-main 会盖住顶栏的整个子树（含浮层），
-   浮层自身 z-index:70 也救不回来（被困在顶栏的层叠上下文里）。 */
-html[data-skin="pixel"] .app-header { z-index: 2; }
-
-/* 面板：三层像素斜面 */
-html[data-skin="pixel"] .app-header,
-html[data-skin="pixel"] .app-main {
-  background: var(--px-panel);
-  border: 1px solid var(--px-edge);
-  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-}
-
-/* —— 顶栏（高度锁 79，底边 119，避免压到主面板 y124）—— */
-html[data-skin="pixel"] .app-header {
-  top: 40px; left: 140px; width: 1160px; height: 79px;
-  padding: 0 16px; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: space-between;
-}
-html[data-skin="pixel"] .brand-name { font-size: 20px; color: var(--px-text); }
-html[data-skin="pixel"] .header-right { gap: 12px; }
-html[data-skin="pixel"] .btn-skin {
-  border-radius: 0; border: 2px solid var(--px-edge2);
-  background: var(--px-sub1); color: var(--px-text);
-  padding: 8px 18px; font-size: 15px;
-}
-html[data-skin="pixel"] .btn-skin:hover { background: #F8F8F8; color: var(--px-text); }
-html[data-skin="pixel"] .btn-sound {
-  border-radius: 0; border: 2px solid var(--px-edge2);
-  background: var(--px-sub1); color: var(--px-text);
-  padding: 8px 12px; font-size: 16px;
-}
-html[data-skin="pixel"] .btn-sound:hover { background: #F8F8F8; color: var(--px-text); }
-html[data-skin="pixel"] .btn-backup {
-  border-radius: 0; border: 2px solid var(--px-edge2);
-  background: var(--px-sub1); color: var(--px-text);
-  padding: 8px 12px; font-size: 16px;
-}
-html[data-skin="pixel"] .btn-backup:hover { background: #F8F8F8; color: var(--px-text); }
-html[data-skin="pixel"] .btn-bank {
-  border-radius: 0; border: 2px solid var(--px-edge2);
-  background: var(--px-sub1); color: var(--px-text);
-  padding: 8px 16px; font-size: 15px;
-}
-html[data-skin="pixel"] .btn-bank:hover { background: #F8F8F8; color: var(--px-text); }
-html[data-skin="pixel"] .btn-sound[aria-pressed="false"] {
-  background: var(--px-card); color: var(--px-text4);
-}
-html[data-skin="pixel"] .btn-reset {
-  border-radius: 0; border: 2px solid var(--px-danger-bd);
-  background: var(--px-card); color: var(--px-danger);
-  padding: 9px 16px; font-size: 14px;
-}
-html[data-skin="pixel"] .btn-reset:hover { background: var(--px-danger-bg); }
-html[data-skin="pixel"] .round-badge {
-  background: var(--px-dark); color: #FFFFFF; border-radius: 0;
-  padding: 8px 14px; font-size: 14px; border: 1px solid #000;
-  box-shadow: inset 2px 2px 0 #4a4a4a, inset -2px -2px 0 #000;
-}
-
-/* —— 主舞台（视图容器 = 主面板）—— */
-html[data-skin="pixel"] .app-main {
-  top: 124px; left: 140px; width: 1160px; height: 863px;
-  display: flex; flex-direction: column; gap: 16px; padding: 28px; overflow: hidden;
-}
-/* —— 首页（.app-main-gate）：不要主面板壳，内容直接立在世界里 ——
-   必须连基础 .app-main 的 max-width / margin / padding 一起清掉：
-   绝对定位下 margin:auto 不居中，会整块贴左（max-width 1280 钳宽）。 */
-html[data-skin="pixel"] .app-main.app-main-gate {
-  background: none; border: none; box-shadow: none;
-  top: 0; left: 0; width: 100%; height: 100%;
-  max-width: none; margin: 0; padding: 0;
-  justify-content: center; overflow: hidden;
-}
-html[data-skin="pixel"] .app-main .view { display: none; }
-html[data-skin="pixel"] .app-main .view-active {
-  display: flex; flex-direction: column; gap: 16px; flex: 1 1 auto; min-height: 0;
-}
-/* 学习页 / 复习页改成 grid：标题行与模式切换器并到同一行
-   （左：今日单词…复习／右：模式切换）。标题行本来就 67 高、模式行只 52，
-   并进去不增高 → 省下一整行 52 + 一个间隙 16 = 68px，全给卡片。
-   ⚠️ **必须限定 .view-study.view-active**：
-   ① 首页 #view-empty 也带 .view-active，但它有自己的 `html[data-skin="pixel"] .view-empty{display:flex;align-items:center;…}`（特异性 0,2,1）——
-      写成 .view-active 是 0,3,1，会把首页的居中顶掉，hero 跑到上面去。
-   ② 复习页也带 .view-study，但它多数时候是隐藏的；只写 .view-study 会与 `.view{display:none}` 同分且排在后面
-      → 把隐藏的复习面板也显示出来，屏幕上会「多出一个画面」。
-   两条都踩过。 */
-html[data-skin="pixel"] .app-main .view-study.view-active {
-  display: grid; grid-template-columns: 1fr auto; align-content: start; gap: 16px;
-}
-html[data-skin="pixel"] .app-main .view-study > .view-title-row { grid-column: 1; grid-row: 1; }
-/* 2026-10-25 卡下托盘：顶栏系统按钮（皮肤/音效/备份/重置）挪进 .card-tray，
-   学习/复习两页各多一个直接子元素；像素风里托盘只是普通容器（见下方 passthrough），
-   按钮簇沿用像素自己的样式，排在操作行之下。 */
-html[data-skin="pixel"] .app-main .view-study > .px-subtitle,
-html[data-skin="pixel"] .app-main .view-study > .flashcard-area,
-html[data-skin="pixel"] .app-main .view-study > .card-tray,
-html[data-skin="pixel"] .app-main .view-study > .story-panel { grid-column: 1 / -1; }
-/* 最后一行（故事面板）要吃掉剩余高度：grid 里没有 flex:1，得显式给 1fr。
-   两个视图的直接子元素个数不同（学习页多一行 .px-subtitle），所以分开写。 */
-html[data-skin="pixel"] #view-learn.view-active  { grid-template-rows: repeat(6, min-content) 1fr; }
-html[data-skin="pixel"] #view-review.view-active { grid-template-rows: repeat(5, min-content) 1fr; }
-
-/* —— 生成故事：点按钮把故事面板展开（设计稿 07：面板在操作行下方展开） ——
-   展开不靠「挤」而靠「长」：故事那一行从 `1fr`（吃掉剩余、被压扁）
-   改成 `auto`（按内容自然高度）→ 面板装不下时，让视图容器纵向滚动，
-   跟薄荷一样用鼠标滚轮往下看完整故事。卡片保持 428 不缩、其余各行也不动。
-   （早先那版是「缩卡片到 410 + 收起副标题和进度区」把故事挤到 213px，
-     已被这套替代 —— 那种做法故事仍然看不全，只是没那么挤。） */
-html[data-skin="pixel"] #view-learn.story-open { grid-template-rows: repeat(6, min-content) 540px; }
-/* 为什么是固定 540px 而不是 `auto`：grid 的 `auto` 轨道取的是 max-content ——
-   对一整段文字来说 max-content 意味着「不换行」，于是只算出 ~102px，还是被压扁。
-   固定行高是这里唯一能表达「按当前宽度排完的高度」的办法（实测故事内容 495px）。
-   故事更长时由 `.story-panel` 自己的 overflow:auto 兜底（仅展开态有，收起态是 hidden）。 */
-/* 内容装不下时纵向滚动。薄荷能滚是因为页面本身能长；像素风舞台固定 1440×1200，
-   所以让视图容器自己滚。
-   ⚠️ 横向必须显式 hidden：只写 overflow-y 时，规范会把 overflow-x 从 visible 变成 auto，
-   那样挥剑/单词飞出面板时可能冒出横向滚动条。 */
-html[data-skin="pixel"] .app-main .view-study.view-active { overflow-y: auto; overflow-x: hidden; }
-
-/* —— 标题行 / 模式切换器 / 进度 / 操作行宽度统一 —— */
-html[data-skin="pixel"] .view-title-row,
-html[data-skin="pixel"] .mode-switcher,
-html[data-skin="pixel"] .flashcard-area,
-html[data-skin="pixel"] .progress-wrap,
-html[data-skin="pixel"] .action-bar,
-html[data-skin="pixel"] .story-panel { max-width: none; width: 100%; margin: 0 auto; }
-html[data-skin="pixel"] .view-title { font-size: var(--fs-title); text-align: left; margin: 0; }
-html[data-skin="pixel"] .view-title-row .view-title { margin: 0; }
-html[data-skin="pixel"] .view-title-actions .btn { justify-content: center; }
-
-/* —— 卡下托盘在像素风里不配色、不投影，只是普通容器；
-      按钮簇（皮肤 / 音效 / 备份 / 重置）沿用像素自己的样式 —— */
-html[data-skin="pixel"] .card-tray {
-  display: block;
-  background: none;
-  box-shadow: none;
-  padding: 0;
-  border-radius: 0;
-  margin: 0 auto 16px;
-  max-width: none;
-  width: 100%;
-}
-
-html[data-skin="pixel"] .mode-switcher {
-  background: var(--px-sub1); border: 1px solid var(--px-edge);
-  box-shadow: inset 2px 2px 0 var(--px-hi), inset -2px -2px 0 var(--px-lo);
-  padding: 4px; border-radius: 0; width: fit-content;
-}
-html[data-skin="pixel"] .mode-btn {
-  border: none; background: transparent; color: var(--px-text2);
-  border-radius: 0; padding: 11px 26px; font-size: 14px;
-}
-html[data-skin="pixel"] .mode-btn:hover { color: var(--px-text); }
-html[data-skin="pixel"] .mode-btn.active {
-  background: var(--px-accent); color: var(--on-accent);
-  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
-}
-
-html[data-skin="pixel"] .btn-review-toggle {
-  border-radius: 0; border: 2px solid var(--px-accent-dk);
-  background: var(--px-card); color: var(--px-accent-dk);
-  padding: 13px 22px; font-size: 14px;
-}
-html[data-skin="pixel"] .btn-review-toggle.active {
-  background: var(--px-gold); color: var(--px-gold-dk); border-color: var(--px-gold-dk);
-}
-
-/* —— 翻卡区 + 卡片 —— */
-html[data-skin="pixel"] .flashcard-area {
-  position: relative; gap: 0; max-width: 1160px; width: 100%; flex: 0 0 auto;
-}
-html[data-skin="pixel"] .flashcard {
-  width: 1082px; max-width: 1082px; margin: 0 auto; min-height: 428px; height: 428px;
-  background: var(--px-card); border: 1px solid var(--px-edge);
-  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-  border-radius: 0; padding: 22px 26px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-html[data-skin="pixel"] .card-word,
-html[data-skin="pixel"] .card-word-ghost {
-  font-size: var(--fs-word); line-height: 1; letter-spacing: 0;
-  white-space: nowrap; max-width: 840px;   /* 给两侧宝剑留位，避免文字撞剑 */
-}
-
-/* —— 词槽：两层叠放（当前词常驻 + 飞入的新词） ——
-   用 grid 把两层放进同一个格子：两层都在正常流里，
-   clientWidth 仍是「按内容自适应」→ pixel.js 的字号测量逻辑原样可用。 */
-html[data-skin="pixel"] .word-stack {
-  display: grid; grid-template-columns: auto; justify-items: center; align-items: center;
-}
-html[data-skin="pixel"] .word-stack > .card-word,
-html[data-skin="pixel"] .word-stack > .card-word-ghost { grid-area: 1 / 1; }
-html[data-skin="pixel"] .card-word-ghost {
-  display: block; font-weight: 700; color: var(--px-text); pointer-events: none;
-  will-change: transform, opacity;
-}
-/* 中文模式下单词是「答案」（.card-word 被隐藏），ghost 层必须跟着隐藏，
-   否则翻页时新答案会先飞进来把答案漏掉。 */
-html[data-skin="pixel"] .flashcard[data-mode="zh"] .card-word-ghost { display: none; }
-/* 音标与单词的净空：单词是 line-height:1（行盒=字号），但字形按 half-leading 居中，
-   下伸部会越过行盒 —— 实测 300 个词里 130 个有溢出，最严重 +29px（advantage / argue /
-   budget / challenge…）。原来只有 8px 间距 → 最多重叠 21px。
-   36px = 29px 最坏溢出 + 7px 呼吸。字距（如 g/p/y 的下伸）本来就会让视觉间距随词变化，
-   这跟排版的基线间距是一个道理。 */
-html[data-skin="pixel"] .card-phonetic {
-  font-size: var(--fs-phonetic); color: var(--px-text3); margin-top: 36px;
-}
-html[data-skin="pixel"] .card-meaning {
-  font-size: var(--fs-meaning); color: var(--px-text); margin-top: 14px;
-  position: relative; padding-top: 18px;
-}
-html[data-skin="pixel"] .card-meaning::before {
-  content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 64px; height: 4px; background: var(--px-cyan);
-}
-
-/* —— 翻面壳拆除：像素风不播 3D 翻转 ——
-   display:contents 让 .card-flip-inner / .card-face 不生成盒子，
-   .card-word / .card-phonetic / .card-meaning / .word-stack 在布局上
-   回到 .flashcard 的直接子项，与改造前逐像素一致（sword.js 飞词、pixel.js 测宽不受影响）；
-   背单词模式恢复「词 + 音标 + 释义」同屏，下划线让位给像素自己的青色横条。 */
-html[data-skin="pixel"] .flashcard .card-flip-inner,
-html[data-skin="pixel"] .flashcard .card-face { display: contents; }
-html[data-skin="pixel"] .flashcard { perspective: none; cursor: default; }
-html[data-skin="pixel"] .flashcard.is-flipping,
-html[data-skin="pixel"] .flashcard.swap-out-next,
-html[data-skin="pixel"] .flashcard.swap-out-prev,
-html[data-skin="pixel"] .flashcard.swap-in-next,
-html[data-skin="pixel"] .flashcard.swap-in-prev { animation: none; }
-/* 叠卡哑层是薄荷 / 暖阳的动作语汇，像素有自己的挥剑飞词 —— 整层不生成 */
-html[data-skin="pixel"] .flashcard .card-flyer,
-html[data-skin="pixel"] .flashcard .card-deck { display: none; }
-/* 正文的定位层级也还给像素自己的布局（像素卡内是流式堆叠） */
-html[data-skin="pixel"] .flashcard[data-mode="learn"] .card-word,
-html[data-skin="pixel"] .flashcard[data-mode="learn"] .card-phonetic,
-html[data-skin="pixel"] .flashcard[data-mode="learn"] .card-meaning {
-  position: static;
-  z-index: auto;
-}
-html[data-skin="pixel"] .flashcard .card-underline { display: none; }
-/* 像素风不翻面：揭示仍走 show-answer（点卡片 / Enter / Space 触发，见 app.js）；
-   「显示××」按钮已删，显隐规则在此处原样保留。 */
-html[data-skin="pixel"] .flashcard[data-mode="en"] .card-meaning { display: none; }
-html[data-skin="pixel"] .flashcard[data-mode="en"].show-answer .card-meaning { display: block; }
-html[data-skin="pixel"] .flashcard[data-mode="zh"] .card-word,
-html[data-skin="pixel"] .flashcard[data-mode="zh"] .card-phonetic { display: none; }
-html[data-skin="pixel"] .flashcard[data-mode="zh"].show-answer .card-word,
-html[data-skin="pixel"] .flashcard[data-mode="zh"].show-answer .card-phonetic { display: block; }
-html[data-skin="pixel"] .flashcard[data-mode="zh"] .write-row {
-  position: static;   /* 像素卡内回到文档流，跟随像素自己的布局 */
-  display: flex;
-}
-html[data-skin="pixel"] .flashcard[data-mode="zh"].show-answer .write-row { display: none; }
-
-/* 右上角：发音 + 标记 并排 */
-html[data-skin="pixel"] .card-speaker {
-  top: 22px; right: 22px; width: 44px; height: 44px; border-radius: 0;
-  background: var(--px-sub1); border: 2px solid var(--px-edge2); font-size: 20px;
-}
-html[data-skin="pixel"] .card-speaker.active {
-  background: var(--px-accent);
-  border-color: var(--px-accent-dk);
-  color: var(--on-accent);
-}
-html[data-skin="pixel"] .card-mark {
-  top: 22px; right: 74px; left: auto; width: 44px; height: 44px; border-radius: 0;
-  background: var(--px-sub1); border: 2px solid var(--px-edge2);
-}
-html[data-skin="pixel"] .card-mark.marked { background: var(--px-gold); border-color: var(--px-gold-dk); }
-html[data-skin="pixel"] .card-mark.marked svg path { fill: var(--px-gold-dk); stroke: var(--px-gold-dk); }
-
-/* 宝剑翻页键（绝对定位入卡，垂直居中）
-   注意：垂直居中改用 top:calc() 算，把 transform 整个腾给挥剑动画；
-   hover / active 的缩放改挂在里面的 .px-sword 上 —— 否则两者抢同一个 transform。 */
-html[data-skin="pixel"] .nav {
-  position: absolute; top: calc(50% - 40.5px);
-  width: 39px; height: 81px; border: none; background: transparent; box-shadow: none;
-  border-radius: 0; font-size: 0; display: flex; align-items: center; justify-content: center;
-  z-index: 3;
-  transform-origin: 50% 100%;      /* 旋转轴 = 剑柄根部 */
-  transition: opacity 140ms ease-out;
-}
-html[data-skin="pixel"] .nav-left { left: 48px; }
-html[data-skin="pixel"] .nav-right { right: 48px; }
-html[data-skin="pixel"] .px-sword { display: block; width: 39px; height: 81px; transition: transform 140ms ease-out; }
-html[data-skin="pixel"] .nav:hover .px-sword { transform: scale(1.08); }
-html[data-skin="pixel"] .nav:active .px-sword { transform: scale(.96); }
-html[data-skin="pixel"] .nav:disabled { opacity: .35; box-shadow: none; }
-
-/* —— 挥剑：绕剑柄根部旋扫 + 放大 ——
-   方向约定（沿用原型，已验证）：两把剑都朝卡片内侧扫，扫向 = 新词入场方向（剑领、词随）
-     · 左剑（黄金 / 上一个）：朝右扫 = 顺时针 = 正角 → 新词自左飞入
-     · 右剑（钻石 / 下一个）：朝左扫 = 逆时针 = 负角 → 新词自右飞入
-   13% 起势帧先反向外倾蓄力；末帧写回 rotate(0) opacity:0 收势淡出，
-   不写第二段动画，避免两段之间的接缝。 */
-html[data-skin="pixel"] .nav.swL { animation: px-swingL var(--sword-swing) cubic-bezier(.4,0,.3,1) both; z-index: 20; }
-html[data-skin="pixel"] .nav.swR { animation: px-swingR var(--sword-swing) cubic-bezier(.4,0,.3,1) both; z-index: 20; }
-@keyframes px-swingL {
-  0%  { transform: rotate(0deg) scale(1); }
-  13% { transform: rotate(-10deg) scale(1.06); }
-  45% { transform: rotate(36deg) scale(1.42); }
-  68% { transform: rotate(99deg) scale(1.92); }
-  78% { transform: rotate(92deg) scale(1.9); }
-  92% { transform: rotate(92deg) scale(1.9); opacity: 1; }
-  100%{ transform: rotate(0deg) scale(1); opacity: 0; }
-}
-@keyframes px-swingR {
-  0%  { transform: rotate(0deg) scale(1); }
-  13% { transform: rotate(10deg) scale(1.06); }
-  45% { transform: rotate(-36deg) scale(1.42); }
-  68% { transform: rotate(-99deg) scale(1.92); }
-  78% { transform: rotate(-92deg) scale(1.9); }
-  92% { transform: rotate(-92deg) scale(1.9); opacity: 1; }
-  100%{ transform: rotate(0deg) scale(1); opacity: 0; }
-}
-
-/* —— 单词：旧词甩出（当前层）+ 新词弧线飞入（ghost 层），同延同时起手 —— */
-html[data-skin="pixel"] .card-word.awayL { animation: px-awayL var(--sword-wout) cubic-bezier(.5,0,.75,.4) var(--sword-wdelay) both; }
-html[data-skin="pixel"] .card-word.awayR { animation: px-awayR var(--sword-wout) cubic-bezier(.5,0,.75,.4) var(--sword-wdelay) both; }
-html[data-skin="pixel"] .card-word-ghost.flyL { animation: px-flyL var(--sword-win) cubic-bezier(.2,1.04,.32,1) var(--sword-wdelay) both; }
-html[data-skin="pixel"] .card-word-ghost.flyR { animation: px-flyR var(--sword-win) cubic-bezier(.2,1.04,.32,1) var(--sword-wdelay) both; }
-@keyframes px-awayL { 0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} 100%{opacity:0;transform:translate(210px,80px) rotate(8deg) scale(.74)} }
-@keyframes px-awayR { 0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} 100%{opacity:0;transform:translate(-210px,80px) rotate(-8deg) scale(.74)} }
-@keyframes px-flyL  { 0%{opacity:0;transform:translate(-320px,-140px) rotate(-13deg) scale(.38)} 30%{opacity:1} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
-@keyframes px-flyR  { 0%{opacity:0;transform:translate(320px,-140px) rotate(13deg) scale(.38)} 30%{opacity:1} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
-
-/* —— 音标 / 释义：先随剑淡出，落定后再淡入 —— */
-html[data-skin="pixel"] .card-phonetic.sw-infoout,
-html[data-skin="pixel"] .card-meaning.sw-infoout { animation: px-infoOut var(--sword-wout) ease-in var(--sword-wdelay) both; }
-html[data-skin="pixel"] .card-phonetic.sw-infoin,
-html[data-skin="pixel"] .card-meaning.sw-infoin { animation: px-infoIn var(--sword-infoin) ease-out both; }
-@keyframes px-infoOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-10px); } }
-@keyframes px-infoIn  { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-
-/* —— 进度条 —— */
-html[data-skin="pixel"] .progress-wrap { text-align: left; }
-html[data-skin="pixel"] .progress-track {
-  height: 28px; background: var(--px-sub1); border: 3px solid var(--px-edge); border-radius: 0;
-  box-shadow: inset 2px 2px 0 var(--px-hi), inset -2px -2px 0 var(--px-lo); padding: 3px;
-}
-html[data-skin="pixel"] .progress-fill {
-  height: 100%; background: var(--px-bar); box-shadow: inset 0 6px 0 0 var(--px-bar-hi); border-radius: 0;
-}
-html[data-skin="pixel"] .progress-text { font-size: 15px; }
-/* Q3：学习页进度提示行不要了 */
-html[data-skin="pixel"] #view-learn .progress-hint { display: none; }
-
-/* —— 操作栏按钮 —— */
-html[data-skin="pixel"] .action-bar { gap: 16px; }
-html[data-skin="pixel"] .btn {
-  border-radius: 0; border: 2px solid var(--px-edge2); color: var(--px-text);
-  font-size: var(--fs-button); padding: 18px 24px;
-}
-html[data-skin="pixel"] .btn-primary {
-  background: var(--px-accent); color: var(--on-accent);
-  border-color: var(--px-accent-dk);
-  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk), 4px 4px 0 var(--px-accent-dk);
-}
-html[data-skin="pixel"] .btn-primary:hover { background: var(--btn-primary-bg-hover); }
-html[data-skin="pixel"] .btn-primary:active {
-  transform: translate(3px, 3px);
-  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
-}
-html[data-skin="pixel"] .btn-secondary { background: var(--px-sub2); color: var(--px-text); border-color: var(--px-edge2); }
-html[data-skin="pixel"] .btn-outline { background: var(--px-card); color: var(--px-accent-dk); border: 2px solid var(--px-accent-dk); }
-/* 像素皮肤：亮绿描边压天空底太弱，焦点环换深灰描边色 */
-html[data-skin="pixel"] .btn:focus-visible,
-html[data-skin="pixel"] .mode-btn:focus-visible,
-html[data-skin="pixel"] .card-speaker:focus-visible,
-html[data-skin="pixel"] .nav:focus-visible { outline-color: var(--px-edge); }
-html[data-skin="pixel"] #btn-generate { width: 540px; }
-html[data-skin="pixel"] #btn-generate > .svg-icon { display: none; }  /* 像素风保持纯文字标签 */
-html[data-skin="pixel"] #btn-new-round-learn { width: 280px; }
-html[data-skin="pixel"] #btn-prev-batch,
-html[data-skin="pixel"] #btn-new-round-review { width: 352px; }
-
-/* —— 故事面板 ——
-   收起态：矮框只作预览，内容超出直接裁掉、不可滚动（2026-10-11）。
-   展开态（#view-learn.story-open，540px 全高）才给 overflow:auto 读全文，
-   见下方 story-open 段。 */
-html[data-skin="pixel"] .story-panel {
-  background: var(--px-card); border: 1px solid var(--px-edge);
-  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-  border-radius: 0; padding: 16px 22px; overflow: hidden; flex: 1 1 0; min-height: 0;
-}
-html[data-skin="pixel"] #view-learn.story-open .story-panel { overflow: auto; }
-html[data-skin="pixel"] .story-title { color: var(--px-accent-dk); font-size: 17px; }
-html[data-skin="pixel"] .story-en { font-size: 20px; line-height: 1.7; }
-html[data-skin="pixel"] .story-zh { font-size: 18px; line-height: 1.9; }
-
-/* —— 故事生成（面板内按钮 + 状态行 + 高亮） —— */
-html[data-skin="pixel"] .story-head { gap: 12px; margin-bottom: 10px; }
-html[data-skin="pixel"] .btn-story-gen { font-size: 14px; padding: 10px 16px; }
-html[data-skin="pixel"] .btn-story-config {
-  width: 40px; height: 40px; border-radius: 0;
-  border: 2px solid var(--px-edge2); background: var(--px-sub1); color: var(--px-text);
-  font-size: 17px;
-}
-html[data-skin="pixel"] .btn-story-config:hover { background: #F8F8F8; color: var(--px-text); }
-html[data-skin="pixel"] .story-empty { font-size: 15px; color: var(--px-text3); }
-html[data-skin="pixel"] .story-status { font-size: 14px; color: var(--px-text2); }
-html[data-skin="pixel"] .story-status.is-error { color: var(--bad); }
-html[data-skin="pixel"] .story-en .story-hl,
-html[data-skin="pixel"] .story-zh .story-hl { color: var(--px-accent-dk); }
-
-/* —— 故事页新结构（句号栏 / 荧光笔 / 覆盖点）在像素世界的适配：零圆角、硬边 —— */
-html[data-skin="pixel"] .story-kicker { font-size: 11px; color: var(--px-text3); margin-bottom: 8px; }
-html[data-skin="pixel"] .story-teaser { font-family: inherit; font-style: normal; font-size: 15px; color: var(--px-text2); }html[data-skin="pixel"] .story-kicker-rule { height: 3px; border-radius: 0; background: var(--px-accent); }
-html[data-skin="pixel"] .story-kicker-sep { color: var(--px-edge2); }
-html[data-skin="pixel"] .story-meta {
-  border-color: var(--px-edge2); margin: 12px 0 0; padding: 10px 0; gap: 10px;
-}
-html[data-skin="pixel"] .story-meta-label,
-html[data-skin="pixel"] .story-meta-count { font-size: 12px; color: var(--px-text2); }
-html[data-skin="pixel"] .st-dot { width: 9px; height: 9px; border-radius: 0; border: 2px solid var(--px-edge2); }
-html[data-skin="pixel"] .st-dot.on { background: var(--px-accent); border-color: var(--px-edge); }
-html[data-skin="pixel"] .st-line {
-  font-family: inherit; font-size: 20px; line-height: 1.7;
-  padding-left: 28px; margin: 0; border-radius: 0;
-}
-html[data-skin="pixel"] .st-no {
-  font-family: inherit; font-size: 12px; left: 2px; top: 4px;
-  color: var(--px-text3); opacity: 1;
-}
-html[data-skin="pixel"] .st-zh {
-  font-size: 18px; line-height: 1.9; color: var(--px-text2);
-  padding-left: 28px; margin: 2px 0 0;
-}
-html[data-skin="pixel"] .st-word,
-html[data-skin="pixel"] .st-any {
-  background: var(--px-accent); color: #122103;
-  border-radius: 0; padding: 0 2px; font-weight: 700;
-}
-html[data-skin="pixel"] .st-word:hover,
-html[data-skin="pixel"] .st-any:hover { color: #122103; }
-html[data-skin="pixel"] .st-word:focus-visible { outline-color: var(--px-edge); }
-/* 像素下已标记：深一号的实心块 + 白字 */
-html[data-skin="pixel"] .st-word.is-marked,
-html[data-skin="pixel"] .st-any.is-marked {
-  background: var(--px-accent-dk); color: #FFFFFF;
-}
-html[data-skin="pixel"] .story-empty { padding: 10px 0 0; }
-html[data-skin="pixel"] .story-empty-words span {
-  height: 26px; border-radius: 0; background: var(--px-sub2);
-  color: var(--px-text2); font-size: 12px;
-}
-html[data-skin="pixel"] .story-empty-words span.is-more {
-  background: transparent; border: 1px dashed var(--px-edge2); color: var(--px-text3);
-}
-html[data-skin="pixel"] .story-empty-title { font-size: 16px; color: var(--px-text); }
-html[data-skin="pixel"] .story-empty-desc { font-size: 14px; color: var(--px-text2); }
-html[data-skin="pixel"] .story-status::before { border-radius: 0; background: var(--px-accent); }
-html[data-skin="pixel"] .story-footer { border-top-color: var(--px-edge2); color: var(--px-text3); }
-html[data-skin="pixel"] .story-body.is-streaming { font-family: inherit; font-size: 20px; line-height: 1.7; }
-/* 像素卡面已有自己的序号与小标题，不再加第三块锚点 */
-html[data-skin="pixel"] .card-story { display: none; }
-
-/* —— 像素世界的「书」：暂不做摊开的双页（薄荷 / 暖阳专属）。
-   退化成「一页接一页往下读」：无垫纸、无角卡、无等比缩放，零圆角硬边，
-   字号加大 —— 只要不塌，等以后专门设计像素书的材质。 —— */
-html[data-skin="pixel"] .book-under,
-html[data-skin="pixel"] .book-ribbon,
-html[data-skin="pixel"] .book-dock { display: none; }
-html[data-skin="pixel"] .book-stage { width: 100%; height: auto; --book-scale: 1; }
-html[data-skin="pixel"] .book {
-  position: static;
-  transform: none;
-  width: 100%;
-  height: auto;
-  display: block;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-}
-html[data-skin="pixel"] .book::before,
-html[data-skin="pixel"] .book::after { display: none; }
-html[data-skin="pixel"] .book-page { padding: 0 0 14px; }
-html[data-skin="pixel"] .book-page + .book-page {
-  border-top: 2px solid var(--px-edge2);
-  padding-top: 12px;
-}
-html[data-skin="pixel"] .book-page .story-kicker { margin-bottom: 8px; font-size: 11px; color: var(--px-text3); }
-html[data-skin="pixel"] .book-page .story-title { font-size: 17px; }
-html[data-skin="pixel"] .book-page-label {
-  padding-top: 0;
-  margin-bottom: 8px;
-  font-size: 11px;
-  color: var(--px-text3);
-}
-html[data-skin="pixel"] .book-rule { background: var(--px-edge2); margin: 10px 0 1px; }
-html[data-skin="pixel"] .book-page .story-body { overflow: visible; padding: 10px 0 0; }
-html[data-skin="pixel"] .bk-para { gap: 6px; margin-bottom: 14px; border-radius: 0; }
-html[data-skin="pixel"] .bk-para.is-lock { background: var(--px-sub1); box-shadow: none; }
-html[data-skin="pixel"] .bk-para.is-pin { animation: none; }
-html[data-skin="pixel"] .bk-en { font-family: inherit; font-size: 20px; line-height: 1.7; }
-html[data-skin="pixel"] .bk-zh { font-size: 18px; line-height: 1.9; color: var(--px-text2); }
-html[data-skin="pixel"] .bk-no { font-family: inherit; font-size: 12px; opacity: 1; color: var(--px-text3); }
-html[data-skin="pixel"] .book-foot,
-html[data-skin="pixel"] .book-foot .cov { font-family: inherit; font-size: 11px; }
-html[data-skin="pixel"] .book-tools { width: 100%; margin-bottom: 12px; }
-html[data-skin="pixel"] .btn-book-back {
-  height: 40px;
-  border-radius: 0;
-  border: 2px solid var(--px-edge2);
-  background: var(--px-sub1);
-  color: var(--px-text);
-  font-size: 14px;
-}
-html[data-skin="pixel"] .book-page .story-empty { padding: 0; }
-
-/* —— 故事生成设置弹窗 / 故事集弹窗 / 备份弹窗 / 加词弹窗 —— */
-html[data-skin="pixel"] .modal-config,
-html[data-skin="pixel"] .modal-history,
-html[data-skin="pixel"] .modal-backup,
-html[data-skin="pixel"] .modal-bank {
-  max-width: 760px; padding: 30px 34px;
-  background: var(--px-card); border: 1px solid var(--px-edge); border-radius: 0;
-  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-}
-html[data-skin="pixel"] .modal-title { color: var(--px-accent-dk); font-size: 19px; }
-html[data-skin="pixel"] .modal-field label { font-size: 14px; color: var(--px-text2); }
-html[data-skin="pixel"] .modal-field input,
-html[data-skin="pixel"] .modal-field textarea,
-html[data-skin="pixel"] .modal-field select {
-  border: 2px solid var(--px-edge2); border-radius: 0; background: #FFFFFF;
-  color: var(--px-text); font-size: 15px;
-  box-shadow: inset 2px 2px 0 var(--px-sub2);
-}
-html[data-skin="pixel"] .modal-field input:focus,
-html[data-skin="pixel"] .modal-field textarea:focus,
-html[data-skin="pixel"] .modal-field select:focus {
-  border-color: var(--px-accent-dk); box-shadow: inset 2px 2px 0 var(--px-sub2);
-}
-/* 加词弹窗的拖放区 / 识别列表 / 词库行：像素风一律去圆角、硬边 */
-html[data-skin="pixel"] .bank-drop { border: 2px dashed var(--px-edge2); border-radius: 0; background: var(--px-sub2); }
-html[data-skin="pixel"] .bank-drop:hover,
-html[data-skin="pixel"] .bank-drop.is-drag { border-color: var(--px-accent-dk); color: var(--px-accent-dk); background: var(--px-sub1); }
-html[data-skin="pixel"] .bank-item,
-html[data-skin="pixel"] .bank-row { border-radius: 0; border: 1px solid var(--px-edge2); background: var(--px-sub2); }
-html[data-skin="pixel"] .bank-row.is-active { border-color: var(--px-accent-dk); background: var(--px-sub1); }
-html[data-skin="pixel"] .bank-item-meaning { border-radius: 0; border: 2px solid var(--px-edge2); background: #FFF; }
-html[data-skin="pixel"] .bank-item-tag { border-radius: 0; }
-html[data-skin="pixel"] .bank-item-tag.is-new { background: var(--px-accent); color: var(--on-accent); }
-html[data-skin="pixel"] .btn-sm { border-radius: 0; }
-html[data-skin="pixel"] .modal-field-hint { font-size: 13px; color: var(--px-text3); }
-html[data-skin="pixel"] .history-list { max-height: 520px; padding-right: 0; }
-html[data-skin="pixel"] .history-item {
-  border: 1px solid var(--px-edge2); border-radius: 0; background: var(--px-sub1);
-  box-shadow: inset 2px 2px 0 var(--px-hi), inset -2px -2px 0 var(--px-lo);
-}
-html[data-skin="pixel"] .history-item-title { color: var(--px-accent-dk); }
-html[data-skin="pixel"] .history-en { font-size: 15px; line-height: 1.7; }
-html[data-skin="pixel"] .history-zh { font-size: 14px; line-height: 1.8; }
-html[data-skin="pixel"] .history-en .story-hl,
-html[data-skin="pixel"] .history-zh .story-hl { color: var(--px-accent-dk); }
-html[data-skin="pixel"] .history-empty { font-size: 15px; color: var(--px-text3); }
-
-/* —— 重置弹窗 / toast —— */
-html[data-skin="pixel"] .modal {
-  background: var(--px-card); border: 1px solid var(--px-edge);
-  box-shadow: inset 5px 5px 0 var(--px-hi), inset -5px -5px 0 var(--px-lo);
-  border-radius: 0; padding: 38px 44px; max-width: 620px;
-}
-html[data-skin="pixel"] .modal-text { font-size: 18px; }
-html[data-skin="pixel"] .modal-actions { gap: 16px; }
-html[data-skin="pixel"] #btn-reset-cancel,
-html[data-skin="pixel"] #btn-reset-confirm { width: 220px; }
-html[data-skin="pixel"] .toast {
-  background: var(--px-dark); border: 1px solid #101010; border-radius: 0;
-  padding: 15px 22px; color: #FFFFFF; display: flex; align-items: center; gap: 8px;
-}
-
-/* —— 皮肤浮层 —— */
-html[data-skin="pixel"] .skin-pop {
-  border: 1px solid var(--px-edge); background: var(--px-card); border-radius: 0;
-  box-shadow: inset 3px 3px 0 var(--px-hi), inset -3px -3px 0 var(--px-lo); width: 260px;
-}
-html[data-skin="pixel"] .skin-item { border: 2px solid transparent; border-radius: 0; }
-html[data-skin="pixel"] .skin-item.active { border-color: var(--px-accent); background: var(--px-sub1); }
-html[data-skin="pixel"] .skin-swatch { border-radius: 0; border: 1px solid var(--px-edge2); }
-
-/* ============================================================
-   惰性钩子：默认全隐藏，像素皮肤下才显示
-   ============================================================ */
-.px-bg, .px-sword, .px-eyebrow, .px-hint-zh, .px-index, .px-subtitle, .px-label, .tray-vine { display: none; }
-
-html[data-skin="pixel"] .px-index {
-  display: block; position: absolute; top: 24px; left: 24px;
-  font-size: 14px; color: var(--px-text3);
-}
-html[data-skin="pixel"] .px-eyebrow {
-  display: block; margin-bottom: 6px; font-size: 12px; color: var(--px-text2);
-}
-html[data-skin="pixel"] .flashcard[data-mode="zh"] .px-hint-zh {
-  display: block; position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
-  font-size: 13px; color: var(--px-text3);
-}
-/* 揭示答案后：输入框下方挤满了内容，这行 bottom 定位的操作提示会与输入框叠在一起；
-   而且此时「输入后按回车提交」也已完成使命 → 收起来。 */
-html[data-skin="pixel"] .flashcard[data-mode="zh"].show-answer .px-hint-zh { display: none; }
-html[data-skin="pixel"] .px-subtitle {
-  display: block; font-size: 14px; color: var(--px-text2);
-}
-/* 文案双份：像素皮肤下显示像素文案，隐藏标准文案 */
-html[data-skin="pixel"] .std-label { display: none; }
-html[data-skin="pixel"] .px-label { display: inline-flex; align-items: center; gap: 8px; }
-
-/* —— 首页（index.html）像素化：卸掉卡壳，文字直接立在世界里 —— */
-html[data-skin="pixel"] .view-empty {
-  display: flex; align-items: center; justify-content: center;
-  flex: 1 1 auto; min-height: 0;
-}
-html[data-skin="pixel"] .hero {
-  padding: 48px 24px; max-width: 820px;
-}
-html[data-skin="pixel"] .hero-logo { margin-bottom: 20px; }
-html[data-skin="pixel"] .hero-logo svg { animation: none; }   /* 像素世界不摇摆，保持定格 */
-html[data-skin="pixel"] .hero-title { font-size: 56px; }
-html[data-skin="pixel"] .hero-subtitle { font-size: 18px; color: var(--px-edge); }   /* #3F3F3F 压蓝天 ≈4.9:1 */
-html[data-skin="pixel"] .hero-progress { color: var(--px-text); }
-html[data-skin="pixel"] .hero-footer { color: var(--px-dark); }   /* 小字要更高对比 */
-html[data-skin="pixel"] .btn-hero {
-  font-size: 19px; padding: 18px 44px; background: var(--px-accent); color: var(--on-accent);
-  border: 2px solid var(--px-accent-dk); border-radius: 0;
-  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk), 4px 4px 0 var(--px-accent-dk);
-}
-html[data-skin="pixel"] .btn-hero:active {
-  transform: translate(3px, 3px);
-  box-shadow: inset 2px 2px 0 var(--px-bar-hi), inset -2px -2px 0 var(--px-accent-dk);
-}
-/* 活词预览：像素世界里的小白卡（与学习页词卡同语言） */
-html[data-skin="pixel"] .preview-inner {
-  border: 2px solid var(--px-edge); border-radius: 0;
-  box-shadow: inset 3px 3px 0 var(--px-hi), inset -3px -3px 0 var(--px-lo), 4px 4px 0 rgba(0, 0, 0, 0.15);
-  transition: none;
-}
-html[data-skin="pixel"] .preview-word    { color: var(--px-text); }
-html[data-skin="pixel"] .preview-meaning { color: var(--px-text2); }
-
-/* ============================================================
    入场动效（intro.js 配套，2026-10-19 新增）
    ------------------------------------------------------------
    从首页跳进学习页：叶片沿 offset-path 从右上扫向左下，
-   顶栏与学习界面的各区块错峰浮现。只有 mint / warm 播放
-   （intro.js 门控），像素皮肤永远走不到这段。
+   顶栏与学习界面的各区块错峰浮现。
    隐藏→显现的接力棒：
      data-intro-pending（head 打标记，opacity:0）
        → intro.js 同步换成 intro-run（各元素 animation from 态接住）
        → 播完 1.7s 后摘类清理，之后视图切换完全不受影响。
+   换肤入场（skin-run / skin-fx）见本段末尾。
    ============================================================ */
 
 /* —— 隐藏态 + CSS 熔断：intro.js 万一没接住，2.4s 后强制显示 —— */
@@ -3698,191 +3217,106 @@ html.intro-run .app-main .view-study.view-active > *:nth-child(7) { animation-de
 }
 
 /* ============================================================
-   像素入场动效 · 「凿穿双层」（pixel-intro.js 配套）
+   换肤入场（2026-10-27 · intro.js 的 playSwitch）
    ------------------------------------------------------------
-   核心概念：两层世界。像素世界是盖在上面的第一层表面（六块
-   clip-path 碎片拼成完整 px-bg，静止时严丝合缝），学习界面藏在
-   底下是第二层。入场：巨镐抡下砸在屏幕正中 → 震屏/闪光/碎屑，
-   范围裂痕在表面上裂开 → 0.75s 表面碎裂，六块碎片各自向上升起
-   渐隐，露出第二层：界面各区块快速错峰弹到位。
-   全程 steps 阶梯运动。只在 pixel 皮肤 + data-px-intro-run 同时
-   成立时生效；动画轨道就位后 pixel-intro.js 才摘 pending。
-   主时钟：镐/闪光/碎屑/震屏都是 1.3s 单动画多关键帧（steps(1,end)），
-   命中点统一在 33%（≈0.43s）；表面碎片为 delay 独立轨道（.75s 起）。
-   命中点 = 舞台左中 (470, 600)；命中时表面被凿穿一个洞，
-   洞中露出第二层学习界面。
+   点皮肤之后：新皮肤的主色光晕从被点的那颗按钮位置铺开，
+   同款叶子掠过整页，界面各区块轻轻重新落位。
+   为什么不是「把页面入场整套重播」：那套会先把内容藏起来
+   （data-intro-pending → opacity:0），换肤时等于闪一下黑屏。
+   这里改成「画面就地换色 + 一小段入场把它盖住」——
+   内容从头到尾可见，只是重新落定一次，读作「换了个世界」。
+   时长：光晕 0.92s、风线 0.96/1.06s、叶子 1.65s（晚 .22s 起步）、
+   落位 0.36s（错峰 40ms）；intro.js 在 2.05s 后摘类清理。
    ============================================================ */
-
-html[data-skin="pixel"][data-px-intro-run] #stage {
-  animation: px-shake 1.3s steps(1, end) both;
+.skin-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 68;              /* 压过界面，低于弹窗(80) / toast(90) */
+  pointer-events: none;
+  overflow: hidden;
 }
-@keyframes px-shake {
-  0%, 33%  { translate: 0 0; }
-  36%      { translate: -7px 4px; }
-  43%      { translate: 6px -4px; }
-  50%      { translate: -4px 2px; }
-  55%      { translate: 0 0; }
-  58%      { translate: -5px 3px; }   /* 碎片升起一拍 */
-  64%      { translate: 4px -2px; }
-  70%, 100% { translate: 0 0; }
-}
-
-/* —— 巨镐：立在屏幕左中，支点在柄尾；起手镐头过顶（-33°），
-      从上向下顺时针大弧劈至屏幕正中（+40° 命中） —— */
-html[data-skin="pixel"] .px-intro-fx {
-  position: absolute; inset: 0; z-index: 60;   /* 压过界面、低于弹窗(80)/toast(90) */
-  pointer-events: none; overflow: hidden;
-}
-html[data-skin="pixel"] .px-intro-pick {
-  position: absolute; top: 269px; left: 90px;   /* 柄尾支点 x≈180（1/8 屏宽），命中凹弧落在 (470,600) */
-  width: 480px; height: 480px;
-  transform-origin: 90px 420px;                 /* 支点 = 柄尾 (3,14) 格 */
-  animation: px-pick 1.3s steps(1, end) both;
-}
-@keyframes px-pick {
-  0%, 7%   { opacity: 0; transform: rotate(-38deg); }
-  8%       { opacity: 1; transform: rotate(-33deg); }                   /* 立于左中，镐头过顶 */
-  16%      { transform: rotate(-16deg); }
-  24%      { transform: rotate(4deg); }
-  33%      { opacity: 1; transform: rotate(40deg); }                    /* 劈至正中，命中 */
-  55%      { opacity: 1; transform: rotate(40deg); }
-  62%      { opacity: 1; transform: rotate(18deg); }                    /* 碎屏即反向扬镐 */
-  70%, 100% { opacity: 0; transform: rotate(-24deg); }
-}
-
-/* —— 第一层表面：六块 clip-path 碎片拼成完整 px-bg，静止时严丝合缝，
-      洞口由 mask 统一凿出（命中前由塞子补片盖住）；表面碎裂时
-      各自向上升起、渐隐，露出底下的第二层（学习界面） —— */
-html[data-skin="pixel"] .px-intro-l1 {
-  position: absolute; inset: 0;
-  background-image: url("px-bg.svg");
-  background-size: 1440px 1200px; background-repeat: no-repeat;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 1200'%3E%3Cpath d='M0 0H1440V1200H0Z M620 610 576 716 464 756 352 712 312 592 362 490 478 442 586 496Z' fill='%23fff' fill-rule='evenodd'/%3E%3C/svg%3E");
-          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 1200'%3E%3Cpath d='M0 0H1440V1200H0Z M620 610 576 716 464 756 352 712 312 592 362 490 478 442 586 496Z' fill='%23fff' fill-rule='evenodd'/%3E%3C/svg%3E");
-  -webkit-mask-size: 1440px 1200px; mask-size: 1440px 1200px;
-  animation: px-l1-fly .55s steps(3, end) both;
-  animation-delay: var(--d, .75s);
-}
-@keyframes px-l1-fly {
-  0%   { opacity: 1; translate: 0 0; }
-  100% { opacity: 0; translate: var(--sx, 0px) var(--sy, -200px); }
-}
-
-/* —— 洞口塞子：三块补片与表面共用同一张 px-bg，命中前无缝补住
-      洞口（外缘外推压住接缝，重叠像素不可见）；命中时被凿穿，
-      各自飞离/坠落，洞中的第二层界面就此露脸 —— */
-html[data-skin="pixel"] .px-intro-plug {
-  position: absolute; inset: 0;
-  background-image: url("px-bg.svg");
-  background-size: 1440px 1200px; background-repeat: no-repeat;
-  animation: px-plug-fly .3s steps(3, end) both;
-  animation-delay: var(--d, .43s);
-}
-@keyframes px-plug-fly {
-  0%   { opacity: 1; translate: 0 0; }
-  100% { opacity: 0; translate: var(--dx, 0px) var(--dy, -60px); }
-}
-
-/* —— 范围裂痕：放射锯齿缝 + 多边形碎环，画在第一层表面上，
-      表面碎裂时随之消失 —— */
-html[data-skin="pixel"] .px-intro-crack {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  animation: px-vanish .25s steps(2, end) .72s both;
-}
-html[data-skin="pixel"] .px-intro-crack path {
-  fill: none; stroke: #3F3F3F; stroke-width: 11;
-  stroke-dasharray: 1; stroke-dashoffset: 1;
-  animation: px-crack-grow .3s steps(6, end) .43s both;
-}
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(1) { animation-delay: .43s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(2) { animation-delay: .48s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(3) { animation-delay: .46s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(4) { animation-delay: .51s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(5) { animation-delay: .49s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(6) { animation-delay: .52s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(7) { animation-delay: .55s; }
-html[data-skin="pixel"] .px-intro-crack path:nth-of-type(8) { animation-delay: .58s; }
-html[data-skin="pixel"] .px-intro-crack .c-lite { stroke: #A6F2E6; stroke-width: 4; }
-html[data-skin="pixel"] .px-intro-crack .c-ring {
-  stroke-width: 9;
-  animation-duration: .34s; animation-timing-function: steps(8, end);
-  animation-delay: .50s;
-}
-@keyframes px-crack-grow { to { stroke-dashoffset: 0; } }
-@keyframes px-vanish { to { opacity: 0; } }
-
-/* —— 命中闪光（洞口处）与碎屏闪光（碎片升起时） —— */
-html[data-skin="pixel"] .px-intro-flash {
-  position: absolute; left: 470px; top: 596px; margin: -23px 0 0 -23px;
-  width: 46px; height: 46px; background: #A6F2E6;
-  box-shadow: 0 0 0 6px rgba(111, 224, 208, 0.45);
-  animation: px-flash 1.3s steps(1, end) both;
-}
-html[data-skin="pixel"] .px-intro-flash.b2 {
-  left: 470px; top: 540px; margin: -17px 0 0 -17px;
-  width: 34px; height: 34px; background: #FFFFFF;
-  box-shadow: 0 0 0 5px rgba(166, 242, 230, 0.4);
-  animation-name: px-flash2;
-}
-@keyframes px-flash {
-  0%, 32% { opacity: 0; transform: scale(.4); }
-  33%     { opacity: 1; transform: scale(1); }
-  40%     { opacity: 1; transform: scale(1.3); }
-  46%, 100% { opacity: 0; transform: scale(1.3); }
-}
-@keyframes px-flash2 {
-  0%, 57% { opacity: 0; transform: scale(.5); }
-  58%     { opacity: 1; transform: scale(1); }
-  63%     { opacity: 1; transform: scale(1.25); }
-  68%, 100% { opacity: 0; transform: scale(1.25); }
-}
-
-/* —— 命中碎屑：命中点向两侧迸溅再坠落 —— */
-html[data-skin="pixel"] .px-intro-debris {
-  position: absolute; width: 14px; height: 14px; background: #6FE0D0;
+/* 光晕：一个超大的径向渐变圆，从按钮中心由小到大铺开。
+   圆心位置由 intro.js 写到 --bx / --by 上。 */
+.skin-bloom {
+  position: absolute;
+  left: var(--bx, 50%);
+  top: var(--by, 50%);
+  width: 150vmax;
+  height: 150vmax;
+  margin: -75vmax 0 0 -75vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    var(--intro-bloom) 0%,
+    var(--intro-bloom) 34%,
+    transparent 70%);
+  transform: scale(.04);
   opacity: 0;
-  animation: px-debris-fly 1.3s steps(1, end) both;
+  animation: skin-bloom .92s cubic-bezier(.22, .68, .2, 1) both;
+  will-change: transform, opacity;
 }
-html[data-skin="pixel"] .px-intro-debris:nth-child(13) { left: 440px; top: 538px; --dx: -70px;  --dy: -46px; background: #A6F2E6; }
-html[data-skin="pixel"] .px-intro-debris:nth-child(14) { left: 482px; top: 532px; --dx: 64px;   --dy: -58px; background: #FFFFFF; }
-html[data-skin="pixel"] .px-intro-debris:nth-child(15) { left: 398px; top: 558px; --dx: -110px; --dy: -12px; }
-html[data-skin="pixel"] .px-intro-debris:nth-child(16) { left: 522px; top: 554px; --dx: 108px;  --dy: -20px; background: #A6F2E6; }
-html[data-skin="pixel"] .px-intro-debris:nth-child(17) { left: 448px; top: 570px; --dx: -46px;  --dy: 34px;  background: #FFFFFF; }
-html[data-skin="pixel"] .px-intro-debris:nth-child(18) { left: 496px; top: 566px; --dx: 52px;   --dy: 30px; }
-@keyframes px-debris-fly {
-  0%, 32% { opacity: 0; translate: 0 0; }
-  33%     { opacity: 1; translate: 0 0; }
-  48%     { opacity: 1; translate: var(--dx) var(--dy); }
-  62%     { opacity: 1; translate: var(--dx) var(--dy); }
-  75%     { opacity: 0; translate: var(--dx) calc(var(--dy) + 26px); }
-  100%    { opacity: 0; translate: var(--dx) calc(var(--dy) + 26px); }
+@keyframes skin-bloom {
+  0%   { transform: scale(.04); opacity: 0; }
+  16%  { opacity: 1; }
+  55%  { transform: scale(.62); opacity: .90; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+/* 风线：比页面入场更轻更淡，只当陪衬。
+   换肤时内容一直在，所以不能沿用「横穿屏幕」的那条动画 ——
+   位置挪到右侧留白，位移收窄成一小段漂移，全程不碰卡片。
+   时长跟着叶子一起放缓，三次呼吸不再互相抢拍。 */
+.skin-fx .intro-wind.w1 {
+  top: 18%; left: 68%; width: 260px;
+  animation-name: skin-wind-drift; animation-duration: .96s; animation-delay: .12s;
+}
+.skin-fx .intro-wind.w2 {
+  top: 50%; left: 74%; width: 200px;
+  animation-name: skin-wind-drift; animation-duration: 1.06s; animation-delay: .30s;
+}
+@keyframes skin-wind-drift {
+  0%   { opacity: 0; transform: translate(46px, -26px); }
+  26%  { opacity: .85; }
+  100% { opacity: 0; transform: translate(-96px, 150px); }
+}
+/* 叶子：让光晕先铺开再起步。
+   换肤时叶子是唯一一个「慢慢飘完」的元素，所以不沿用页面入场那 0.9s 的
+   疾掠 —— 速度降到约 0.55 倍（1.65s），读作一片叶子自己落下来，
+   而不是被甩过去。三层（飞行 / 翻转 / 自转）同刻度拉伸，翻转仍在
+   轨迹 35%→48% 处完成，不会撞上 90° 侧棱的"消失帧"。 */
+.skin-fx .intro-leaf {
+  animation-duration: 1.65s;
+  animation-delay: .22s;
+  animation-timing-function: cubic-bezier(.42, .02, .36, 1);
+}
+.skin-fx .intro-leaf-flip {
+  animation-duration: 1.65s;
+  animation-delay: .22s;
+}
+.skin-fx .intro-leaf-spin {
+  animation-duration: 1.95s;
+  animation-delay: .22s;
 }
 
-/* —— 方块放置：表面碎裂后第二层界面显现，各区块快速错峰弹到位 —— */
-html[data-skin="pixel"][data-px-intro-run] .app-header {
-  animation: px-block-in .22s steps(3, end) .78s both;
-}
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > * {
-  animation: px-block-in .22s steps(3, end) both;
-}
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(1) { animation-delay: .82s; }
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(2) { animation-delay: .87s; }
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(3) { animation-delay: .92s; }
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(4) { animation-delay: .97s; }
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(5) { animation-delay: 1.02s; }
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(6) { animation-delay: 1.07s; }
-html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > *:nth-child(7) { animation-delay: 1.12s; }
-@keyframes px-block-in {
-  0%   { opacity: 0; transform: scale(.55); }
-  55%  { opacity: 1; transform: scale(1.07); }
-  100% { opacity: 1; transform: scale(1); }
+/* —— 界面重新落位：顶栏与当前视图的各区块错峰 40ms ——
+   位移只有 10px、透明度从 0.3 起 —— 读作「轻轻落定」，
+   而不是「整页重新进场」。 */
+html.skin-run .app-header { animation: skin-drop .32s cubic-bezier(.2, .7, .3, 1) both; }
+html.skin-run .app-main .view-active > * { animation: skin-drop .36s cubic-bezier(.2, .7, .3, 1) both; }
+html.skin-run .app-main .view-active > *:nth-child(1) { animation-delay: .06s; }
+html.skin-run .app-main .view-active > *:nth-child(2) { animation-delay: .10s; }
+html.skin-run .app-main .view-active > *:nth-child(3) { animation-delay: .14s; }
+html.skin-run .app-main .view-active > *:nth-child(4) { animation-delay: .18s; }
+html.skin-run .app-main .view-active > *:nth-child(5) { animation-delay: .22s; }
+html.skin-run .app-main .view-active > *:nth-child(6) { animation-delay: .26s; }
+html.skin-run .app-main .view-active > *:nth-child(7) { animation-delay: .30s; }
+html.skin-run .app-main .view-active > *:nth-child(8) { animation-delay: .34s; }
+@keyframes skin-drop {
+  from { opacity: .5; transform: translateY(10px); }
+  to   { opacity: 1;  transform: translateY(0); }
 }
 
-/* —— 减动效守卫（双保险，head 里已不打标记） —— */
+/* —— 减动效守卫 —— */
 @media (prefers-reduced-motion: reduce) {
-  html[data-skin="pixel"][data-px-intro-run] #stage { animation: none; }
-  html[data-skin="pixel"][data-px-intro-run] .app-header,
-  html[data-skin="pixel"][data-px-intro-run] .app-main .view-study.view-active > * { animation: none; }
-  html[data-skin="pixel"] .px-intro-fx { display: none; }
+  .skin-fx { display: none; }
+  html.skin-run .app-header,
+  html.skin-run .app-main .view-active > * { animation: none; }
 }
-

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" data-page-node-id="x4Dd2VYmBDfpY8uIf7fR1S" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="SdQzvdihu3L29PSZxEuudD" />
   <title>xdictionary · 学习</title>
-  <link rel="stylesheet" href="style.css?v=202610265" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
+  <link rel="stylesheet" href="style.css?v=202610273" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
   <script>
     /* 防闪屏：必须在首次绘制前把已保存的皮肤套上，否则会先闪一下默认配色。
        这段脚本刻意写得很短，且不依赖 skin.js（那时还没加载）。
@@ -25,18 +25,17 @@
       "use strict";
       var skin = "";
       try { skin = localStorage.getItem("english_app_skin_v1") || ""; } catch (e) {}
-      if (skin !== "mint" && skin !== "warm" && skin !== "pixel" && skin !== "") return;
+      if (skin !== "mint" && skin !== "warm" && skin !== "") return;
       if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       document.documentElement.setAttribute("data-intro-pending", "");
     })();
   </script>
 </head>
 <body data-page-node-id="SOwlRg6s4Psc8J9JyfT8Vv">
-  <!-- 全站图标 sprite：2px 线描、currentColor，三皮肤自动换色 -->
+  <!-- 全站图标 sprite：2px 线描、currentColor，随皮肤自动换色 -->
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
     <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a2 2 0 0 1 0-4h5.5A3.5 3.5 0 0 0 21 8.5C21 5.4 17 3 12 3z"/><circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-sound-on" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></symbol>
-    <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></symbol>
     <symbol id="i-backup" viewBox="0 0 24 24"><path d="M8 3v13"/><path d="M4 8l4-4 4 4"/><path d="M16 21V8"/><path d="M12 16l4 4 4-4"/></symbol>
     <!-- 加词：一本小书 + 加号（自定义词库入口，bank.js） -->
     <symbol id="i-bank" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 7v6"/><path d="M9 10h6"/></symbol>
@@ -194,10 +193,6 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></symbol>
   </svg>
-  <div id="stage">
-    <div class="px-bg" aria-hidden="true">
-      <img src="px-bg.svg" width="1440" height="1200" alt="" />
-    </div>
   <!-- 全局顶栏 -->
   <header class="app-header" id="app-header" data-page-node-id="KDATJVcX8cc8iCgE26HF0H">
     <div class="brand" data-page-node-id="CTIaFlZbNoCoxnJQzDfBxc">
@@ -229,8 +224,7 @@
         <h2 class="view-title">今日单词</h2>
         <button class="btn btn-review-toggle" id="btn-review" type="button">复习</button>
       </div>
-      <p class="px-subtitle" aria-hidden="true"></p>
-
+      
       <div class="mode-switcher" data-view="learn" data-page-node-id="dklajrSLloBD47VVX1voBG">
         <button class="mode-btn active" data-mode="learn" data-page-node-id="gGOnZp6oAU6gPPfYOsyDo3">背单词</button>
         <button class="mode-btn" data-mode="en" data-page-node-id="tK0YATkLCKTRm4poNf1VRR">英文模式</button>
@@ -238,12 +232,9 @@
       </div>
 
       <div class="flashcard-area" data-page-node-id="FTRnUBljosb21Buc6jBmbX">
-        <button class="nav nav-left" id="nav-prev-learn" aria-label="上一个" data-page-node-id="21o4D2GyfJljEBfjG9Uem4"><span class="std-label">‹</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#F0C24A"/><rect x="15" y="6" width="9" height="6" fill="#F7D98A"/><polygon points="15,2 24,2 19.5,0" fill="#F0C24A"/><rect x="8" y="52" width="23" height="6" fill="#C99A2E"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#F0C24A"/></svg></button>
+        <button class="nav nav-left" id="nav-prev-learn" aria-label="上一个" data-page-node-id="21o4D2GyfJljEBfjG9Uem4"><span class="std-label">‹</span></button>
 
         <div class="flashcard" data-mode="learn" data-page-node-id="wxIqw3smmFgSNF9ReNaSv4">
-          <span class="px-index" aria-hidden="true"></span>
-          <span class="px-eyebrow" aria-hidden="true">CET-4 高频词</span>
-          <span class="px-hint-zh" aria-hidden="true">输入后按回车提交 · 答对自动翻到下一个词</span>
           <!-- 叠卡哑层：静止时被卡面 1:1 盖住（不可见）；背单词模式切词时，
                顶层纸随正文一起抽走 / 抬回，下面两张从卡底露头，读作「一叠待背的词」。 -->
           <span class="card-deck" aria-hidden="true"><span class="card-deck-2"></span><span class="card-deck-1"></span></span>
@@ -281,7 +272,7 @@
           </button>
         </div>
 
-        <button class="nav nav-right" id="nav-next-learn" aria-label="下一个" data-page-node-id="4OlcvaIKuKkEeBtS7lQE85"><span class="std-label">›</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#6FE0D0"/><rect x="15" y="6" width="9" height="6" fill="#A6F2E6"/><polygon points="15,2 24,2 19.5,0" fill="#6FE0D0"/><rect x="8" y="52" width="23" height="6" fill="#2B6B63"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#6FE0D0"/></svg></button>
+        <button class="nav nav-right" id="nav-next-learn" aria-label="下一个" data-page-node-id="4OlcvaIKuKkEeBtS7lQE85"><span class="std-label">›</span></button>
       </div>
 
       <div class="progress-wrap" data-page-node-id="HbmMpv2dPIS8Be0dhAZcsP">
@@ -293,18 +284,17 @@
       <div class="action-bar" data-page-node-id="P8rVMSxtHIWNE79oWAukYd">
         <button class="btn btn-primary" id="btn-generate" data-page-node-id="Rhcd0vTT9nDe9Jdo6NJM2I">
           <svg class="btn-icon svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-pen"></use></svg><span class="std-label"> 生成故事</span>
-          <span class="px-label">展开今日故事</span>
         </button>
         <button class="btn btn-secondary" id="btn-new-round-learn" data-page-node-id="vvfxp61KeXyRJKDOBBIHZX">
           <svg class="btn-icon svg-icon" data-page-node-id="XR0CyB2qzp6TdQ9PLKcRBP" aria-hidden="true" width="16" height="16"><use href="#i-cyclic"></use></svg> 下一轮
         </button>
       </div>
 
-      <!-- 卡下托盘（影托盘）：顶栏的系统按钮（皮肤 / 音效 / 备份 / 重置）挪到这里，
+      <!-- 卡下托盘（影托盘）：顶栏的系统按钮（皮肤 / 备份 / 加词 / 重置）挪到这里，
            位置在「故事」丝带正下方，与卡片留足呼吸距离。
            复习页留一个空的 .sys-slot，切视图时 app.js 把整簇按钮搬过去；
            开故事书时托盘隐藏，按钮由 app.js 搬回顶栏，功能不断。
-           像素皮肤整块 passthrough（见 style.css 像素段）。 -->
+           -->
       <div class="card-tray">
         <!-- 主藤：两端叶簇 + 卷须，按钮当果子挂在这条藤上（symbol #vine-art） -->
         <svg class="tray-vine" viewBox="0 0 1440 64" preserveAspectRatio="none" aria-hidden="true"><use href="#vine-art"/></svg>
@@ -319,10 +309,9 @@
               <div class="skin-list"></div>
             </div>
           </div>
-          <button class="btn-sound" id="btn-sound" type="button" aria-pressed="true" title="挥剑音效：开（点击静音）"><svg class="svg-icon icon-on" aria-hidden="true" width="18" height="18"><use href="#i-sound-on"></use></svg><svg class="svg-icon icon-off" aria-hidden="true" width="18" height="18"><use href="#i-sound-off"></use></svg></button>
           <button class="btn-backup" id="btn-backup" type="button" title="备份进度：导出 / 导入" aria-haspopup="dialog"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-backup"></use></svg></button>
           <button class="btn-bank" id="btn-bank" type="button" title="加词：导入自己的词库" aria-haspopup="dialog"><svg class="svg-icon" aria-hidden="true" width="18" height="18"><use href="#i-bank"></use></svg><span class="std-label"> 加词</span></button>
-          <button class="btn btn-reset" id="btn-reset" type="button" title="重置进度"><span class="std-label"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-reset"></use></svg> 重置</span><span class="px-label">重置</span></button>
+          <button class="btn btn-reset" id="btn-reset" type="button" title="重置进度"><span class="std-label"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-reset"></use></svg> 重置</span></button>
         </div>
         </div>
       </div>
@@ -430,12 +419,9 @@
       </div>
 
       <div class="flashcard-area" data-page-node-id="m31fRE5UFDQDGnxxD0jEfi">
-        <button class="nav nav-left" id="nav-prev-review" aria-label="上一个" data-page-node-id="WrkxFjEo98VaYMuclZWKFU"><span class="std-label">‹</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#F0C24A"/><rect x="15" y="6" width="9" height="6" fill="#F7D98A"/><polygon points="15,2 24,2 19.5,0" fill="#F0C24A"/><rect x="8" y="52" width="23" height="6" fill="#C99A2E"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#F0C24A"/></svg></button>
+        <button class="nav nav-left" id="nav-prev-review" aria-label="上一个" data-page-node-id="WrkxFjEo98VaYMuclZWKFU"><span class="std-label">‹</span></button>
 
         <div class="flashcard" data-mode="learn" data-page-node-id="A1gli18NEhq6aBDLCQXBo8">
-          <span class="px-index" aria-hidden="true"></span>
-          <span class="px-eyebrow" aria-hidden="true">CET-4 高频词</span>
-          <span class="px-hint-zh" aria-hidden="true">输入后按回车提交 · 答对自动翻到下一个词</span>
           <!-- 叠卡哑层：静止时被卡面 1:1 盖住（不可见）；背单词模式切词时，
                顶层纸随正文一起抽走 / 抬回，下面两张从卡底露头，读作「一叠待背的词」。 -->
           <span class="card-deck" aria-hidden="true"><span class="card-deck-2"></span><span class="card-deck-1"></span></span>
@@ -464,7 +450,7 @@
           </div>
         </div>
 
-        <button class="nav nav-right" id="nav-next-review" aria-label="下一个" data-page-node-id="tsIwicf21iHAvumyDiKDtU"><span class="std-label">›</span><svg class="px-sword" viewBox="0 0 39 81" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="15" y="6" width="9" height="46" fill="#6FE0D0"/><rect x="15" y="6" width="9" height="6" fill="#A6F2E6"/><polygon points="15,2 24,2 19.5,0" fill="#6FE0D0"/><rect x="8" y="52" width="23" height="6" fill="#2B6B63"/><rect x="15" y="58" width="9" height="15" fill="#8B5A2B"/><rect x="15" y="73" width="9" height="6" fill="#6FE0D0"/></svg></button>
+        <button class="nav nav-right" id="nav-next-review" aria-label="下一个" data-page-node-id="tsIwicf21iHAvumyDiKDtU"><span class="std-label">›</span></button>
       </div>
 
       <div class="progress-wrap" data-page-node-id="U4YzljXxGdn8LoG2inB88k">
@@ -619,16 +605,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="NYLkiER8CIsTokCaqF1Gss"></div>
 
   <script src="words.js?v=202610265"></script>
-  <script src="skin.js?v=202610265"></script>
+  <script src="skin.js?v=202610272"></script>
   <script src="bank.js?v=202610265"></script>
-  <script src="app.js?v=202610265"></script>
-  <script src="pixel.js?v=202610265"></script>
-  <script src="sword.js?v=202610265"></script>
-  <script src="pixel-intro.js?v=202610265"></script>
-  <script src="intro.js?v=202610265"></script>
+  <script src="app.js?v=202610272"></script>
+  <script src="intro.js?v=202610272"></script>
   <script src="speak.js?v=202610265"></script>
   <script src="story.js?v=202610265"></script>
   <script src="backup.js?v=202610265"></script>
-  </div>
 </body>
 </html>

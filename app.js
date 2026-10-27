@@ -541,13 +541,10 @@
     if (fellBack) toast(modeLabel(mode) + "没有标记过的单词，已回到全部复习");
   }
 
-  /* 英文 / 中文模式：揭示 = 翻面（英文见释义、中文见单词）。
-     像素风不翻面：保持原 show-answer 直显逻辑（点卡片 / Enter 触发）。 */
+  /* 英文 / 中文模式：揭示 = 翻面（英文见释义、中文见单词）。 */
   function revealAnswer() {
     state.showAnswer = true;
     saveState();
-    var skin = document.documentElement.getAttribute("data-skin");
-    if (skin === "pixel") { renderCard(state.view); return; }
     var viewEl = document.getElementById(state.view === "review" ? "view-review" : "view-learn");
     var card = viewEl && viewEl.querySelector(".flashcard");
     if (card) setFlip(card, true);
@@ -583,14 +580,12 @@
      顶层纸（背单词模式是 .card-flyer，中英文模式是整个翻转层）向右（下一个）/
      向左（上一个）抽走 200ms，中点换词，新词带着纸从下面那张卡的位置抬上来 260ms。
      与翻面刻意分成两类事件：翻 = 绕 Y 轴转「看另一面」，切 = 抽走 + 抬起「换一张卡」。
-     减动效 / 像素皮肤（有自己的「旧词飞出 + 新词飞入」）直接换词不播；
-     动画期间忽略连点（_swapping 占位）。 */
+     减动效直接换词不播；动画期间忽略连点（_swapping 占位）。 */
   function playWordSwap(card, dir, apply) {
     if (!card) { apply(); return; }
     var reduce = false;
     try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { /* 保守当 false */ }
-    var skin = document.documentElement.getAttribute("data-skin");
-    if (reduce || skin === "pixel") { apply(); return; }
+    if (reduce) { apply(); return; }
     if (card._swapping) return;
     card._swapping = true;
     var outCls = dir > 0 ? "swap-out-next" : "swap-out-prev";
@@ -732,8 +727,8 @@
     document.getElementById("btn-new-round-learn").addEventListener("click", function () { drawRound(); });
 
     /* 故事面板展开 / 收起开关：只切一个 .story-open 类到学习视图，
-       具体怎么让位（故事行多高、要不要滚动）全交给 style.css 的像素段 ——
-       薄荷/米黄下这个类没有任何样式，行为不变。AI 生成本体在 story.js。 */
+       具体怎么让位（卡片区隐藏、书桌居中）全交给 style.css 的「书桌」段。
+       AI 生成本体在 story.js。 */
     var btnGen = document.getElementById("btn-generate");
     var learnView = document.getElementById("view-learn");
     function setSpanText(span, text) {
@@ -744,12 +739,9 @@
         }
       }
     }
-    /* 两套文案分开管：薄荷/米黄（std-label）收起时叫「生成故事」；
-       像素风（px-label）收起时叫「展开今日故事」—— 这个按钮只管展开/收起，
-       生成走面板标题行的「✨ 生成本轮故事」（story.js），展开态两边统一「收起故事」。 */
+    /* 这个按钮只管展开 / 收起，生成走面板标题行的「✨ 生成本轮故事」（story.js）。 */
     function setGenLabel(open) {
       setSpanText(btnGen.querySelector(".std-label"), open ? "收起故事" : "看今日故事");
-      setSpanText(btnGen.querySelector(".px-label"), open ? "收起故事" : "展开今日故事");
     }
     /* 故事书开合：合着时整本书藏在卡片下面，只露一条丝带（#btn-book-open）；
        翻开后书占中央，卡片区、进度、按钮条全部让位（让位规则写在 style.css 的「书桌」段）。 */
@@ -767,7 +759,7 @@
       document.dispatchEvent(new CustomEvent("xd:book-open", { detail: { open: open } }));
       if (!open) return;
       // 窄屏单页时书会比视口高，带一下视野；宽屏书是等比缩放过的，不用滚
-      if (document.documentElement.getAttribute("data-skin") !== "pixel" && window.innerWidth < 1024) {
+      if (window.innerWidth < 1024) {
         var panel = document.querySelector("#view-learn .story-panel");
         if (panel && panel.scrollIntoView) {
           var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -814,14 +806,12 @@
           翻页叶全程同步掀开 —— 全程只有这一次旋转，不再有「立起→倒下」
           的两段旋转观感（用户反馈：转纵向与翻书同时进行，避免视觉差异）。
        中途任意点击跳过到末态；Esc 合书先跳完再合。
-       像素风 / 窄屏（<1024，单页版式）/ 减动效 → 走原来的直接打开。 */
+       窄屏（<1024，单页版式）/ 减动效 → 走原来的直接打开。 */
     var introAnims = [];
     var introRunning = false;
     var introSkipFn = null;
     var introBookEl = null, introBookHome = null, introBookNext = null, introBookStyle = "";
     function introTargetEnabled() {
-      var skin = document.documentElement.getAttribute("data-skin");
-      if (skin === "pixel") return false;
       if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
       return window.innerWidth >= 1024;
     }
@@ -911,7 +901,7 @@
          { transform: "translateY(22px)", opacity: 0 }],
         { duration: 280, easing: "ease-in", fill: "forwards" }));
       Array.prototype.forEach.call(
-        document.querySelectorAll("#view-learn .progress-wrap, #view-learn .action-bar, #view-learn .view-title-row, #view-learn .mode-switcher, #view-learn .card-tray, #view-learn .px-subtitle, #view-learn .flashcard-area .nav"),
+        document.querySelectorAll("#view-learn .progress-wrap, #view-learn .action-bar, #view-learn .view-title-row, #view-learn .mode-switcher, #view-learn .card-tray, #view-learn .flashcard-area .nav"),
         function (el) { introFadeOut(el, 170); });
       // 中途任意点击 = 跳过，直接落到末态（capture 阶段拦下，别让这一击再触发丝带）
       introSkipFn = function (e) {
@@ -1103,25 +1093,16 @@
       });
     });
 
-    // 翻面：点卡片 / Enter / Space（英文 / 中文模式；像素风不翻面，一键揭示；
-    // 卡角按钮与输入控件不触发）
+    // 翻面：点卡片 / Enter / Space（英文 / 中文模式；卡角按钮与输入控件不触发）
     document.querySelectorAll(".flashcard").forEach(function (card) {
       card.addEventListener("click", function (e) {
         if (e.target.closest(".card-mark, .card-speaker, .answer-row, .write-row")) return;
-        if (document.documentElement.getAttribute("data-skin") === "pixel") {
-          if (state.mode === "en" || state.mode === "zh") revealAnswer();
-          return;
-        }
         toggleFlip(card);
       });
       card.addEventListener("keydown", function (e) {
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.target !== card) return;   // 卡内输入框等控件自己的键盘行为不抢
         e.preventDefault();
-        if (document.documentElement.getAttribute("data-skin") === "pixel") {
-          if (state.mode === "en" || state.mode === "zh") revealAnswer();
-          return;
-        }
         toggleFlip(card);
       });
     });

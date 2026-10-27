@@ -14,7 +14,7 @@
      file:// 直连已用探针实测放行（2026-10-08，HEAD 拿到 HTTP 401 真 JSON）。
    - 操作栏「＋ 展开今日故事」按钮的展开 / 收起职责不变（仍归 app.js）；
      本模块只负责面板内部的「生成本轮故事 / 重新生成」按钮与设置弹窗。
-   - 像素风下面板默认收着 → 生成时借 #btn-generate 的点击展开
+   - 故事面板默认收着 → 生成时借 #btn-generate 的点击展开
      （纯 DOM 行为，不碰状态；顺带复用 app.js 的展开规则）。
    ============================================================ */
 (function () {
@@ -798,8 +798,6 @@
   function fitPages() {
     if (!els.book) return;
     var book = els.book;
-    // 像素皮肤把书退化成单栏直读，没有定尺页，不参与排版
-    if (document.documentElement.getAttribute("data-skin") === "pixel") return;
     // 窄屏是单页自然长高（英文在上、译文在下），没有「一页多高」这回事
     if (window.innerWidth < 1024) {
       [els.body, els.zhBody].forEach(function (el) {
@@ -1221,7 +1219,7 @@
       .observe(badge, { childList: true, characterData: true, subtree: true });
   }
 
-  // 换词后卡片顶部的「故事第 N 句」要跟着换 → 盯着单词节点（与 sword.js 同一手法）
+  // 换词后卡片顶部的「故事第 N 句」要跟着换 → 盯着单词节点（MutationObserver，与 intro.js 无关）
   function watchCard() {
     var wordEl = document.querySelector("#view-learn .card-word");
     if (!wordEl || typeof MutationObserver === "undefined") return;
