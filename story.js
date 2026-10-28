@@ -30,6 +30,9 @@
   var busy = false;
   var wordSentence = {};     // 小写单词 → 它在故事里第一次出现的句号（卡片锚点用）
   var WORD_INFO = null;      // 词库索引：单词 → { phonetic, meaning }
+  /* 从书架点开的那一篇。非空时书桌上摊开的是它（而不是当前轮）——
+     合上书 / 生成本轮故事 / 点「回到本轮」都会清空，回到本轮视角。 */
+  var viewStory = null;
 
   /* ---------- 小工具 ---------- */
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -256,7 +259,11 @@
   function normalizeStory(s) {
     if (s && typeof s === "object" &&
         typeof s.roundKey === "string" && s.roundKey &&
-        typeof s.en === "string" && typeof s.zh === "string") return s;
+        typeof s.en === "string" && typeof s.zh === "string") {
+      // 2026-10-27 之前的故事没有 title，补空串（书架会回退成英文首句）
+      if (typeof s.title !== "string") s.title = "";
+      return s;
+    }
     return null;
   }
   // 历史故事：条目结构与 story 相同，另带 round（轮次号）与 words（用于高亮）
@@ -374,6 +381,29 @@
   }
 
   // 英文 / 中文分段：约定模型在两者之间单独输出一行 ---
+  /* ---------- 标题行：AI 的第一行输出 TITLE: xxx（书脊上要竖排它） ---------- */
+  var TITLE_HEAD = /^[ \t]*(?:TITLE|标题)[ \t]*[:：][ \t]*/i;
+  function cleanTitle(t) {
+    t = String(t || "").replace(/^["'“”‘’\s]+/, "").replace(/["'“”‘’\s]+$/, "");
+    t = t.replace(/[。.!！?？]+$/, "").trim();
+    if (t.length > 42) t = t.slice(0, 42).trim();
+    return t;
+  }
+  // needNewline=true 给流式用：标题行还没收到换行就先不吐正文，
+  // 否则半截标题会先闪进书里，换行后再跳走。
+  function takeTitle(full, needNewline) {
+    if (!TITLE_HEAD.test(full)) return { title: "", rest: full };
+    var nl = full.search(/\r?\n/);
+    if (nl < 0) {
+      return needNewline
+        ? { title: "", rest: "" }
+        : { title: cleanTitle(full.replace(TITLE_HEAD, "")), rest: "" };
+    }
+    var line = full.slice(0, nl);
+    var rest = full.slice(nl + 1).replace(/^[ \t]*\r?\n/, "");
+    return { title: cleanTitle(line.replace(TITLE_HEAD, "")), rest: rest };
+  }
+
   function splitBySeparator(full) {
     var m = full.match(/\n[ \t]*-{3,}[ \t]*\n/);
     if (m && typeof m.index === "number") {
@@ -383,18 +413,21 @@
   }
   // 流式过程中的实时分段：只认 --- 分隔行（不启用兜底，避免把英文段落误切给中文）
   function splitLive(full) {
-    var r = splitBySeparator(full);
-    return r || { en: full, zh: "" };
+    var t = takeTitle(full, true);
+    var r = splitBySeparator(t.rest);
+    return r || { en: t.rest, zh: "" };
   }
   // 落定时的分段：--- 没出现时按「空行 + 中文开头」兜底
   function splitStory(full) {
-    var r = splitBySeparator(full);
-    if (r) return r;
-    var m = full.match(/\n\n(?=[\u4e00-\u9fff])/);
+    var t = takeTitle(full, false);
+    var body = t.rest;
+    var r = splitBySeparator(body);
+    if (r) return { title: t.title, en: r.en, zh: r.zh };
+    var m = body.match(/\n\n(?=[\u4e00-\u9fff])/);
     if (m && typeof m.index === "number") {
-      return { en: full.slice(0, m.index).trim(), zh: full.slice(m.index + m[0].length).trim() };
+      return { title: t.title, en: body.slice(0, m.index).trim(), zh: body.slice(m.index + m[0].length).trim() };
     }
-    return { en: full.trim(), zh: "" };
+    return { title: t.title, en: body.trim(), zh: "" };
   }
 
   /* ---------- 渲染：故事正文（句对 + 覆盖条 + 卡片锚点） ---------- */
@@ -472,10 +505,15 @@
       });
     });
 
-    // 页眉的轮次 / 日期
+    /* 页眉：书名 / 轮次 / 日期 —— 一律取这篇自己的 round，
+       否则从书架翻旧篇时页眉会印上「第 9 轮」而内容是第 5 轮的。 */
     var rp = readProgress();
+    var roundNo = (typeof story.round === "number")
+      ? story.round
+      : ((rp && typeof rp.round === "number") ? rp.round : null);
+    if (els.title) els.title.textContent = storyTitle(story);
     if (els.kickerRound) {
-      els.kickerRound.textContent = (rp && typeof rp.round === "number") ? "第 " + rp.round + " 轮" : "本轮";
+      els.kickerRound.textContent = roundNo !== null ? "第 " + roundNo + " 轮" : "本轮";
     }
     if (els.kickerDate) {
       var d = story.createdAt ? new Date(story.createdAt) : null;
@@ -484,7 +522,12 @@
         : "—";
     }
     if (els.footRound) {
-      els.footRound.textContent = "ROUND " + (rp && typeof rp.round === "number" ? (rp.round < 10 ? "0" : "") + rp.round : "—");
+      els.footRound.textContent = "ROUND " + (roundNo !== null ? pad2(roundNo) : "—");
+    }
+    /* 「存档」小标：从书架点开的是旧篇才亮，点本轮那本不亮 */
+    if (els.archiveTag) {
+      var curKey = currentRoundKey();
+      els.archiveTag.hidden = !(viewStory && curKey && story.roundKey !== curKey);
     }
 
     // 覆盖条：20 个点，实心 = 这篇用上了
@@ -507,12 +550,22 @@
       b.setAttribute("aria-label", b.title);
       els.dots.appendChild(b);
     });
-    els.coverage.textContent = "本篇用上 " + hitCount + " / " + list.length + " 词";
-    els.meta.hidden = false;
+    if (list.length) {
+      els.coverage.textContent = "本篇用上 " + hitCount + " / " + list.length + " 词";
+      els.meta.hidden = false;
+    } else {
+      /* 2026-10-27 之前的老存档没存词表 —— 别在页脚印「本篇用上 0 / 0 词」 */
+      els.coverage.textContent = "";
+      els.meta.hidden = true;
+    }
 
-    // 角卡先摆上当前这张卡片的词
-    var cur = document.querySelector("#view-learn .card-word");
-    if (cur && cur.textContent.trim()) showDock(cur.textContent.trim());
+    // 角卡先摆上当前这张卡片的词；看旧篇时先收起来（它跟这篇没关系，点词再出）
+    if (viewStory) {
+      if (els.dock) els.dock.hidden = true;
+    } else {
+      var cur = document.querySelector("#view-learn .card-word");
+      if (cur && cur.textContent.trim()) showDock(cur.textContent.trim());
+    }
 
     // 排完了再量：一页装不下就收字号
     fitPages();
@@ -611,13 +664,15 @@
     if (!els.panel) return;
     els.gen.disabled = busy;
     if (busy) { setGenLabel(null, "生成中…"); return; }   // 生成中的面板状态由 generate() 管理
-    var story = currentStoryForRound();
+    // 书架点开的旧篇优先；没点过就是本轮那篇
+    var story = viewStory || currentStoryForRound();
+    var words = viewStory ? (viewStory.words || []) : currentRoundWords();
     var rp = readProgress();
     if (els.kickerRound) {
       els.kickerRound.textContent = (rp && typeof rp.round === "number") ? "第 " + rp.round + " 轮" : "本轮";
     }
     if (story) {
-      buildStory(story, currentRoundWords());
+      buildStory(story, words);
       if (els.teaser) {
         var t = String(story.en || "").replace(/\s+/g, " ").trim();
         var m = t.match(/^[^.!?]+[.!?]/);
@@ -627,8 +682,11 @@
       els.empty.hidden = true;
       els.status.hidden = true;
       els.footer.hidden = false;
-      setGenLabel("i-cyclic", "重新生成");
+      /* 看旧篇时主按钮改成「回到本轮」：一键切回，不会误触重新生成把本轮覆盖掉 */
+      if (viewStory) setGenLabel("i-back", "回到本轮");
+      else setGenLabel("i-cyclic", "重新生成");
     } else {
+      if (els.title) els.title.textContent = "今日小故事";
       els.body.hidden = true;
       els.body.textContent = "";
       els.body.classList.remove("is-streaming");
@@ -638,9 +696,10 @@
       els.empty.hidden = false;
       els.status.hidden = true;
       els.footer.hidden = true;
+      if (els.archiveTag) els.archiveTag.hidden = true;
       // 空态也把页码的轮次印上，别留一个没渲染过的占位符
       if (els.footRound) {
-        els.footRound.textContent = "ROUND " + (rp && typeof rp.round === "number" ? (rp.round < 10 ? "0" : "") + rp.round : "—");
+        els.footRound.textContent = "ROUND " + (rp && typeof rp.round === "number" ? pad2(rp.round) : "—");
       }
       if (els.coverage) els.coverage.textContent = "";
       if (els.kickerDate) {
@@ -659,6 +718,8 @@
   function syncCardChip() {
     var chip = document.querySelector("#view-learn .card-story");
     if (!chip) return;
+    /* 书桌上摊的是从书架翻的旧篇 → 卡片对不上它，别报段号 */
+    if (viewStory) { chip.hidden = true; return; }
     var wordEl = document.querySelector("#view-learn .card-word");
     var word = wordEl ? wordEl.textContent.trim().toLowerCase() : "";
     var sent = word ? wordSentence[word] : 0;
@@ -890,8 +951,12 @@
         "个别难组合的词可省略并在文末说明。\n" +
         "排版要求：英文写成 2~3 段，段与段之间空一行；中文对照用同样的分段，并且逐句对应，" +
         "中文的句子数量尽量与英文一致（方便逐句对照阅读）。\n" +
-        "输出格式要求：先输出英文故事正文；然后单独一行输出 ---；最后另起一段输出中文对照。" +
-        "除此之外不要输出任何别的文字或标题。" }
+        "输出格式要求：\n" +
+        "第 1 行：TITLE: 英文短标题（3~5 个词，首字母大写，不要引号、不要句号）；\n" +
+        "空一行后输出英文故事正文；\n" +
+        "然后单独一行输出 ---；\n" +
+        "最后另起一段输出中文对照。\n" +
+        "除以上内容外不要输出任何别的东西。" }
     ];
   }
   function friendlyHttpError(status, bodyText) {
@@ -908,6 +973,7 @@
 
   async function generate() {
     if (busy) return;
+    viewStory = null;          // 生成的是本轮 → 视角先切回本轮，别让旧篇盖住流式内容
     var cfg = readStore().config;
     if (!cfg.apiKey) {
       openConfig("还没有填 API Key，填好保存后就能生成了。");
@@ -999,7 +1065,13 @@
       }
 
       var store = readStore();   // 期间设置可能被改过 → 读最新的再写回
-      store.story = { roundKey: roundKey, en: story.en, zh: story.zh, createdAt: new Date().toISOString() };
+      store.story = {
+        roundKey: roundKey,
+        title: story.title || "",
+        en: story.en,
+        zh: story.zh,
+        createdAt: new Date().toISOString()
+      };
       if (roundNo !== null) store.story.round = roundNo;
       if (words.length) store.story.words = words.slice();
       // 同步收进故事集：同一轮重新生成则替换旧条目；超过上限丢最老的
@@ -1042,78 +1114,462 @@
     toast("故事生成设置已保存");
   }
 
-  /* ---------- 故事集（历史故事） ---------- */
-  function openHistory() {
-    renderHistory();
-    els.histModal.removeAttribute("hidden");
+  /* ---------- 故事集 = 书架（2026-10-27 改版） ---------- */
+  /* 每根书脊 = 一轮故事。只陈列最近几轮（一排 6 本、按页翻）：
+     200 篇铺成一屏不是书架，是长廊。更早的靠翻页，一篇都不丢。 */
+  var SHELF_PER_PAGE = 6;
+  var shelfPageNo = 0;          // 0 = 最新一页
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  // 书名：新故事用 AI 给的 title；老存档没有就取英文首句前 3 个词
+  function storyTitle(s) {
+    var t = (s && typeof s.title === "string") ? s.title.trim() : "";
+    if (t) return t;
+    var en = (s && typeof s.en === "string") ? s.en : "";
+    var first = en.split(/[.!?\n]/)[0] || "";
+    var ws = first.trim().split(/\s+/).filter(Boolean).slice(0, 3);
+    if (ws.length) {
+      return ws.map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(" ");
+    }
+    return "Untitled";
   }
-  function closeHistory() { els.histModal.setAttribute("hidden", ""); }
-  function historyItemEl(s) {
-    var art = document.createElement("article");
-    art.className = "history-item";
-    // 标题：第 N 轮 · 日期时间（旧条目可能缺轮次号/时间，缺就略过）
-    var label = [];
-    if (typeof s.round === "number") label.push("第 " + s.round + " 轮");
+  // 竖排标题区只有 148px 高：单词太多就截断，宁短勿溢
+  function spineTitle(s) {
+    var t = storyTitle(s);
+    var ws = t.split(/\s+/).filter(Boolean);
+    if (ws.length > 5) return ws.slice(0, 5).join(" ") + "…";
+    if (t.length > 30) return t.slice(0, 30) + "…";
+    return t;
+  }
+  function storyDate(s) {
+    if (typeof s.createdAt !== "string") return "";
+    var d = new Date(s.createdAt);
+    if (isNaN(d.getTime())) return "";
+    return pad2(d.getMonth() + 1) + "." + pad2(d.getDate());
+  }
+  function storyMeta(s) {
+    var bits = [];
+    if (typeof s.round === "number") bits.push("第 " + s.round + " 轮");
     if (typeof s.createdAt === "string") {
       var d = new Date(s.createdAt);
       if (!isNaN(d.getTime())) {
-        function p2(n) { return (n < 10 ? "0" : "") + n; }
-        label.push(d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) +
-          " " + p2(d.getHours()) + ":" + p2(d.getMinutes()));
+        bits.push(d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
+          " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()));
       }
     }
-    var h = document.createElement("h4");
-    h.className = "history-item-title";
-    h.textContent = label.length ? label.join(" · ") : "生成的故事";
-    art.appendChild(h);
-    // 正文：有条目自带的 words 就做高亮（老条目没有则纯文本）
-    var words = Array.isArray(s.words) ? s.words : [];
-    var en = document.createElement("p");
-    en.className = "history-en";
-    renderHighlighted(en, s.en, words);
-    art.appendChild(en);
-    var zh = document.createElement("p");
-    zh.className = "history-zh";
-    renderHighlighted(zh, s.zh, words);
-    zh.hidden = !s.zh;
-    art.appendChild(zh);
-    return art;
+    return bits.join(" · ");
   }
-  function renderHistory() {
+
+  function spineEl(s, curKey, colorIdx) {
+    var name = spineTitle(s);
+    var date = storyDate(s);
+    var round = (typeof s.round === "number") ? pad2(s.round) : "--";
+
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "spine";
+    // 颜色跟着故事在全局的位置走（不是页内位置），翻页时同一本书不会变色
+    b.setAttribute("data-c", String(colorIdx || 1));
+    if (curKey && s.roundKey === curKey) b.classList.add("is-now");
+    b.title = name + (s.round ? " · 第 " + s.round + " 轮" : "") + (date ? " · " + date : "");
+    b.setAttribute("aria-label", "翻开《" + name + "》" + (date ? "，生成于 " + date : ""));
+
+    var face = document.createElement("span");
+    face.className = "face";
+    function put(cls, text) {
+      var n = document.createElement("span");
+      n.className = cls;
+      if (text != null) n.textContent = text;
+      face.appendChild(n);
+      return n;
+    }
+    put("headband");
+    put("rule t");
+    put("no", round);
+    put("title", name);
+    put("rule b");
+    put("date", date);
+    put("mark");
+    put("tailyarn");
+    b.appendChild(face);
+
+    b.addEventListener("click", function () { openInBook(s, b); });
+    return b;
+  }
+
+  function shelfAll() {
     var store = readStore();
     var items = store.history.slice();
     // 升级前只存过「当前轮那一篇」的旧存档：只要不在历史里，也并入展示（不丢）
     var cur = store.story;
     if (cur && !items.some(function (x) { return x.roundKey === cur.roundKey; })) items.unshift(cur);
-    els.histList.textContent = "";
-    if (!items.length) {
-      var p = document.createElement("p");
-      p.className = "history-empty";
-      p.textContent = "还没有保存过故事。生成一篇后，它就会自动收进故事集，换轮、重置都不会丢。";
-      els.histList.appendChild(p);
+    return items;   // 正序：旧 → 新
+  }
+
+  function renderShelf() {
+    if (!els.shelfRow) return;
+    var all = shelfAll();
+    var pages = Math.max(1, Math.ceil(all.length / SHELF_PER_PAGE));
+    if (shelfPageNo > pages - 1) shelfPageNo = pages - 1;
+    if (shelfPageNo < 0) shelfPageNo = 0;
+
+    // 第 0 页是最新的 6 本，第 1 页再往前 6 本；页内仍按时间正序（左旧右新）
+    var end = all.length - shelfPageNo * SHELF_PER_PAGE;
+    var start = Math.max(0, end - SHELF_PER_PAGE);
+    var page = all.slice(start, end);
+
+    /* 「当前在读」跟着书桌上真正摊开的那篇走：从书架翻旧篇后回来看，
+       绿点应该在第 5 轮那本上，而不是还钉在本轮 */
+    var cur = viewStory || readStore().story;
+    var curKey = cur ? cur.roundKey : "";
+    els.shelfRow.textContent = "";
+    page.forEach(function (s, k) {
+      els.shelfRow.appendChild(spineEl(s, curKey, (start + k) % 6 + 1));
+    });
+
+    var hasAny = all.length > 0;
+    els.shelfEmpty.hidden = hasAny;
+    els.shelfStage.hidden = !hasAny;
+    var modalBox = els.histModal ? els.histModal.querySelector(".modal-shelf") : null;
+    if (modalBox) modalBox.classList.toggle("is-empty", !hasAny);
+
+    if (!hasAny) {
+      els.shelfEmpty.textContent = "还没有保存过故事。生成一篇后它就会自动收进这里，换轮、重置都不会丢。";
+      els.shelfMeta.textContent = "";
+      els.shelfNav.hidden = true;
       return;
     }
-    // 最新的排最上面
-    items.reverse().forEach(function (s) { els.histList.appendChild(historyItemEl(s)); });
+
+    var reading = cur && all.some(function (x) { return x.roundKey === cur.roundKey; });
+    els.shelfMeta.textContent = all.length + " 篇" +
+      (reading ? " · 当前读第 " + (cur.round || "?") + " 轮" : "");
+
+    // 只有一页时不摆翻页器，省得白占一行
+    els.shelfNav.hidden = pages <= 1;
+    if (pages > 1) {
+      els.shelfPage.textContent = (shelfPageNo + 1) + " / " + pages;
+      els.shelfPrev.disabled = shelfPageNo >= pages - 1;   // 「更早」= 页码变大
+      els.shelfNext.disabled = shelfPageNo <= 0;
+    }
+  }
+
+  /* 点开一本：合上故事集，直接在书桌上摊开那一篇 ——
+     不再另开小窗阅读视图。
+     · 宽屏 + 非减动效 → 走「抽书」动画（书脊飞出来、摊平、翻开）。
+       书开着 / 没开着都走这一条：故事集按钮长在书的工具条里，用户点书脊时
+       书其实永远开着，所以「书已打开」才是它的主路径（书由 app.js 先收走）。
+     · 窄屏 / 减动效 → 书开着就原地换页，没开就借丝带直接打开。 */
+  var swapTimer;
+
+  /* 抽书动画只在宽屏 + 非减动效下走：窄屏是单页版式、书比视口高，
+     飞过来接不上（与 app.js 的 introTargetEnabled 同一套判据） */
+  function flyEnabled() {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+    return window.innerWidth >= 1024;
+  }
+
+  function openInBook(s, btn) {
+    if (!s) return;
+    var learnView = document.getElementById("view-learn");
+    if (!learnView) return;
+
+    // 抽书优先：书开没开都交给它（开着的那本由 app.js 在 prepare 里收成书棱）
+    if (flyEnabled() && btn) { flyFromShelf(s, btn); return; }
+
+    if (learnView.classList.contains("story-open")) {
+      viewStory = s;
+      closeHistory();
+      render();                     // 先把内容摆好，翻开看到的就是这一篇
+      if (els.book) {
+        els.book.classList.remove("is-swap");
+        void els.book.offsetWidth;  // 强制重排，同一本书连点两本也能重放动画
+        els.book.classList.add("is-swap");
+        clearTimeout(swapTimer);
+        swapTimer = setTimeout(function () {
+          if (els.book) els.book.classList.remove("is-swap");
+        }, 460);
+      }
+      setTimeout(fitPages, 0);      // 书开着时不会派发 xd:book-open，自己重量一次
+      return;
+    }
+
+    viewStory = s;
+    closeHistory();
+    render();
+    var ribbon = document.getElementById("btn-book-open");
+    var expand = document.getElementById("btn-generate");
+    if (ribbon) ribbon.click();
+    else if (expand) expand.click();
+    /* 故事集关掉后焦点别丢在 body 上：落到「返回单词」，键盘能接着用。
+       720ms 让开书两拍先跑起来（中途不会触发跳过逻辑，这里只是 focus） */
+    setTimeout(function () {
+      var c = document.getElementById("btn-book-close");
+      if (c && c.focus) c.focus({ preventScroll: true });
+    }, 720);
+  }
+
+  /* ---------- 抽书：书脊弹起 → 向左倒下 → 摊开翻页 ----------
+     ① 书脊弹起：把那根书脊复刻成一个 fixed 飞行体（同色、同字、同尺寸），
+        它从架上升起、飞出弹窗的边界；
+     ② 向左倒下：绕中心转 90°，长边横过来，落到书桌中心 —— 一本抽出来的书
+        倒向桌面。全程保持原比例，它就是一本 280×84 的小书，不拉伸；
+     ③ 翻开：派发 xd:book-reveal（带上这块面积），让真书从同一块面积上摊开，
+        翻页叶跟着掀。
+     书桌在弹窗后面（story-fly 让真书透明）先摆好，所以终点是量出来的真书
+     中心，不是估的 —— 交接处严丝合缝。
+     弹窗在飞行体离开书架的瞬间关闭，视线全在中间，看不到背后的排版切换。 */
+  /* 整段抽书的主时长。关键帧的 offset 都是比例，改这一个数就能整体放慢；
+     但下面两处 setTimeout（关弹窗 / 交棒给真书）是绝对毫秒，必须跟着换算。 */
+  var FLY_MS = 1200;
+  function flyFromShelf(s, btn) {
+    var rect = btn.getBoundingClientRect();
+    if (!rect.width || !rect.height) { openInBook(s, null); return; }
+
+    // ① 内容先摆好，再让书桌在弹窗后面切到阅读态，拿真书的最终矩形
+    //    书本来就开着时先别换：让桌上那本按原样被「抽走」，等它化成书棱、
+    //    看不见了再换内容（几毫秒后由 reveal 那一拍接手），中途不会露出新字。
+    var lv = document.getElementById("view-learn");
+    var wasOpen = !!lv && lv.classList.contains("story-open");
+    if (!wasOpen) {
+      viewStory = s;
+      render();
+    }
+    var probe = { rect: null };
+    document.dispatchEvent(new CustomEvent("xd:book-prepare", { detail: probe }));
+    var to = probe.rect;
+    document.body.classList.add("shelf-flying");   // 飞行途中按 Esc 不合书
+
+    /* ② 轴与终点：飞行体绕「书脊右边缘那条竖边」转 ——
+       书脊贴在轴的左边、封面折在轴的右边、朝观者这一侧伸出；绕 y 轴向右
+       （正角）转 90° 后，书脊向右转开、封面从前面转正，向右铺成书的正面。
+       方向是用户定的：书向右翻开，封面就该从右边出来、往右摊开。
+       翻页叶（app.js 的 .bk-leaf 0 → -180）不动。 */
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var cx = to ? (to.left + to.width / 2) : vw / 2;
+    var cy = to ? (to.top + to.height / 2) : vh / 2;
+    /* 书的正面 = 真书的一页：宽取真书一半、高取真书高。
+       封面从轴向右铺开，所以轴落在「书桌中心 − 半页」处 —— 转正之后，
+       这枚封面正好居中在书桌中心，真书接着对称铺成两页。 */
+    var cw = to ? to.width / 2 : 420;
+    var ch = to ? to.height : 600;
+    var axisX = rect.right;   /* 书脊贴在轴的左边，所以轴取书脊的**右**边缘 ——
+                                 起飞第一帧才和架上那根严丝合缝，不然整根会左跳 84px */
+    var axisY = rect.top + rect.height / 2;
+    var endX = cx - cw / 2;
+    var liftY = Math.max(90, axisY - 185);   // 弹出弹窗上沿，但不顶出视口
+    /* 旋转发生在「桌心上方 44px」这一层：先飞到位、停一拍、再原地转身，
+       转完才落到桌面。旋转和位移分开，观者才看得见那个 90°。 */
+    var turnY = cy - 44;
+
+    var fly = document.createElement("div");
+    fly.className = "spine spine-fly";
+    fly.setAttribute("data-c", btn.getAttribute("data-c") || "1");
+    fly.setAttribute("aria-hidden", "true");
+    fly.style.left = axisX + "px";
+    fly.style.top = axisY + "px";
+
+    var flip = document.createElement("div");
+    flip.className = "fly-flip";
+
+    // 书脊面：连竖排字一起复刻，起飞那一瞬还认得出是架上这本
+    var spineSide = document.createElement("div");
+    spineSide.className = "fly-side fly-spine-side";
+    spineSide.style.setProperty("--fw", rect.width + "px");
+    spineSide.style.setProperty("--fh", rect.height + "px");
+    var face = btn.querySelector(".face");
+    if (face) spineSide.appendChild(face.cloneNode(true));
+    var spineShade = document.createElement("span");
+    spineShade.className = "fly-shade";
+    spineSide.appendChild(spineShade);
+
+    // 书的正面：同色系的书封 + 书名（书脊上用的就是这个名字）
+    var cover = document.createElement("div");
+    cover.className = "fly-side fly-cover-side";
+    cover.style.setProperty("--cw", cw + "px");
+    cover.style.setProperty("--ch", ch + "px");
+    var plate = document.createElement("span");
+    plate.className = "fly-cover-plate";
+    cover.appendChild(plate);
+    var coverTitle = document.createElement("span");
+    coverTitle.className = "fly-cover-title";
+    coverTitle.textContent = spineTitle(s) || "";
+    cover.appendChild(coverTitle);
+    var coverShade = document.createElement("span");
+    coverShade.className = "fly-shade";
+    cover.appendChild(coverShade);
+
+    flip.appendChild(spineSide);
+    flip.appendChild(cover);
+    fly.appendChild(flip);
+    document.body.appendChild(fly);
+
+    // ③ 书架退场：整片遮罩淡掉；被点的这本立刻隐形（飞行体已在原位接住，留着会双影）
+    btn.classList.add("is-flying");
+    els.histModal.classList.add("is-fly-away");
+
+    /* ④ 四拍：弹出 → 停一拍 → 原地转身 90° → 落到桌面。
+       **位移和旋转必须分开**：原来边飞边转，一个大平移把旋转整个吃掉了，
+       看着就是「书脊缩窄、封面出现」，像换图不像转身。
+       现在先飞到桌心上方 44px 定住，停 90ms 让眼睛认出「这是一根竖着的书脊」，
+       再在原地慢慢转 448ms，转完才落下 —— 那 90° 才有地方被看见。 */
+    var spin = flip.animate([
+      // 起飞段顺手把书架上那点 -12° 掰正，后面转的才是完整的 90°
+      { transform: "rotateY(-12deg)", offset: 0, easing: "cubic-bezier(.3,.7,.4,1)" },
+      { transform: "rotateY(0deg)", offset: 0.22, easing: "linear" },
+      { transform: "rotateY(0deg)", offset: 0.30, easing: "cubic-bezier(.35,.08,.36,.96)" },
+      { transform: "rotateY(90deg)", offset: 0.74, easing: "linear" },
+      { transform: "rotateY(90deg)", offset: 1 }
+    ], { duration: FLY_MS, fill: "forwards" });
+    /* 书脊跟着长到书的真实高度：封面 655 高、书脊才 280，转到一半会对不上，
+       书脊会像贴在封面右边中间的一小块。长在起飞段做完，别和旋转叠在一起。 */
+    var grow = spineSide.animate([
+      { height: rect.height + "px", offset: 0, easing: "linear" },
+      { height: rect.height + "px", offset: 0.04, easing: "cubic-bezier(.4,.1,.35,1)" },
+      { height: ch + "px", offset: 0.22 }
+    ], { duration: FLY_MS, fill: "forwards" });
+
+    spin.id = "shelf-spin";
+
+    /* 受光：书脊转开越来越暗、封面从里侧转出来由暗转亮。
+       ——封面不再「延迟淡入」了。以前封面到 0.46 才显形，转出的那 50° 被
+       整段藏起来，观者只看到书脊变窄、然后一大片封面凭空出现，所以像切换。
+       现在它从 0° 起就在（宽度为 0），随角度一点点变宽、同时变亮，
+       中间那条窄暗面带就是「书的侧影」，旋转才被真正看见。 */
+    var spineDim = spineShade.animate([
+      { opacity: 0, offset: 0, easing: "linear" },
+      { opacity: 0, offset: 0.30, easing: "linear" },
+      { opacity: 0.55, offset: 0.74 },
+      { opacity: 0.55, offset: 1 }
+    ], { duration: FLY_MS, fill: "forwards" });
+    var coverDim = coverShade.animate([
+      { opacity: 0.30, offset: 0, easing: "linear" },
+      { opacity: 0.30, offset: 0.30, easing: "linear" },
+      { opacity: 0, offset: 0.74 },
+      { opacity: 0, offset: 1 }
+    ], { duration: FLY_MS, fill: "forwards" });
+    /* 书脊转到接近侧面（θ ≈ 79°）就淡掉：再往后只剩一条线，还容易把背面透出来 */
+    var spineOut = spineSide.animate([
+      { opacity: 1, offset: 0, easing: "linear" },
+      { opacity: 1, offset: 0.66 },
+      { opacity: 0, offset: 0.74 }
+    ], { duration: FLY_MS, fill: "forwards" });
+    spineOut.onfinish = function () { spineSide.style.opacity = "0"; };
+
+    /* 位移：竖直弹出弹窗上沿 → 横移到**视口中心**上方 → 转身时轴同步归位 → 落下。
+       轴一开始放在 cx（而不是最终的 cx − 半页）：否则转身前半程整本书都在
+       屏幕左半边，右边一大片空白，看着像「书贴在左边」，更谈不上转身。
+       让轴在旋转的 528ms 里从 cx 滑到 cx − 半页：书脊往左退半步，封面在它
+       右侧转正、铺满半页宽 —— 读作「书在屏幕正中向右翻开」。 */
+    var anim = fly.animate([
+      { left: axisX + "px", top: axisY + "px", opacity: 1, offset: 0, easing: "cubic-bezier(.25,.7,.35,1)" },
+      { left: axisX + "px", top: liftY + "px", opacity: 1, offset: 0.14, easing: "cubic-bezier(.35,.2,.35,1)" },
+      { left: cx + "px", top: turnY + "px", opacity: 1, offset: 0.22, easing: "linear" },
+      { left: endX + "px", top: turnY + "px", opacity: 1, offset: 0.74, easing: "cubic-bezier(.4,.1,.4,1)" },
+      { left: endX + "px", top: cy + "px", opacity: 1, offset: 0.82, easing: "linear" },
+      { left: endX + "px", top: cy + "px", opacity: 0, offset: 0.90 },
+      { left: endX + "px", top: cy + "px", opacity: 0, offset: 1 }
+    ], { duration: FLY_MS, fill: "forwards" });
+    anim.id = "shelf-fly";   // 定帧截图时按 id 找它（见 .verify/make-book-test.js）
+    /* 末帧 opacity 0 必须写进内联：fill:forwards 的已结束动画会被浏览器当作
+       「可替换动画」异步移除，移除后 opacity 回到 CSS 的 1 —— 飞行体会以一条
+       实心绿横线返场、压在刚展开的书上（开书两拍踩过同一个坑）。 */
+    anim.onfinish = function () { fly.style.opacity = "0"; };
+
+    /* ⑤ 收尾三拍：关弹窗（飞行体已离开书架）→ 交棒给真书 → 清飞行体 */
+    setTimeout(function () {
+      // 清掉退场类再藏：不然下次打开故事集会是一张透明的空架子
+      els.histModal.classList.remove("is-fly-away");
+      closeHistory();
+      renderShelf();                     // 重建书脊，架子回到干净状态
+    }, 700);   // 略晚于弹窗自己的退场（overlay-out .5s / shelf-sink .66s）
+    setTimeout(function () {
+      /* 书本来就开着：此刻它已经被收成一条看不见的书棱，才把内容换成新的一篇
+         —— 抽走的是原来那本，长出来的是新书，中途不会露出换字的破绽。 */
+      if (wasOpen) {
+        viewStory = s;
+        render();
+        setTimeout(fitPages, 0);
+      }
+      document.dispatchEvent(new CustomEvent("xd:book-reveal", {
+        // 真书就从这枚「书的正面」上铺开：右页宽 × 开本高
+        detail: { w: cw, h: ch }
+      }));
+      document.body.classList.remove("shelf-flying");
+    }, 984);   // = 0.82 × FLY_MS，正好是飞行体落定的那一拍（再早会差 44px 高度）
+    setTimeout(function () {
+      try { anim.cancel(); } catch (e) { /* 已结束 */ }
+      try { spin.cancel(); } catch (e) { /* 已结束 */ }
+      try { grow.cancel(); } catch (e) { /* 已结束 */ }
+      try { coverDim.cancel(); } catch (e) { /* 已结束 */ }
+      try { spineDim.cancel(); } catch (e) { /* 已结束 */ }
+      try { spineOut.cancel(); } catch (e) { /* 已结束 */ }
+      if (fly.parentNode) fly.parentNode.removeChild(fly);
+      var c = document.getElementById("btn-book-close");
+      if (c && c.focus) c.focus({ preventScroll: true });
+    }, FLY_MS + 40);
+  }
+
+  /* 旧篇 → 本轮（书桌主按钮在看旧篇时变成「回到本轮」） */
+  function backToCurrent() {
+    if (!viewStory) return;
+    viewStory = null;
+    render();
+    setTimeout(fitPages, 0);
+  }
+
+  function openHistory() {
+    /* 打开时定位到「正在读」那本所在的页：从书桌点故事集，不该每次都从最新一页重翻 */
+    var all = shelfAll();
+    var cur = viewStory || readStore().story;
+    var pages = Math.max(1, Math.ceil(all.length / SHELF_PER_PAGE));
+    shelfPageNo = 0;
+    if (cur && all.length) {
+      var idx = -1;
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].roundKey === cur.roundKey) { idx = i; break; }
+      }
+      if (idx >= 0) {
+        // 第 0 页 = 最新 6 本，越老的页码越大
+        shelfPageNo = Math.min(pages - 1, Math.floor((all.length - 1 - idx) / SHELF_PER_PAGE));
+      }
+    }
+    renderShelf();
+    els.histModal.removeAttribute("hidden");
+  }
+  function closeHistory() {
+    els.histModal.setAttribute("hidden", "");
   }
 
   /* ---------- 事件 ---------- */
   function bind() {
-    els.gen.addEventListener("click", generate);
+    els.gen.addEventListener("click", function () {
+      if (viewStory) { backToCurrent(); return; }
+      generate();
+    });
     if (els.emptyCta) els.emptyCta.addEventListener("click", generate);
     els.cfgBtn.addEventListener("click", function () { openConfig(""); });
     els.histBtn.addEventListener("click", openHistory);
     els.cfgCancel.addEventListener("click", closeConfig);
     els.cfgSave.addEventListener("click", saveConfig);
     els.histClose.addEventListener("click", closeHistory);
+    // 书架翻页：「‹」看更早（页码变大），「›」看更新
+    if (els.shelfPrev) els.shelfPrev.addEventListener("click", function () {
+      shelfPageNo += 1;
+      renderShelf();
+    });
+    if (els.shelfNext) els.shelfNext.addEventListener("click", function () {
+      shelfPageNo -= 1;
+      renderShelf();
+    });
     // 点遮罩空白处 / 按 Esc 关闭（app.js 对重置弹窗有同款监听，互不干扰）
     els.cfgModal.addEventListener("click", function (e) { if (e.target === this) closeConfig(); });
     els.histModal.addEventListener("click", function (e) { if (e.target === this) closeHistory(); });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        if (!els.cfgModal.hasAttribute("hidden")) closeConfig();
-        if (!els.histModal.hasAttribute("hidden")) closeHistory();
-      }
+      if (e.key !== "Escape") return;
+      if (!els.cfgModal.hasAttribute("hidden")) { closeConfig(); return; }
+      if (!els.histModal.hasAttribute("hidden")) closeHistory();
     });
 
     // 故事 → 角卡：点正文里的词（本轮高亮词或普通词），右上角的卡换内容
@@ -1203,7 +1659,15 @@
 
     // 书翻开 / 视口变了 → 重新量一次要不要收字号（app.js 发的事件）
     // 用 setTimeout 而不是 rAF：rAF 要等一帧，标签页在后台 / 无头截图时可能被饿死
-    document.addEventListener("xd:book-open", function () {
+    document.addEventListener("xd:book-open", function (e) {
+      /* 合书 = 收摊：书桌上默认永远是本轮那篇，下次开书别还摊着三天前那篇 */
+      if (e && e.detail && e.detail.open === false) {
+        if (viewStory) {
+          viewStory = null;
+          render();       // 合着时 fitPages 自己会跳过（.book clientHeight < 100）
+        }
+        return;
+      }
       markSnapshot();        // 开书前可能又在卡片上标记过 → 重拉清单
       applyMarkedClasses();  // 并把正文里的标记态对齐
       setTimeout(fitPages, 0);
@@ -1250,6 +1714,8 @@
     els.coverage = $(".story-meta-count", els.panel);
     els.kickerRound = $(".story-round-label", els.panel);
     els.kickerDate = $(".story-date", els.panel);
+    els.archiveTag = $(".story-archive-tag", els.panel);
+    els.title = $(".story-title", els.panel);
     els.teaser = $(".story-teaser", els.panel);
     els.footer = $(".story-footer", els.panel);
     els.gen = $("#btn-story-gen");
@@ -1263,8 +1729,15 @@
     els.cfgCancel = $("#btn-cfg-cancel");
     els.cfgSave = $("#btn-cfg-save");
     els.histModal = $("#story-history-modal");
-    els.histList = $("#story-history-list");
     els.histClose = $("#btn-history-close");
+    els.shelfMeta = $("#shelf-meta");
+    els.shelfEmpty = $("#shelf-empty");
+    els.shelfStage = $("#shelf-stage");
+    els.shelfRow = $("#shelf-row");
+    els.shelfNav = $("#shelf-nav");
+    els.shelfPage = $("#shelf-page");
+    els.shelfPrev = $("#btn-shelf-prev");
+    els.shelfNext = $("#btn-shelf-next");
     if (!els.gen || !els.cfgModal || !els.histModal || !els.body || !els.dots) return;
     bind();
     watchRound();

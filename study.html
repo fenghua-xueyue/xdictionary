@@ -4,7 +4,7 @@
   <meta charset="UTF-8" data-page-node-id="x4Dd2VYmBDfpY8uIf7fR1S" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="SdQzvdihu3L29PSZxEuudD" />
   <title>xdictionary · 学习</title>
-  <link rel="stylesheet" href="style.css?v=202610273" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
+  <link rel="stylesheet" href="style.css?v=202610290" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
   <script>
     /* 防闪屏：必须在首次绘制前把已保存的皮肤套上，否则会先闪一下默认配色。
        这段脚本刻意写得很短，且不依赖 skin.js（那时还没加载）。
@@ -341,6 +341,7 @@
               <span class="story-round-label">第 1 轮</span>
               <span class="story-kicker-sep" aria-hidden="true">·</span>
               <span class="story-date">—</span>
+              <span class="story-archive-tag" hidden>存档</span>
             </p>
             <h3 class="story-title" data-page-node-id="X2NzCOjLjAQJwW2wDt0451">今日小故事</h3>
             <span class="book-rule" aria-hidden="true"></span>
@@ -522,12 +523,31 @@
     </div>
   </div>
 
-  <!-- 故事集（历史故事）弹窗（story.js 管理） -->
+  <!-- 故事集 = 书架（story.js 管理） -->
   <div class="modal-overlay" id="story-history-modal" hidden>
-    <div class="modal modal-history" role="dialog" aria-modal="true" aria-labelledby="story-history-title">
-      <h3 class="modal-title" id="story-history-title">故事集</h3>
-      <p class="modal-hint">历轮生成的故事都自动收在这里（最多 200 篇），换一轮、点重置都不会丢。</p>
-      <div class="history-list" id="story-history-list"></div>
+    <div class="modal modal-shelf" role="dialog" aria-modal="true" aria-labelledby="story-history-title">
+      <div class="shelf-head">
+        <h3 class="modal-title" id="story-history-title">我的故事集</h3>
+        <p class="shelf-meta" id="shelf-meta"></p>
+      </div>
+
+      <p class="shelf-empty" id="shelf-empty" hidden></p>
+
+      <div class="shelf-stage" id="shelf-stage">
+        <div class="shelf-row" id="shelf-row"></div>
+        <div class="shelf-board" aria-hidden="true"></div>
+      </div>
+
+      <div class="shelf-nav" id="shelf-nav" hidden>
+        <button class="shelf-arrow" id="btn-shelf-prev" type="button" aria-label="看更早的故事">
+          <svg class="svg-icon" aria-hidden="true" width="16" height="16"><use href="#i-back"></use></svg>
+        </button>
+        <span class="shelf-page" id="shelf-page"></span>
+        <button class="shelf-arrow is-next" id="btn-shelf-next" type="button" aria-label="看更新的故事">
+          <svg class="svg-icon" aria-hidden="true" width="16" height="16"><use href="#i-back"></use></svg>
+        </button>
+      </div>
+
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-history-close" type="button">关闭</button>
       </div>
@@ -607,10 +627,10 @@
   <script src="words.js?v=202610265"></script>
   <script src="skin.js?v=202610272"></script>
   <script src="bank.js?v=202610265"></script>
-  <script src="app.js?v=202610272"></script>
+  <script src="app.js?v=202610290"></script>
   <script src="intro.js?v=202610272"></script>
   <script src="speak.js?v=202610265"></script>
-  <script src="story.js?v=202610265"></script>
+  <script src="story.js?v=202610290"></script>
   <script src="backup.js?v=202610265"></script>
 </body>
 </html>

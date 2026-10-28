@@ -773,15 +773,30 @@
       var panel = document.querySelector("#view-learn .story-panel");
       if (!panel) return;
       var s = 1;
+      var drop = 0;
       if (window.innerWidth >= 1024) {
-        // 220 = 顶栏 + 面板上留白 + 工具条 + 下留白；覆盖率已经并入书内页脚，不再额外占高
+        // 书是整屏几何居中：上下各分到 (视口高 - 书高) / 2 的空档，
+        // 上面那份必须塞得下「顶栏 + 工具条」，所以书高上限是
+        // 视口高 - 2 × (顶栏 + 工具条)。这样居中时工具条正好落在顶栏下沿，
+        // 不会钻进去。
+        var header = document.querySelector(".app-header");
+        var headerH = header ? header.offsetHeight : 78;
+        var tools = document.querySelector("#view-learn .book-tools");
+        // 书没打开时工具条是 hidden，量不到 —— 退回标称值（34 + 10 间距）
+        var toolsH = (tools && tools.offsetHeight > 20) ? tools.offsetHeight + 10 : 44;
         var byW = (window.innerWidth - 96) / 1080;
-        var byH = (window.innerHeight - 220) / 720;
+        var byH = (window.innerHeight - 2 * (headerH + toolsH)) / 720;
         s = Math.min(byW, byH, 1);
-        // 低于 0.78 字就发糊（18px × 0.78 ≈ 14px），宁可让页面往下滚一点
+        // 低于 0.78 字就发糊（18px × 0.78 ≈ 14px）。矮屏宁可让书比
+        // 完美居中低一点，也不能为了居中把字缩糊。
         if (s < 0.78) s = 0.78;
+        // 上面的下限一旦生效，书就比「上限」高了，整屏居中会把工具条顶进顶栏；
+        // 算出需要整体下推多少，由 CSS 的 --book-drop 兑现（最多 80px 兜住极端矮屏）
+        var idealTop = (window.innerHeight - 720 * s) / 2;
+        drop = Math.max(0, Math.min(80, Math.ceil(headerH + toolsH - idealTop)));
       }
       panel.style.setProperty("--book-scale", s.toFixed(4));
+      panel.style.setProperty("--book-drop", drop + "px");
     }
     fitBook();
     window.addEventListener("resize", function () {
@@ -856,8 +871,23 @@
       var wrap = document.querySelector("#view-learn .book-flip-wrap");
       if (wrap && wrap.parentElement) wrap.parentElement.removeChild(wrap);
       var bookEl = document.querySelector("#view-learn .book");
-      if (bookEl) bookEl.style.removeProperty("transform-origin");
+      if (bookEl) {
+        bookEl.style.removeProperty("transform-origin");
+        bookEl.style.removeProperty("pointer-events");
+        // 收书时把 opacity:0 写进了内联，这里要清掉，否则整本书一直藏着
+        bookEl.style.removeProperty("opacity");
+        // 翻页期间被藏起来的字（playFlipLeaves 写过 opacity:0 / 1）一并复位
+        Array.prototype.forEach.call(bookEl.querySelectorAll(".book-page"), function (p) {
+          p.style.removeProperty("opacity");
+        });
+      }
       learnView.classList.remove("story-intro");
+      /* 抽书时给面板摘过入场扫场。页面入场（intro-run，1700ms 才摘）往往比
+         抽书结束得晚 —— 这会儿就摘 shelf-cut 会把那条动画重建、从 0 再扫一遍，
+         书当场消失一下。等入场收尾之后再摘。 */
+      if (!document.documentElement.classList.contains("intro-run")) {
+        learnView.classList.remove("shelf-cut");
+      }
       var card = document.querySelector("#view-learn .flashcard");
       if (card) card.style.removeProperty("--card-exit-y");
       if (introSkipFn) { document.removeEventListener("click", introSkipFn, true); introSkipFn = null; }
@@ -867,6 +897,84 @@
       introAnims.forEach(function (a) { try { a.finish(); } catch (e) { /* 已结束 */ } });
       cleanupIntro();
     }
+    /* 翻页叶：两张纸（封面 + 一张空白扉页），各拆前后两半张（0→-90 / -90→-180
+       接力，不依赖 backface —— 见 style.css「开书入场」段的说明）。
+       DOM 顺序 = 绘制顺序：扉页在最下、封面在最上；掀开的顺序正好相反。
+       （层序反了会被延迟期的整页白纸盖住，绿皮完全看不见，踩过）
+       翻页期间书页上的字先藏起来、只留 .book 的纸白底，纸一张张翻完字再浮上来 ——
+       否则书一摊开正文就已经在那儿，读作「几张薄纸片从现成的内容前面飞过」，
+       不是翻书。从丝带开书、从书架抽书两条路径共用这一段。 */
+    function playFlipLeaves(book, rect, delay, speed) {
+      if (!book || !rect || rect.width <= 500) return;
+      /* 减动效：整段不跑（CSS 里 .book-flip-wrap 是 display:none，只剩藏字那半截
+         会留下永远不出现的白纸 —— 所以直接不进来） */
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var d = delay || 0;
+      var k = speed || 1;                       // 抽书那条路走慢一点，丝带开书保持原速
+      var T = function (v) { return Math.round(v * k); };
+      var wrap = document.createElement("div");
+      wrap.className = "book-flip-wrap";
+      /* DOM 顺序 = 绘制顺序：扉页在最下、封面在最上，掀开的顺序正好相反。
+         每张纸里再挂一片 .bk-shade —— 纸翻起来时那一段由亮转暗、落下时又
+         转亮，靠明暗扫过去才读得出「一张纸在过」。纯白纸翻在纯白书上，
+         光有投影是不够的（投影会随着 rotateY 一起转窄，转侧时几乎消失）。 */
+      var FWD = ["cover", "page"];                   // 掀开顺序（上 → 下）
+      var DOM = FWD.slice().reverse();               // 绘制顺序（下 → 上）
+      var leaves = "";
+      DOM.forEach(function (n) {
+        leaves += '<div class="bk-leaf bk-leaf-' + n + '-front"><i class="bk-shade"></i></div>' +
+                  '<div class="bk-leaf bk-leaf-' + n + '-back"><i class="bk-shade"></i></div>';
+      });
+      wrap.innerHTML = '<div class="book-flip-persp">' + leaves + '</div>';
+      book.appendChild(wrap);
+      var leaf = function (cls) { return wrap.querySelector(".bk-leaf-" + cls); };
+      var shade = function (cls) { return leaf(cls).querySelector(".bk-shade"); };
+      var flipEase = "cubic-bezier(.45,.05,.55,.95)";
+      var PAGE_MS = 200;     // 半张纸翻 90° 的用时
+      var STEP_MS = 300;     // 相邻两张纸的起手间隔（比半张纸长，纸才一张张过）
+      var DARK = 0.2;        // 侧对时的最暗值（正对时 0）
+
+      /* 先藏字：纸白底在 .book 上，.book-page 只装字、页眉页脚，
+         整页 opacity 0 露出来的就是一张干净白纸（中缝影在 .book::before，还在）。 */
+      var pages = book.querySelectorAll(".book-page");
+      Array.prototype.forEach.call(pages, function (p) { p.style.opacity = "0"; });
+
+      FWD.forEach(function (name, i) {
+        var t0 = d + i * T(STEP_MS);
+        introAnims.push(leaf(name + "-front").animate(
+          [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
+          { duration: T(PAGE_MS), delay: t0, easing: flipEase, fill: "forwards" }));
+        introAnims.push(leaf(name + "-back").animate(
+          [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
+          { duration: T(PAGE_MS), delay: t0 + T(PAGE_MS), easing: flipEase, fill: "both" }));
+        // 纸面由亮转暗（正对 → 侧对），背面再由暗转亮（侧对 → 摊平在左页上）
+        introAnims.push(shade(name + "-front").animate(
+          [{ opacity: 0 }, { opacity: DARK }],
+          { duration: T(PAGE_MS), delay: t0, easing: "ease-in", fill: "forwards" }));
+        introAnims.push(shade(name + "-back").animate(
+          [{ opacity: DARK }, { opacity: 0.07 }],
+          { duration: T(PAGE_MS), delay: t0 + T(PAGE_MS), easing: "linear", fill: "forwards" }));
+        /* 淡出必须等「翻到底」之后：提前起淡的话叶子还差二十几度就透明，
+           左页的字会从纸里透出来 —— 看着像穿模，也不像翻过去一张空白页。
+           落定在 t0 + 2·PAGE_MS，停 60 再花 160 淡掉。 */
+        introAnims.push(leaf(name + "-back").animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: T(160), delay: t0 + T(2 * PAGE_MS) + T(60), easing: "ease-out", fill: "forwards" }));
+      });
+
+      /* 字浮现：最后一张纸刚落到左页就起，和它的淡出交叉着来 ——
+         读作「纸翻过去，印的字从纸上浮出来」，不是啪一下替换。 */
+      var unveilAt = d + (FWD.length - 1) * T(STEP_MS) + T(2 * PAGE_MS) + T(80);
+      Array.prototype.forEach.call(pages, function (p) {
+        var a = p.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: T(280), delay: unveilAt, easing: "ease-out", fill: "forwards" });
+        // fill:forwards 的已结束动画会被浏览器异步移除，末态要落到内联
+        a.onfinish = function () { p.style.opacity = "1"; };
+        introAnims.push(a);
+      });
+    }
+
     /* 跳过 = 动画全部落到末态，书直接摊开在故事桌（不等二三拍） */
     function skipIntroToEnd() {
       var wasRunning = introRunning;
@@ -953,51 +1061,12 @@
           buFade.onfinish = function () { bookUnder.style.opacity = "0"; };
           introAnims.push(buFade);
         }
-        // 翻页叶：一页纸 + 封面，各拆前后两半张（0→-90 / -90→-180 接力，
-        // 不依赖 backface —— 见 style.css「开书入场」段的说明）。
-        // DOM 顺序 = 绘制顺序：页纸在下、封面在最上 —— 封面掀开先露出贴着的
-        // 扉页纸，扉页纸再掀开才露出最终内容，与现实翻书一致。
-        // （层序反了会被延迟期的整页白纸盖住，绿皮完全看不见，踩过）
-        // 时序与转体同步：书在转正的途中封面就开始掀，转到位时页也翻完了。
-        if (toRect.width > 500) {
-          var wrap = document.createElement("div");
-          wrap.className = "book-flip-wrap";
-          wrap.innerHTML =
-            '<div class="book-flip-persp">' +
-              '<div class="bk-leaf bk-leaf-page-front"></div>' +
-              '<div class="bk-leaf bk-leaf-page-back"></div>' +
-              '<div class="bk-leaf bk-leaf-cover-front"></div>' +
-              '<div class="bk-leaf bk-leaf-cover-back"></div>' +
-            '</div>';
-          book.appendChild(wrap);
-          var leaf = function (cls) { return wrap.querySelector(".bk-leaf-" + cls); };
-          var flipEase = "cubic-bezier(.45,.05,.55,.95)";
-          // 封面（最上层）：绿皮翻过去，纸背摊平在左页上再淡出（露出扉页）。
-          // delay 120：转体刚起步封面就跟着掀，强化「翻开与转向是同一件事」
-          introAnims.push(leaf("cover-front").animate(
-            [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
-            { duration: 240, delay: 120, easing: flipEase, fill: "forwards" }));
-          introAnims.push(leaf("cover-back").animate(
-            [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
-            { duration: 240, delay: 380, easing: flipEase, fill: "both" }));
-          introAnims.push(leaf("cover-back").animate(
-            [{ opacity: 1 }, { opacity: 0 }],
-            { duration: 200, delay: 520, easing: "ease-out", fill: "forwards" }));
-          // 第二页纸：翻过去再淡出（露出译文）。前半张延迟期无变换 = 贴在
-          // 右半页的「下一页」，正好给掀开的封面当露出物，不需要 fill both。
-          introAnims.push(leaf("page-front").animate(
-            [{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }],
-            { duration: 240, delay: 560, easing: flipEase, fill: "forwards" }));
-          introAnims.push(leaf("page-back").animate(
-            [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(-180deg)" }],
-            { duration: 240, delay: 820, easing: flipEase, fill: "both" }));
-          introAnims.push(leaf("page-back").animate(
-            [{ opacity: 1 }, { opacity: 0 }],
-            { duration: 200, delay: 980, easing: "ease-out", fill: "forwards" }));
-        }
+        // 翻页叶：时序与转体同步 —— 书在转正的途中封面就开始掀，转到位时纸也翻完
+        playFlipLeaves(book, toRect, 120);
         // ── 收尾：工具条浮现（顶栏按钮簇阅读态由 CSS 整簇收起，不淡入） ──
         introFadeIn(document.querySelector("#view-learn .book-tools"), 300, 650);
-        setTimeout(cleanupIntro, 1400);
+        // 翻页到 1180ms（120 起手 + 两张纸，字浮完）才收尾，cleanup 必须排在它之后
+        setTimeout(cleanupIntro, 1220);
       }, 620);
     }
     var btnBookClose = document.getElementById("btn-book-close");
@@ -1006,8 +1075,116 @@
       var card = document.querySelector("#view-learn .flashcard");
       if (card && card.focus) card.focus({ preventScroll: true });
     });
+
+    /* ---- 从书架抽书（story.js 派发的两次握手）----
+       点书脊时，故事集弹窗还盖着整页：先把书桌在弹窗后面摆到阅读态、
+       把真书藏成透明，并把书的最终矩形回传过去 —— 飞行体要照着它摊平。
+       等飞行体摊成「书棱」落到桌心，再让真书从薄片展开 + 翻页叶掀开。
+       两次都是 detail 对象直接读写（同步握手，省掉一轮异步等待）。 */
+    /* 书已开着时点书脊（用户的真实路径：故事集按钮长在书工具条里，书必然先开着）：
+       把桌上这本原地「抽走」—— 压成一条书棱并淡出，给飞行体腾出桌心，
+       等飞行体摊平到位，新书再从同一条棱上长出来（同 reveal 那一拍）。
+       不要加 story-intro：那套会把顶栏从 absolute 掰回 relative，书桌会跳一下。 */
+    function collapseOpenBook() {
+      var tools = document.querySelector("#view-learn .book-tools");
+      if (tools) introFadeOut(tools, 240);
+      var book = document.querySelector("#view-learn .book");
+      if (!book || !book.animate) return;
+      var r = book.getBoundingClientRect();
+      var s = r.width / 1080;
+      var dx = (540 * s - 540).toFixed(1);
+      var dy = (360 * s - 360).toFixed(1);
+      var full = "translate(" + dx + "px," + dy + "px) rotate(0deg) scale(" + s.toFixed(4) + ")";
+      var thin = "translate(" + dx + "px," + dy + "px) rotate(0deg) scale(" +
+        s.toFixed(4) + "," + (s * 0.05).toFixed(4) + ")";
+      book.style.transformOrigin = "50% 50%";
+      book.style.pointerEvents = "none";
+      var a = book.animate([
+        { transform: full, opacity: 1, easing: "ease-in" },
+        { transform: thin, opacity: 0 }
+      ], { duration: 240, fill: "forwards" });
+      a.id = "shelf-collapse";   // 定帧截图时按 id 找它
+      /* 末帧必须落到内联：fill:forwards 的已结束动画会被浏览器当「可替换动画」
+         异步移除，移除后 opacity 回到 CSS 的 1 —— 这本书会在书脊转过来的那一拍
+         以「压扁的书页」浮现，正好盖在飞行体的封面上（踩过两次了）。 */
+      a.onfinish = function () { book.style.opacity = "0"; };
+      introAnims.push(a);
+    }
+    function bookFromShelfPrepare(detail) {
+      if (introRunning) finishIntroInstant();
+      /* 页面入场扫场还在爬（面板 0.38~0.74s 才起步、0.38s 才淡完）：不摘掉的话
+         书落定那一刻它正好爬到一半，整片书页发灰；面板上的 translateY(14px)
+         也会让下面量到的书位姿偏高。必须在 fitBook / bookRect 之前摘。 */
+      learnView.classList.add("shelf-cut");
+      if (learnView.classList.contains("story-open")) {
+        /* 书已经开着：先按当前布局量准矩形，再把书收成书棱。
+           顺序不能反 —— 压扁之后 getBoundingClientRect 只剩几十像素高。 */
+        fitBook();
+        detail.rect = bookRect();
+        collapseOpenBook();
+        return;
+      }
+      learnView.classList.add("story-intro");   // 复用两拍那套：卡片让位、书不可点
+      learnView.classList.add("story-fly");     // 书与工具条先透明
+      setStoryOpen(true);
+      fitBook();
+      detail.rect = bookRect();
+    }
+    function bookRect() {
+      var book = document.querySelector("#view-learn .book");
+      if (!book) return null;
+      var r = book.getBoundingClientRect();
+      return { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+    function bookFromShelfReveal(e) {
+      var book = document.querySelector("#view-learn .book");
+      var r = bookRect();
+      if (!book || !book.animate || !r) { cleanupIntro(); return; }
+      var s1 = r.width / 1080;
+      var baseX = 540 * s1 - 540;
+      var baseY = 360 * s1 - 360;
+      var flat = "translate(" + baseX.toFixed(1) + "px," + baseY.toFixed(1) + "px) rotate(0deg) scale(" + s1.toFixed(4) + ")";
+      /* 起始 = 飞行体转正的那枚「书的正面」（story.js 随事件带来尺寸）：
+         宽只有一页、高已是全高，就在书桌正中。展开时宽度 1 页 → 2 页，
+         中心不动、两边同时长 —— 读作「翻开」，不是「一块纸被拉大」。 */
+      var d = (e && e.detail) || {};
+      var sx0 = d.w ? (d.w / 1080).toFixed(4) : (s1 * 0.5).toFixed(4);
+      var sy0 = d.h ? (d.h / 720).toFixed(4) : s1.toFixed(4);
+      var closed = "translate(" + baseX.toFixed(1) + "px," + baseY.toFixed(1) +
+        "px) rotate(0deg) scale(" + sx0 + "," + sy0 + ")";
+      var over = "translate(" + (540 * s1 * 1.008 - 540).toFixed(1) + "px," +
+        (360 * s1 * 1.008 - 360).toFixed(1) + "px) rotate(0deg) scale(" + (s1 * 1.008).toFixed(4) + ")";
+
+      book.style.transformOrigin = "50% 50%";
+      learnView.classList.remove("story-fly");   // 交棒：下面这帧动画从透明起步
+      introRunning = true;
+      /* 640ms 铺开（比最初那版慢一档）：起手只有一页宽，文字挤在一半宽里认不清，
+         10% 就把透明度拉满 —— 让「书页铺开」这件事当主角，别让它半透明着变形。 */
+      var revealAnim = book.animate([
+        { transform: closed, opacity: 0, easing: "ease-out" },
+        { transform: closed, opacity: 1, offset: 0.10, easing: "ease-out" },
+        { transform: over, opacity: 1, offset: 0.86, easing: "cubic-bezier(.25,.7,.3,1)" },
+        { transform: flat, opacity: 1 }
+      ], { duration: 640, fill: "forwards" });
+      revealAnim.id = "shelf-book";   // 定帧截图时按 id 找它
+      introAnims.push(revealAnim);
+      /* 翻页等书铺开一半再掀：speed 1.25 让叶子的转速跟上被放慢的整体节奏。
+         时序（已含 1.25 倍）：第二张纸转到 -180° 在 1075ms，淡出到 1350ms，
+         字浮完在 1525ms —— cleanup 必须排在字浮完**之后**再撤 wrap，撤早了
+         白纸会啪一下变回文字，收得早了还会把字的淡入动画一起 cancel 掉。 */
+      playFlipLeaves(book, r, 200, 1.25);
+      introFadeIn(document.querySelector("#view-learn .book-tools"), 360, 700);
+      setTimeout(cleanupIntro, 1560);
+    }
+    document.addEventListener("xd:book-prepare", function (e) {
+      if (e.detail) bookFromShelfPrepare(e.detail);
+    });
+    document.addEventListener("xd:book-reveal", bookFromShelfReveal);
+
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
+      // 抽书飞行途中（书脊已飞出、书还没落定）：别让这一下把书合了
+      if (document.body.classList.contains("shelf-flying")) return;
       if (!learnView.classList.contains("story-open")) return;
       // 入场动画没放完：先跳到末态再合书，别让两套状态打架
       if (introRunning) finishIntroInstant();

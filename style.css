@@ -23,6 +23,13 @@
   --border-soft: #D7E2DB;      /* 浅描边：输入框 / 左箭头 */
   --border-muted: #C9DDD3;     /* 更弱描边：次要按钮 / 禁用态 */
 
+  /* 开书翻页时纸面的明暗遮片（.bk-shade）：纸根暗、外缘亮。
+     皮肤可覆盖 —— 薄荷偏冷绿、暖阳要换成暖褐，不然暖底上书页会发绿。 */
+  --book-shade: linear-gradient(90deg,
+    rgba(9, 30, 20, .92) 0%,
+    rgba(9, 30, 20, .52) 40%,
+    rgba(9, 30, 20, .20) 100%);
+
   /* 文字 */
   --text-primary: #22302A;     /* 主文字 */
   --text-secondary: #4A5A51;   /* 次级文字 / 释义 */
@@ -761,47 +768,528 @@ html .hero .btn-hero {
 }
 .modal-config .modal-actions { margin-top: 20px; }
 
-/* ---- 故事集弹窗（story-history-modal，story.js 管理） ---- */
-.modal-history { text-align: left; max-width: 640px; }
-.modal-history .modal-hint { margin-bottom: 14px; }
-.history-list {
-  max-height: 420px;
-  overflow-y: auto;
+/* ---- 故事集 = 书架（story-history-modal，story.js 管理，2026-10-27 改版） ---- */
+/* 设计来源：design/story-book-3d-spec.html 第 02 节。
+   每根书脊 = 一轮故事。书脊靠「两端压暗、中段提亮」的横向渐变做出弧面，
+   再靠一条侧向投影离开背景 —— 纯色条永远是贴纸，这两层决定它像不像书。 */
+.modal-shelf {
+  text-align: left;
+  max-width: 800px;
+  /* 书架比原来的列表弹窗宽：一排 6 本 × 84 + 5 × 14 = 574，两侧留白 ~100 */
+  width: 100%;
+}
+/* 空态只有一行提示，800 宽会显得空荡荡 —— 收窄到一句话的长度 */
+.modal-shelf.is-empty { max-width: 460px; }
+.shelf-head {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-right: 4px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
 }
-.history-item {
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-btn);
-  background: var(--bg-soft);
-  padding: 14px 16px;
+.shelf-head .modal-title { margin-bottom: 0; }
+.shelf-meta {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.history-item-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent-dark);
-  margin-bottom: 8px;
-}
-.history-en {
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--text-primary);
-}
-.history-zh {
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--text-secondary);
-  margin-top: 8px;
-}
-.history-empty {
+
+.shelf-empty {
   font-size: 15px;
   color: var(--text-muted);
-  line-height: 1.8;
-  padding: 8px 0;
+  line-height: 1.85;
+  padding: 26px 0 24px;
+  text-align: center;
 }
-.modal-history .modal-actions { margin-top: 18px; }
+
+/* ---- 书架本体 ---- */
+.shelf-stage {
+  position: relative;
+  /* 364 = 340 书架 + 24 给「当前在读」那本的抽出量 + 头顶绿点，不然会顶到上方的 meta 行 */
+  height: 364px;
+  margin: 6px 0 0;
+  border-radius: 14px;
+  background:
+    radial-gradient(72% 60% at 50% 30%, var(--shelf-glow-1) 0%, var(--shelf-glow-2) 56%, var(--shelf-glow-3) 100%);
+}
+.shelf-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 44px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+}
+.shelf-board {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 40px;
+  height: 9px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--shelf-board-1) 0%, var(--shelf-board-2) 55%, var(--shelf-board-3) 100%);
+  box-shadow: 0 10px 20px rgba(34, 48, 42, .13);
+}
+.shelf-board::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 9px;
+  height: 14px;
+  background: linear-gradient(180deg, rgba(34, 48, 42, .08), rgba(34, 48, 42, 0));
+}
+
+/* ---- 书脊 ---- */
+.spine {
+  --sw: 84px;
+  --sh: 280px;
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--sw);
+  height: var(--sh);
+  padding: 0;
+  border: 0;
+  background: transparent;          /* 它是 <button>：不写会露出 UA 的灰底 */
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transform: perspective(1500px) rotateY(-12deg);
+  transform-origin: bottom center;
+  transition: transform .34s cubic-bezier(.22, .7, .3, 1), filter .2s ease;
+  filter: drop-shadow(-9px 12px 16px rgba(12, 36, 27, .26));
+}
+.spine:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.spine .face {
+  position: absolute;
+  inset: 0;
+  border-radius: 5px 5px 2px 2px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .045) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg,
+      rgba(0, 0, 0, .33) 0%,
+      rgba(0, 0, 0, .08) 12%,
+      rgba(255, 255, 255, .12) 32%,
+      rgba(255, 255, 255, .24) 44%,
+      rgba(255, 255, 255, .04) 60%,
+      rgba(0, 0, 0, .11) 80%,
+      rgba(0, 0, 0, .35) 100%),
+    linear-gradient(178deg, var(--c1) 0%, var(--c2) 100%);
+}
+.spine .headband {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, #EBE2C9 0 3px, #C2B289 3px 5px);
+  opacity: .92;
+}
+.spine .tailyarn {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: linear-gradient(180deg, rgba(235, 226, 201, .88), rgba(176, 164, 128, .72));
+}
+.spine .rule {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 1px;
+  background: rgba(228, 201, 142, .38);
+}
+.spine .rule.t { top: 26px; }
+.spine .rule.b { bottom: 26px; }
+.spine .no {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 9.5px;
+  letter-spacing: .16em;
+  color: rgba(236, 216, 176, .76);
+  font-weight: 700;
+  font-family: "SF Mono", "Consolas", "Roboto Mono", monospace;
+}
+.spine .title {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  height: 148px;
+  margin: 0 auto;
+  /* 英文竖排：默认 mixed 让拉丁字母侧躺 90°，从上往下读是顺的；
+     写成 sideways 反而会把字母整体转倒，别动。 */
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14.5px;
+  letter-spacing: .10em;
+  line-height: 1.55;
+  color: #F4EFE2;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(6, 26, 18, .42);
+  overflow: hidden;
+}
+.spine .date {
+  position: absolute;
+  bottom: 36px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: rgba(240, 232, 212, .50);
+  font-family: "SF Mono", "Consolas", "Roboto Mono", monospace;
+}
+.spine .mark {
+  position: absolute;
+  bottom: 11px;
+  left: 50%;
+  margin-left: -3.5px;
+  width: 7px;
+  height: 9px;
+  background: rgba(228, 201, 142, .55);
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+}
+
+/* 一排 6 组色：按全局索引取（data-c），翻页时同一本书的颜色不会变 */
+.spine[data-c="1"] { --c1: var(--spine-1a); --c2: var(--spine-1b); }
+.spine[data-c="2"] { --c1: var(--spine-2a); --c2: var(--spine-2b); }
+.spine[data-c="3"] { --c1: var(--spine-3a); --c2: var(--spine-3b); }
+.spine[data-c="4"] { --c1: var(--spine-4a); --c2: var(--spine-4b); }
+.spine[data-c="5"] { --c1: var(--spine-5a); --c2: var(--spine-5b); }
+.spine[data-c="6"] { --c1: var(--spine-6a); --c2: var(--spine-6b); }
+
+/* 悬停：抬起 13px + 转向 -4°。抬起比放大自然 —— 放大像按钮，抬起像抽书 */
+.spine:hover { transform: perspective(1500px) rotateY(-4deg) translateY(-13px); }
+.spine:hover .face { filter: brightness(1.09); }
+
+/* 当前在读的那本：预先抽出 22px + 头顶一个绿点（用位置表达状态，比加一行字干净） */
+.spine.is-now { transform: perspective(1500px) rotateY(-7deg) translateY(-22px); }
+.spine.is-now:hover { transform: perspective(1500px) rotateY(-3deg) translateY(-28px); }
+.spine.is-now .face { box-shadow: inset 0 0 0 1px rgba(228, 201, 142, .28); }
+.spine.is-now::before {
+  content: "";
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  margin-left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* 纸白点 + 主色环：薄荷的绿书、暖阳的棕书上都跳得出来（纯绿点压在绿书上会糊） */
+  background: var(--surface);
+  box-shadow: 0 0 0 2.5px var(--accent);
+  z-index: 2;
+}
+
+/* ---- 翻页 ---- */
+.shelf-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 4px;
+}
+/* [hidden] 只给 UA 的 display:none，会被上面的 display:flex 盖掉 —— 必须显式补一条 */
+.shelf-nav[hidden],
+.shelf-stage[hidden],
+.shelf-empty[hidden] { display: none; }
+.shelf-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color .16s, color .16s, background .16s;
+}
+.shelf-arrow:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+.shelf-arrow:disabled { opacity: .34; cursor: default; }
+.shelf-arrow.is-next .svg-icon { transform: scaleX(-1); }
+.shelf-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shelf-page {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 54px;
+  text-align: center;
+}
+
+/* 点开一本 = 直接在书桌上摊开那本书（见 story.js 的 openInBook），
+   弹窗里不再有第二个阅读视图。 */
+
+/* ============================ 从书架抽书 ============================
+   点书脊 → 那根书脊从架上弹起、飞出弹窗 → 在空中摊平成「书棱」→
+   书棱在书桌中心展开成书页 → 翻页（app.js 的 .bk-leaf）。
+   飞行体的位置由 WAAPI 驱动（story.js 的 flyFromShelf），这里只定它的结构：
+   .spine-fly（定位到「旋转轴」+ 透视）→ .fly-flip（rotateY）→ 两个面。
+   两个面按 L 形挂法，共用同一条竖轴：
+   · 书脊面贴在轴**左侧**（x 从轴向左铺开 84、高 280）—— 一开始正对观者；
+   · 封面挂在轴**右侧**、预转 -90° 朝观者这侧折出去 —— 一开始侧对观者，看不见。
+   flip 绕 y 轴转 **+90°** 之后，书脊向右转开、封面正好转正，向右铺成书的正面。
+   方向取「向右」是用户定的：书是向右打开的，封面就该从右边转出来、向右摊开；
+   翻页叶那边不动（.bk-leaf 仍是 0 → -180）。
+   注意：这一层不能加 filter（filter 会把 preserve-3d 压平，还会让
+   backface-visibility 失效），阴影一律用 box-shadow。 */
+.spine-fly {
+  position: fixed;
+  z-index: 95;                     /* 压过弹窗（z:80），要能飞出小窗外 */
+  width: 0;                        /* left/top 就是旋转轴那一点 */
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  pointer-events: none;
+  cursor: default;
+  transform: none;                 /* 顶掉 .spine 的 rotateY(-12deg)：旋转交给 .fly-flip */
+  filter: none;                    /* 顶掉 .spine 的 drop-shadow，它会压平 3D */
+  transition: none;
+  /* 透视距离：这一版封面是**朝观者**折出来的（与翻页同向），旋转时它会
+     往 z 正方向走 —— 越近放大越狠。1000 时 490 宽的面转到半程高度会顶到
+     1000px 上下（整屏，上下被裁），像一块绿墙压过来；2200 收在 1.2 倍上下，
+     看得出近大远小，又不会把画面糊住。 */
+  perspective: 2200px;
+  will-change: left, top, opacity;
+}
+.fly-flip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform-origin: 0 0;
+  transform: rotateY(-12deg);      /* 起步保持书架上的那点斜度 */
+  will-change: transform;
+}
+.fly-side {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  backface-visibility: hidden;
+  border-radius: 5px;
+  overflow: hidden;
+}
+/* 旋转的「受光」层：一块纯色平面转动时只会变窄，没有任何线索说明它是在
+   转身 —— 看起来就像被横向压扁再换一张图。给每个面叠一层暗片，随角度调
+   不透明度：书脊转开时越来越暗、封面从里侧转出来时由暗转亮。
+   这是人眼判断 3D 旋转最直接的一条线索，比透视比几何都管用。
+   注意用子元素而不是父级的 filter —— filter 会把 preserve-3d 压平。 */
+.fly-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #06140d;
+  opacity: 0;
+  pointer-events: none;
+}
+/* 书脊面：宽 = 书厚、高 = 开本高，**右边缘**贴着轴（书脊在轴的左边）。
+   高度从书架上的 280 长到书的真实高度（转身时由 JS 动 height）——
+   否则封面的 655 高、书脊只有 280 高，转到一半会露馅：书脊像贴在
+   封面左边中间的一小块。上下长出来的部分是纯色书脊，本来就该是素的。 */
+.fly-spine-side {
+  left: auto;
+  right: 0;
+  width: var(--fw, 84px);
+  height: var(--fh, 280px);
+  transform: translateY(-50%);
+  background: linear-gradient(178deg, var(--c1, #2f6b4f) 0%, var(--c2, #1d4b36) 100%);
+  box-shadow: 8px 12px 18px rgba(12, 36, 27, .26);
+}
+/* 书脊的转角高光：转到侧面时它只剩一条一两像素的窄面，没有边就没有
+   「厚度」——那一条会读成一张薄纸片。补一条靠**左**的冷高光当书脊的
+   转折棱（书脊在轴左侧，向右转开时最靠近观者的就是这条左边），
+   窄面才读作「一本有厚度的书侧过去」。z-index 压在暗片之上，转侧时
+   那条棱还亮着，是实体感最廉价也最有效的一笔。 */
+.fly-spine-side::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: auto;
+  width: 3px;
+  background: linear-gradient(to right, rgba(233, 245, 238, .26), rgba(255, 255, 255, 0));
+  z-index: 4;
+}
+/* 书脊上的装饰（编号/竖排书名/日期）钉在原尺寸、垂直居中：
+   外框长高时它们不跟着拉长，字不会变形 */
+.fly-spine-side .face {
+  inset: auto;
+  left: 0;
+  top: 50%;
+  width: var(--fw, 84px);
+  height: var(--fh, 280px);
+  margin-top: calc(var(--fh, 280px) / -2);
+  border-radius: 0;
+}
+/* 书的正面（封面）：单页大小，挂在轴的**右侧**、先朝观者折出 90°。
+   书脊占轴的左边、封面占轴的右边，两块面始终分居两侧，转起来不会
+   互相穿插；flip 转到 +90° 时书脊侧对消失、封面（预转 -90° + flip 的
+   +90° = 0°）正好转正，向右铺开 —— 读作「书从右边翻开」。 */
+.fly-cover-side {
+  width: var(--cw, 490px);
+  height: var(--ch, 655px);
+  top: calc(var(--ch, 655px) / -2);   /* 垂直居中于轴 */
+  transform-origin: 0 50%;
+  transform: rotateY(-90deg);
+  box-shadow: 0 14px 30px rgba(12, 36, 27, .28);
+}
+.fly-cover-side .fly-cover-plate {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, .10) 0%, transparent 44%),
+    linear-gradient(165deg, var(--c1) 0%, var(--c2) 100%);
+}
+.fly-cover-side .fly-cover-plate::after {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(228, 201, 142, .32);
+  border-radius: 2px;
+}
+.fly-cover-side .fly-cover-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42%;
+  padding: 0 44px;
+  text-align: center;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  line-height: 1.4;
+  letter-spacing: .01em;
+  color: #F4EFE2;
+  text-shadow: 0 2px 6px rgba(6, 26, 18, .34);
+}
+
+/* 弹窗退场：遮罩淡掉、书架整体后退下沉 —— 读作「书架退回背景」。
+   这里必须用 animation 而不是 transition：弹窗刚打开时 .modal-overlay 上还在跑
+   入场动画 overlay-in（0→1），CSS 动画的优先级高于普通声明，transition 抢不过它
+   —— 退场会被入场动画按回 1，再在动画结束时瞬间掉到 0（踩过）。
+   换成同名属性的 animation，直接顶掉入场那条，从 1 开始淡。 */
+.modal-overlay.is-fly-away {
+  animation: overlay-out .5s ease forwards;
+  pointer-events: none;
+}
+@keyframes overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.modal-overlay.is-fly-away .modal-shelf {
+  animation: shelf-sink .66s cubic-bezier(.4, 0, .55, 1) forwards;
+}
+@keyframes shelf-sink {
+  from { transform: translateY(0) scale(1); opacity: 1; }
+  to { transform: translateY(12px) scale(.972); opacity: 0; }
+}
+.modal-overlay.is-fly-away .shelf-head,
+.modal-overlay.is-fly-away .shelf-nav,
+.modal-overlay.is-fly-away .shelf-board,
+.modal-overlay.is-fly-away .modal-actions {
+  animation: shelf-fade .3s ease forwards;
+}
+/* 整排书脊慢慢淡，不要跟着头部一起没 —— 要让人看清「整架书还在，只有这一本被抽走」。
+   被点的那一本立刻隐形：飞行体已经在它原位接住了，留着会双影。 */
+.modal-overlay.is-fly-away .shelf-row .spine { animation: shelf-fade .6s ease forwards; }
+.modal-overlay.is-fly-away .shelf-row .spine.is-flying { opacity: 0; animation: none; }
+@keyframes shelf-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+/* 弹窗在飞行途中只读：别让点中它的空白处又关一次 */
+.modal-overlay.is-fly-away .spine { pointer-events: none; }
+
+/* 书桌预置态：书桌已经摆好（弹窗还盖着），但真书和工具条先透明，
+   等飞行体摊平到位再由 app.js 的 reveal 淡入 */
+#view-learn.story-fly .book,
+#view-learn.story-fly .book-tools { opacity: 0; }
+/* 抽书时把「页面入场扫场」从故事面板上摘掉。
+   入场那条规则（html.intro-run … .view-active > *）按子元素序号给面板排了
+   0.38~0.74s 的延迟 + 0.38s 的淡入，书落定的 0.6~1.1s 正好压在它的爬升段上
+   ——整片书页发灰；它自带的 translateY(14px) 还会让量到的书位姿偏高 14px。
+   抽书路径不需要扫场，面板直接按末态出现。
+   只关入场那一段（带上 html.intro-run 前缀）：入场收尾后这条自动失效，
+   换肤的落位动画照常。 */
+html.intro-run #view-learn.shelf-cut > .story-panel { animation: none; }
+
+
+/* 书脊色板：薄荷 = 一整套绿（同一家出版社的书），暖阳换赭褐，见皮肤段 */
+:root {
+  --spine-1a: #20795A; --spine-1b: #0D3F2F;
+  --spine-2a: #2A7458; --spine-2b: #114A38;
+  --spine-3a: #227A5B; --spine-3b: #0E4132;
+  --spine-4a: #1C6B51; --spine-4b: #0B382B;
+  --spine-5a: #2F7A5F; --spine-5b: #124C3A;
+  --spine-6a: #266F54; --spine-6b: #103F30;
+  --shelf-glow-1: #FCFDFA;
+  --shelf-glow-2: #F1F5F0;
+  --shelf-glow-3: #E6EDE5;
+  --shelf-board-1: #E1E6DC;
+  --shelf-board-2: #CBD3C9;
+  --shelf-board-3: #B2BDB1;
+}
+
+/* 窄屏：一排 6 本按 594 排不下，缩书脊 + 收缝，让 6 本仍在一屏里 */
+@media (max-width: 880px) {
+  .modal-shelf { max-width: 100%; }
+  .spine { --sw: 62px; --sh: 218px; }
+  .shelf-row { gap: 12px; }
+  .spine .title { font-size: 12px; top: 54px; height: 118px; }
+  .spine .no { top: 32px; font-size: 8.5px; }
+  .spine .date { bottom: 30px; font-size: 8px; }
+  /* 高度里始终预留 22px 抽出量 + 绿点，否则「当前在读」那本会顶到上方 meta 行 */
+  .shelf-stage { height: 306px; }
+  .shelf-row { bottom: 40px; }
+  .shelf-board { bottom: 36px; }
+}
+@media (max-width: 620px) {
+  .spine { --sw: 46px; --sh: 176px; }
+  .shelf-row { gap: 9px; }
+  .spine .title { font-size: 10.5px; top: 46px; height: 92px; letter-spacing: .04em; }
+  .spine .rule { left: 6px; right: 6px; }
+  .spine .no { top: 28px; font-size: 8px; letter-spacing: .1em; }
+  .spine .date { display: none; }
+  .shelf-stage { height: 254px; }
+}
+
+/* 减动效：取消位移，只留亮度变化（悬停仍要能看出「指到了哪一本」） */
+@media (prefers-reduced-motion: reduce) {
+  .spine,
+  .spine:hover,
+  .spine.is-now,
+  .spine.is-now:hover {
+    transition: filter .2s ease;
+  }
+  .spine:hover { transform: perspective(1500px) rotateY(-12deg); }
+  .spine.is-now { transform: perspective(1500px) rotateY(-12deg); }
+  .spine:hover .face { filter: brightness(1.16); }
+}
 
 /* ---- 备份进度弹窗（backup-modal，backup.js 管理，2026-10-13 新增） ---- */
 .modal-backup { text-align: left; max-width: 480px; }
@@ -2094,9 +2582,7 @@ html #view-learn:not(.story-open) .story-panel { display: none; }
 .story-status.is-error::before { background: var(--bad); animation: none; }
 /* 生成的故事里：本轮 20 个词加粗高亮（主色深档，AA 对比度） */
 .story-en .story-hl,
-.story-zh .story-hl,
-.history-en .story-hl,
-.history-zh .story-hl { color: var(--accent-dark); font-weight: 700; }
+.story-zh .story-hl { color: var(--accent-dark); font-weight: 700; }
 
 /* ============================ 书桌：合着的书 + 摊开的书 ============================
    合书态（.book-under / .book-ribbon）挂在 .flashcard 里，靠卡片背景把自己压住一半；
@@ -2214,15 +2700,39 @@ html #view-learn:not(.story-open) .story-panel { display: none; }
 }
 .bk-leaf-cover-back {
   background: var(--surface);
-  box-shadow: inset 0 0 24px rgba(34, 48, 42, .08);
+  box-shadow: inset 0 0 24px rgba(34, 48, 42, .08), 0 16px 30px rgba(20, 46, 36, .18);
   border-radius: 0 6px 6px 0;
 }
+/* 空白纸：白纸翻在白书上，光靠色块什么都看不见 —— 骨架全靠投影和纸根暗带。
+   ① 投影往左/往下扫，翻起来时落在相邻页上，读得出一张纸从上面过；
+   ② 靠轴那一条比纸面暗 6~9%，是纸根的厚度影，纸转到侧面时这条还在；
+   ③ 右缘一条细线当纸边。 */
 .bk-leaf-page-front,
 .bk-leaf-page-back {
-  background: var(--surface);
+  background:
+    linear-gradient(90deg,
+      rgba(34, 48, 42, .085) 0,
+      rgba(34, 48, 42, .022) 6%,
+      rgba(34, 48, 42, 0) 15%),
+    var(--surface);
+  box-shadow: -10px 14px 30px rgba(34, 48, 42, .17), 0 2px 6px rgba(34, 48, 42, .07);
   border-radius: 0 6px 6px 0;
 }
-.bk-leaf-page-back { box-shadow: inset 8px 0 16px rgba(34, 48, 42, .07); }
+/* 纸面明暗遮片：纸翻起来时由亮转暗、落下时又转亮（opacity 由 JS 驱动）——
+   白纸翻在白书上，能看见的只有这层明暗扫过和一圈投影。
+   渐变而不是整片纯色：纸根（轴侧）暗、外缘亮，翻起来才有「一张有弧度的
+   纸」的明暗走向，不是一块灰板贴在页上。 */
+.bk-leaf .bk-shade {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--book-shade);
+  opacity: 0;
+  pointer-events: none;
+}
+/* 越靠下的一张纸，投影越收一分：叠着时才看得出是纸堆，不是同一张在闪。 */
+.bk-leaf-page-front,
+.bk-leaf-page-back { box-shadow: -8px 12px 26px rgba(34, 48, 42, .19), 0 2px 6px rgba(34, 48, 42, .07); }
 /* 飞行途中书不可点，免得点中还没落定的正文 */
 #view-learn.story-intro .book { pointer-events: none; }
 /* ---- 两拍入场（2026-10-26 深夜重构 · 薄荷/暖阳专属）----
@@ -2294,10 +2804,38 @@ html body.story-reading .app-header #sys-cluster { display: none; }
        普通块级子元素，块级布局里 auto 外边距照样撑满并居中。） */
   html body.story-reading .app-header,
   html body.story-reading .app-main { width: min(1280px, 100%); }
+  /* 顶栏脱离文档流：居中参照系从「顶栏以下」改成「整个视口」。
+     顶栏占 79px，若让它参与排版，书就只能在「顶栏以下」居中，
+     书的中心会比屏幕几何中心低半个顶栏高（≈40px）—— 看起来就是「偏下」。
+     绝对定位后 .app-main 直接占满 100vh，面板在视口里居中，书才是真的
+     落在屏幕中间。书顶永远 ≥ 顶栏底 + 工具条高（由 fitBook 的书高上限
+     与 --book-drop 兜底保证），所以顶栏不会被书压住。 */
+  html body.story-reading .app-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 4;
+  }
   html body.story-reading .app-main {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    /* 阅读态不要主区上下的留白差（平时是 40 / 8）：那 32px 的偏置会把
+       居中的书整体往下推 16px。清零后主区高度就是整个视口。 */
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  /* 工具条不参与纵向排版（高度归零、按钮向上溢出）：否则「工具条 + 书」
+     一起居中时，书会被顶条的高度顶下去半个条高（约 25px）——看起来就是
+     「书偏下」。归零后居中的对象只剩书本身，工具条稳稳坐在书顶上方。
+     上浮 10px 用 transform 而不是 margin：margin 会算进 flex 行高，
+     让书再偏 5px。 */
+  html #view-learn.story-open .book-tools {
+    height: 0;
+    align-items: flex-end;
+    margin-bottom: 0;
+    transform: translateY(-10px);
   }
   html body.story-reading #view-learn.story-open {
     flex: 1 1 auto;
@@ -2307,6 +2845,13 @@ html body.story-reading .app-header #sys-cluster { display: none; }
   html #view-learn.story-open .story-panel {
     flex: 1 1 auto;
     justify-content: center;
+  }
+  /* 矮屏兜底：视口不够高时，书高会被「字号不发糊」的下限（0.78）顶住，
+     整屏居中就会把工具条推进顶栏。fitBook 算出需要下推的距离写进
+     --book-drop；这里乘 2 做 padding —— 面板在缩短后的 content box 里
+     居中，中心正好下移 drop（padding 的一半被「重新居中」吃掉）。 */
+  html body.story-reading #view-learn.story-open .story-panel {
+    padding-top: calc(2 * var(--book-drop, 0px));
   }
 }
 
@@ -2420,11 +2965,38 @@ html #view-learn.story-open .story-panel .story-footer { display: none; }
 .book-page-left { padding-left: 56px; padding-right: 60px; }
 .book-page-right { padding-left: 60px; padding-right: 56px; }
 .book-page .story-kicker { margin-bottom: 12px; }
+/* 「存档」：从书架点开的是旧篇，书页眉上标一下，跟「本轮」区分开 */
+.story-archive-tag {
+  margin-left: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+}
+.story-archive-tag[hidden] { display: none; }
 .book-page .story-title {
   margin: 0;
   font-size: 22px;
   line-height: 1.35;
   letter-spacing: .01em;
+  /* 书名最长 5 词，两行封顶：再多就吃掉正文的版面了 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* 书桌上换书：书已经开着时从书架点另一本 —— 内容淡入落定，别硬切 */
+@keyframes bookSwap {
+  from { opacity: 0; filter: blur(1.5px); }
+  to { opacity: 1; filter: none; }
+}
+.book.is-swap { animation: bookSwap .36s cubic-bezier(.22,.7,.3,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .book.is-swap { animation: none; }
 }
 .book-page-label {
   margin: 0 0 12px;
@@ -2997,10 +3569,15 @@ html[data-skin="warm"] {
 
   --mark-bg: #F1E7D5;
   --mark-bg-hover: #EADFC9;
-  --mark-stroke: #5C4A32;
-  --mark-bg-on: #FBE6D6;
+  --mark-stroke: #5C4A32;  --mark-bg-on: #FBE6D6;
   --mark-bg-on-hover: #F7DCC6;
   --mark-fg: #C0453B;
+
+  /* 纸面明暗遮片换成暖褐：暖色底上用冷绿暗片，翻动的纸会发青 */
+  --book-shade: linear-gradient(90deg,
+    rgba(58, 40, 18, .92) 0%,
+    rgba(58, 40, 18, .50) 40%,
+    rgba(58, 40, 18, .18) 100%);
 
   --ok: #4F7A3C;
   --ok-shadow: rgba(79, 122, 60, 0.20);
@@ -3033,6 +3610,20 @@ html[data-skin="warm"] {
   /* 故事页：赭橙荧光笔（暖阳世界的批注笔） */
   --st-mark: rgba(174, 85, 38, 0.15);
   --st-mark-on: rgba(174, 85, 38, 0.24);
+
+  /* 故事书架：绿系换赭褐皮面 —— 沿用绿色会跟暖阳自己的橙撞成一坨 */
+  --spine-1a: #8C5A2B; --spine-1b: #4A2C12;
+  --spine-2a: #9A6633; --spine-2b: #52301A;
+  --spine-3a: #7E4E24; --spine-3b: #421F0E;
+  --spine-4a: #A06A38; --spine-4b: #563420;
+  --spine-5a: #8A5527; --spine-5b: #472811;
+  --spine-6a: #93602F; --spine-6b: #4F2F17;
+  --shelf-glow-1: #FFFCF5;
+  --shelf-glow-2: #FBF3E4;
+  --shelf-glow-3: #F3E8D3;
+  --shelf-board-1: #E9DAC0;
+  --shelf-board-2: #DCC9A8;
+  --shelf-board-3: #C9B28C;
 
   /* 卡下托盘：藤蔓 → 手绘树枝（深棕枝干），叶子转秋色，
      小花换枫叶（形状切换靠下方 .vn-fl / .vn-ml 显隐），
