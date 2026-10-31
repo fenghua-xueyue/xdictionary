@@ -29,7 +29,8 @@
     "english_app_sound_v1",
     "english_app_story_v1",
     "english_app_custom_v1",
-    "english_app_dict_v1"
+    "english_app_dict_v1",
+    "english_app_ink_v1"      // 2026-10-28：墨水瓶（剩余墨滴 / 服务地址 / 匿名 id）
   ];
 
   /* ---------- 轻提示（复用 #toast 节点，写法同 app.js / speak.js） ---------- */

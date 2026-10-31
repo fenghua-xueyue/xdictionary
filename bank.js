@@ -430,9 +430,61 @@
       '<span class="src-meta">' + esc(meta) + (active ? " · 学习中" : "") + '</span>' +
       "</button>";
   }
+  /* 菜单顶部的轮次块（2026-10-29，2026-10-30 改为真回退）：
+     学习视图 =「回到某一轮」（真把当前轮搬过去，可补学 / 补故事）；
+     复习视图 =「跳到某一批」（只换浏览的批次）。
+     数据取 app.js 发布的 window.__rounds（只读快照），跳转走 xd:jump-round 事件
+     —— 两边仍然不互调内部函数。 */
+  function roundBlockHtml() {
+    var r = window.__rounds;
+    if (!r || !r.total) return "";
+    var cur = Math.min(Math.max(r.cur || 1, 1), r.total);
+    var isReview = r.view === "review";
+    var unit = isReview ? "批" : "轮";
+    return "" +
+      '<div class="src-round">' +
+        '<div class="src-round-head">' +
+          '<span class="src-round-title">' + (isReview ? "跳到某一批" : "回到某一轮") + '</span>' +
+          '<span class="src-round-meta">第 ' + cur + " / " + r.total + " " + unit + '</span>' +
+        "</div>" +
+        '<div class="src-round-row">' +
+          '<button type="button" class="src-step" data-act="round-prev" aria-label="上一' + unit + '"' +
+            (cur <= 1 ? " disabled" : "") + ">‹</button>" +
+          '<input class="src-round-input" id="src-round-input" type="text" inputmode="numeric"' +
+            ' maxlength="3" value="' + cur + '" aria-label="要跳到的' + unit + '次号"' +
+            ' title="输入' + unit + '次号，回车跳转">' +
+          '<button type="button" class="src-step" data-act="round-next" aria-label="下一' + unit + '"' +
+            (cur >= r.total ? " disabled" : "") + ">›</button>" +
+          '<button type="button" class="src-go" data-act="round-go">跳转</button>' +
+        "</div>" +
+        (isReview || cur >= r.total
+          ? ""
+          : '<div class="src-round-tip">学完点「回第 ' + r.total + ' 轮」就接回去，进度不会丢</div>') +
+      "</div>" +
+      '<div class="src-sep"></div>';
+  }
+  function onRoundAction(act) {
+    var r = window.__rounds;
+    if (!r || !r.total) return;
+    var input = sourceMenu.querySelector("#src-round-input");
+    var n = act === "round-go"
+      ? parseInt((input && input.value) || "", 10)
+      : (r.cur || 1) + (act === "round-prev" ? -1 : 1);
+    if (!n || isNaN(n)) {
+      if (input) { input.value = r.cur; input.select(); }
+      toast((r.view === "review" ? "批次填 1 到 " : "轮次填 1 到 ") + r.total + " 之间的数字，按回车跳转");
+      return;
+    }
+    document.dispatchEvent(new CustomEvent("xd:jump-round", { detail: { round: n } }));
+    // 输号跳转：跳完就收起（事情办完了）；步进：留在菜单里连点更方便
+    if (act === "round-go") { toggleSourceMenu(false); return; }
+    renderSourceMenu();   // 刷新右上角「第 K / N 轮」与两端禁用态
+  }
+
   function renderSourceMenu() {
     var cur = sourceId;
-    var html = srcItemHtml("cet4", "四级高频词库", window.WORDS ? window.WORDS.length + " 词" : "", cur === "cet4");
+    var html = roundBlockHtml();
+    html += srcItemHtml("cet4", "四级高频词库", window.WORDS ? window.WORDS.length + " 词" : "", cur === "cet4");
     var banks = all();
     for (var i = 0; i < banks.length; i++) {
       var b = banks[i];
@@ -545,15 +597,31 @@
         toggleSourceMenu(false);
       });
       sourceMenu.addEventListener("click", function (e) {
+        // 菜单内部的点击不再冒泡到「点外部收起」那条监听上 ——
+        // 步进跳转会重绘菜单，等事件冒到 document 时 target 已经脱离文档，
+        // 会被误判成「点了外面」而把菜单收掉。
+        e.stopPropagation();
         var item = e.target.closest("button[data-id], button[data-act]");
         if (!item) return;
-        if (item.dataset.act === "manage") {
+        var act = item.dataset.act;
+        if (act === "round-prev" || act === "round-next" || act === "round-go") {
+          onRoundAction(act);
+          return;
+        }
+        if (act === "manage") {
           toggleSourceMenu(false);
           openModal();
           return;
         }
         toggleSourceMenu(false);
         document.dispatchEvent(new CustomEvent("xd:switch-source", { detail: { id: item.dataset.id } }));
+      });
+      // 轮次输入框：回车 / 小键盘 Enter 直接跳
+      sourceMenu.addEventListener("keydown", function (e) {
+        if (!e.target || e.target.id !== "src-round-input") return;
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        onRoundAction("round-go");
       });
       document.addEventListener("xd:banks-changed", function () {
         if (!sourceMenu.hidden) renderSourceMenu();

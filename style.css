@@ -190,11 +190,21 @@ button.round-badge:hover { background: var(--btn-primary-bg-hover); }
   right: 0;
   z-index: 60;               /* 高于页内内容、低于弹窗(z80)与 toast(z90) */
   min-width: 260px;
+  max-width: calc(100vw - 24px);   /* 窄屏（390）不许被内容顶出左边缘 */
   padding: 6px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-switcher);
   box-shadow: var(--shadow-pop);
+  /* 从徽标那儿翻出来（2026-10-31）：170ms，右上角为原点，不带过冲。
+     只给容器做，不给菜单项错峰 —— bank.js 步进时会重绘 innerHTML，
+     项级动画会让每点一次 ‹ 整片菜单闪一遍。 */
+  transform-origin: 100% 0;
+  animation: menu-drop .17s cubic-bezier(.2, .7, .3, 1) both;
+}
+@keyframes menu-drop {
+  from { opacity: 0; transform: translateY(-6px) scale(.972); }
+  to   { opacity: 1; transform: none; }
 }
 .source-menu[hidden] { display: none; }
 .src-item {
@@ -225,6 +235,89 @@ button.round-badge:hover { background: var(--btn-primary-bg-hover); }
 .src-item.is-active .src-meta { color: var(--accent-dark); font-weight: 600; }
 .src-manage .src-name { font-weight: 500; color: var(--text-secondary); }
 .src-sep { height: 1px; margin: 6px 8px; background: var(--border-soft); }
+
+/* 菜单顶部轮次块（2026-10-29，2026-10-30 改为真回退）：
+   学习视图 = 回到某一轮（会真的把当前轮搬过去），复习视图 = 跳到某一批。
+   圆角 / 颜色全走皮肤变量。 */
+.src-round { padding: 6px 8px 8px; }
+.src-round-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.src-round-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
+.src-round-tip {
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.src-round-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.src-round-row { display: flex; align-items: center; gap: 6px; }
+.src-step {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.src-step:hover:not(:disabled) {
+  background: var(--bg-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+.src-step:disabled { opacity: .45; cursor: default; }
+.src-round-input {
+  flex: 1 1 60px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.src-round-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.src-go {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--btn-primary-bg);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s;
+}
+.src-go:hover { background: var(--btn-primary-bg-hover); }
+.src-step:focus-visible,
+.src-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* 顶栏右侧：复习模式切换按钮 + 轮次徽标 */
 .header-right {
@@ -1661,7 +1754,15 @@ html #btn-generate { display: none; }
   align-items: center;
   justify-content: center;
   text-align: center;
+  /* 按住反馈用（2026-10-31）：只有 :active 的 1px 下沉 + 0.5% 收缩。
+     纸被按住会「陷」一点，不是弹簧回弹 —— 所以缓动不带过冲。 */
+  transition: transform .12s ease-out;
 }
+/* 背单词模式没有「点卡翻面」这个手势，不给按压反馈（给了会像按坏了） */
+.flashcard[data-mode="en"]:active,
+.flashcard[data-mode="zh"]:active { transform: translateY(1px) scale(0.995); }
+
+/* 右上角发音按钮 */
 .card-speaker {
   position: absolute;
   top: 18px;
@@ -1715,6 +1816,15 @@ html #btn-generate { display: none; }
 .card-mark.marked { background: var(--mark-bg-on); }
 .card-mark.marked svg path { fill: var(--mark-fg); stroke: var(--mark-fg); }
 .card-mark.marked:hover { background: var(--mark-bg-on-hover); }
+/* 书签落笔（2026-10-31）：像盖一个章 —— 先被按下去（.88），弹起略过 1（1.12），
+   再落回原尺寸。只标不取消（取消是「抽走」，不该有盖章感）。
+   animation 会盖掉 :active 的 scale(.94)，所以起点直接写成 .88，衔接不跳。 */
+@keyframes mark-stamp {
+  0%   { transform: scale(.88); }
+  44%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.card-mark.is-stamp { animation: mark-stamp .28s cubic-bezier(.2, .7, .3, 1) both; }
 
 /* ---- 卡片顶部的「故事锚点」：这个词在本轮故事里出现过 ----
    只在有故事时浮现（story.js 控制 hidden），点一下展开故事并跳到那一句。 */
@@ -1760,6 +1870,15 @@ html #btn-generate { display: none; }
   .st-line.is-focus { animation: none; background-color: var(--bg-soft); }
   .flashcard.card-pulse { animation: none; }
   .st-dot:hover { transform: none; }
+  /* 2026-10-31 新增的一批：判分光晕 / 错误摇动 / 书签盖章 / 菜单展开 / 卡片按压。
+     全部退化为静态 —— 对错信息仍由红绿边框承载，不靠动画传递。 */
+  .write-input.is-ok-pulse,
+  .write-input.is-err-shake,
+  .card-mark.is-stamp,
+  .source-menu { animation: none; }
+  .flashcard { transition: none; }
+  .flashcard[data-mode="en"]:active,
+  .flashcard[data-mode="zh"]:active { transform: none; }
 }
 /* 词槽：单词外面套了一层 .word-stack（为切词动画准备的两层结构）。
    display:contents 让盒子本身不参与布局 —— 里面的 .card-word 仍然是
@@ -1810,6 +1929,28 @@ html #btn-generate { display: none; }
 .write-input:focus { border-color: var(--accent); }
 .write-input.correct { border-color: var(--ok); box-shadow: 0 0 0 3px var(--ok-shadow); }
 .write-input.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-shadow); }
+
+/* ---- 判分反馈（2026-10-31）----
+   输入框是「边打边判」的：每敲一个字母判一次。所以字符级只留红 / 绿边框，
+   不做整框动作 —— 逐字母摇动会变成持续抖动。
+   「对」在这一轮第一次判对时给一次光晕落定（一个词只可能对一次，天然不吵）；
+   「错」只在回车 / 失焦这类「我认为我写完了」的动作上摇一下（触发见 app.js）。
+   两者都只用 box-shadow / transform，不触发重排，也不改任何布局。 */
+@keyframes input-ok {
+  0%   { box-shadow: 0 0 0 0 var(--ok-shadow); }
+  46%  { box-shadow: 0 0 0 9px var(--ok-shadow); }
+  100% { box-shadow: 0 0 0 3px var(--ok-shadow); }
+}
+.write-input.is-ok-pulse { animation: input-ok .34s var(--flip-ease) both; }
+
+@keyframes input-shake {
+  0%, 100% { transform: translateX(0); }
+  16%      { transform: translateX(-4px); }
+  36%      { transform: translateX(4px); }
+  56%      { transform: translateX(-3px); }
+  76%      { transform: translateX(2px); }
+}
+.write-input.is-err-shake { animation: input-shake .3s var(--flip-ease) both; }
 
 /* ---- 三种模式显隐规则 ---- */
 /* 默认：默写输入行不显示（「显示××」按钮已删除：揭示统一走翻面 / 点卡片） */
@@ -3334,6 +3475,120 @@ html #view-learn.story-open .story-panel .story-footer { display: none; }
   .bk-para.is-pin { animation: none; background-color: var(--bg-soft); }
   .book-ribbon { transition: none; }
 }
+
+/* ============================ 墨水瓶（2026-10-28） ============================
+   只有「没有自己的 Key」的访客才看得到它 —— 有 Key 的人不受计数约束，
+   给他看一个瓶子只是噪音。空了不报红：描边变虚、数字变灰，语气放轻。 */
+
+.btn-ink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.btn-ink[hidden] { display: none; }
+.btn-ink:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-soft); }
+.btn-ink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-ink .svg-icon { width: 15px; height: 15px; }
+.ink-num { font-weight: 700; }
+.btn-ink.is-empty { border-style: dashed; color: var(--text-muted); }
+.btn-ink.is-empty:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---- 添墨弹窗 ---- */
+.modal-ink { max-width: 470px; text-align: left; }
+
+.ink-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 16px 0 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-soft);
+}
+.ink-meter-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ink-meter-text { display: flex; align-items: baseline; gap: 4px; margin: 2px 0 0; }
+.ink-meter-num { font-size: 27px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.ink-meter-unit { font-size: 13.5px; color: var(--text-tertiary); }
+.ink-meter-note { margin: 0; font-size: 12px; color: var(--text-muted); }
+
+.ink-hint { margin-bottom: 14px; }
+
+.ink-ways { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.ink-way {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 14px 15px 15px;
+  background: var(--surface);
+}
+.ink-way h4 { margin: 0 0 5px; font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+.ink-way p { margin: 0 0 11px; font-size: 12.8px; line-height: 1.65; color: var(--text-tertiary); }
+.ink-way .ink-way-btn { height: 34px; padding: 0 16px; font-size: 13px; }
+
+.ink-code-row { display: flex; gap: 8px; align-items: stretch; }
+.ink-code-row input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  letter-spacing: .3px;
+  color: var(--text-primary);
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color .15s ease;
+}
+.ink-code-row input:focus { border-color: var(--accent); }
+.ink-code-row input::placeholder { letter-spacing: 0; color: var(--text-muted); }
+.ink-code-row .btn { height: 38px; padding: 0 18px; font-size: 13.5px; white-space: nowrap; }
+
+.ink-msg { margin: 0 0 12px; font-size: 13px; line-height: 1.6; color: var(--accent-dark); }
+.ink-msg.is-error { color: var(--danger); }
+.ink-msg[hidden] { display: none; }
+
+.ink-advanced { margin-bottom: 18px; font-size: 12.5px; color: var(--text-muted); }
+.ink-advanced summary {
+  cursor: pointer;
+  padding: 6px 0;
+  color: var(--text-tertiary);
+  list-style: none;
+}
+.ink-advanced summary::-webkit-details-marker { display: none; }
+.ink-advanced summary::before { content: "▸ "; }
+.ink-advanced[open] summary::before { content: "▾ "; }
+.ink-advanced .ink-code-row { margin: 8px 0 7px; }
+.ink-advanced input { font-family: inherit; letter-spacing: 0; }
+.ink-advanced code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--bg-soft-2);
+  font-size: 11.5px;
+}
+.ink-advanced .modal-field-hint { margin: 0; }
 
 /* ============================ 轻提示 toast ============================ */
 .toast {

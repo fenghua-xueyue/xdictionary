@@ -5,7 +5,7 @@
 (function () {
   "use strict";
   /* 版本指纹：F12 控制台可确认浏览器实际加载的 app.js 是哪一版（排查缓存用） */
-  console.log("[xdictionary] app.js v202610265 · 开书两拍 + 标记生词带手填释义");
+  console.log("[xdictionary] app.js v202610311 · 判分落定 + 按压与菜单微交互");
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -15,8 +15,11 @@
     showAnswer: false,      // 英文/中文模式是否已揭示答案
     pool: [],               // 打乱后的词库索引（下标对应「当前来源」的词表）
     cursor: 0,              // 已抽取的游标
-    roundCounter: 0,        // 当前轮次号
-    currentRound: null,     // { round, words, createdAt }
+    roundCounter: 0,        // 已经抽到第几轮（最远到过的轮次，回退时不变）
+    currentRound: null,     // { round, words, createdAt } —— 正在学的那一轮（可回退到更早的轮）
+    rounds: [],             // 轮次记录 [{ round, words:[单词], createdAt, idx }]；
+                            // createdAt 是故事指纹（roundKey），回退时必须原样搬回去，
+                            // 否则那一轮已经生成过的故事会失联
     reviewIndex: 0,         // 复习模式下跨所有学过的词的全局索引
     reviewSource: "all",    // 复习词源：all(全部已学词) | marked(标记模式：只看已标记的词)
     marks: { en: [], zh: [] }, // 已标记的单词，按模式分开存：中文模式与英文模式互不影响
@@ -27,6 +30,7 @@
 
   var LS_KEY = "english_app_v1";
   var ROUND_SIZE = 20;
+  var ROUND_LOG_MAX = 200;   // 轮次记录上限（与故事集上限对齐）；超出丢最老的
 
   /* ---------- 词库按"单词"建索引（标记存的是单词字符串，取回词条时用） ---------- */
   var WORD_BY_TEXT = (function () {
@@ -49,7 +53,8 @@
   function ctxFields() {
     return {
       pool: state.pool, cursor: state.cursor,
-      roundCounter: state.roundCounter, currentRound: state.currentRound
+      roundCounter: state.roundCounter, currentRound: state.currentRound,
+      rounds: state.rounds
     };
   }
   function applyCtx(c) {
@@ -57,6 +62,7 @@
     state.cursor = c.cursor || 0;
     state.roundCounter = c.roundCounter || 0;
     state.currentRound = c.currentRound || null;
+    state.rounds = Array.isArray(c.rounds) ? c.rounds : [];
   }
   function switchSource(id) {
     if (!id || id === state.source) return;
@@ -64,9 +70,10 @@
     state.ctx[state.source] = ctxFields();       // 旧来源进度存档
     state.source = id;
     if (!state.ctx[id]) {
-      state.ctx[id] = { pool: [], cursor: 0, roundCounter: 0, currentRound: null };
+      state.ctx[id] = { pool: [], cursor: 0, roundCounter: 0, currentRound: null, rounds: [] };
     }
     applyCtx(state.ctx[id]);
+    ensureRoundLog();                            // 老存档 / 新词库：把轮次记录补齐
     state.view = "learn";
     state.showAnswer = false;
     state.reviewIndex = 0;
@@ -144,8 +151,68 @@
     return pool;
   }
 
+  /* ---------- 轮次记录（2026-10-30） ----------
+     每抽一轮就把这一轮的 20 个词记下来（只存单词字符串，比存词条省一个量级）。
+     有了它，「回到第 K 轮」才是确定的 20 个词，而不是从已学序列里按 20 切出来的
+     近似值（自定义词库不整除、抽满重洗都会让那个近似值失真）。 */
+  function findRound(k) {
+    for (var i = state.rounds.length - 1; i >= 0; i--) {
+      if (state.rounds[i] && state.rounds[i].round === k) return state.rounds[i];
+    }
+    return null;
+  }
+  /* 记录里的单词 → 词条（词库被删 / 改过时给占位词条，卡片不会崩） */
+  function wordsOfRound(item) {
+    var out = [];
+    for (var i = 0; i < item.words.length; i++) {
+      var text = item.words[i];
+      var w = lookupWord(text);
+      out.push(w || { word: text, phonetic: "", meaning: "" });
+    }
+    return out;
+  }
+  /* 老存档没有轮次记录 → 用已学序列补一份（只补，不改原有字段）。
+     最后一轮直接用 currentRound：它的词和 createdAt 都是真的，故事指纹不能动。 */
+  function ensureRoundLog() {
+    if (!state.currentRound) { state.rounds = []; return; }
+    if (state.rounds.length) return;
+    var list = activeWords();
+    var cur = state.currentRound;
+    var curWords = (cur.words || []).map(function (w) { return (w && w.word) ? w.word : ""; }).filter(Boolean);
+    var curNo = typeof cur.round === "number" ? cur.round : state.roundCounter;
+    var out = [];
+    var poolOk = Array.isArray(state.pool) && state.pool.length === list.length;
+    var n = poolOk ? Math.ceil(state.cursor / ROUND_SIZE) : 0;
+    for (var k = 1; k < n; k++) {
+      var words = [];
+      for (var j = (k - 1) * ROUND_SIZE; j < k * ROUND_SIZE; j++) {
+        var idx = state.pool[j];
+        if (idx != null && list[idx]) words.push(list[idx].word);
+      }
+      if (!words.length) continue;
+      /* 这些轮次的 createdAt 老存档没留 → 造一个稳定的替代指纹（同一份存档每次
+         算出来都一样），补写的故事下次打开还能对上这一轮 */
+      out.push({ round: k, words: words, createdAt: "legacy-" + k + "-" + (words[0] || ""), idx: 0 });
+    }
+    out.push({
+      round: curNo,
+      words: curWords,
+      createdAt: (typeof cur.createdAt === "string" && cur.createdAt)
+        ? cur.createdAt : ("legacy-" + curNo + "-" + (curWords[0] || "")),
+      idx: state.currentIndex || 0
+    });
+    state.rounds = out;
+    if (state.roundCounter < curNo) state.roundCounter = curNo;
+  }
+
   function drawRound() {
     var list = activeWords();
+    /* 回退过之后「下一轮」不该重新抽词：后面那一轮已经抽好躺在记录里，
+       直接接回去（误触多点了一下，这一步把丢掉的那 20 个词原样还给你）。 */
+    if (state.currentRound) {
+      var ahead = findRound(state.currentRound.round + 1);
+      if (ahead) { gotoRound(ahead.round, true); return; }
+    }
     if (!Array.isArray(state.pool) || state.pool.length !== list.length) {
       state.pool = freshPool();
       state.cursor = 0;
@@ -161,11 +228,19 @@
     var words = indices.map(function (i) { return list[i]; });
     state.roundCounter += 1;
 
+    var createdAt = new Date().toISOString();
     state.currentRound = {
       round: state.roundCounter,
       words: words,
-      createdAt: new Date().toISOString()
+      createdAt: createdAt
     };
+    state.rounds.push({
+      round: state.roundCounter,
+      words: words.map(function (w) { return w.word; }),
+      createdAt: createdAt,
+      idx: 0
+    });
+    if (state.rounds.length > ROUND_LOG_MAX) state.rounds = state.rounds.slice(-ROUND_LOG_MAX);
 
     state.currentIndex = 0;
     state.showAnswer = false;
@@ -173,11 +248,61 @@
 
     saveState();
     renderAll();
+    document.dispatchEvent(new CustomEvent("xd:round-changed", { detail: { round: state.roundCounter } }));
+  }
+
+  /* ---------- 回到某一轮（真正回退，2026-10-30） ----------
+     只搬 currentRound 指针，pool / cursor / roundCounter 一个都不动：
+     - 误触「下一轮」丢掉的那 20 个词还在记录里，学完点「下一轮」就接回去；
+     - cursor 不回退 → 不会重复抽词、轮次号也不会乱；
+     - createdAt 原样搬回 → story.js 按 roundKey 立刻认出「第 K 轮那篇」；
+       那一轮没有故事时，直接在这一轮上生成，正好补上当初没写的那篇。 */
+  function gotoRound(k, quiet) {
+    var item = findRound(k);
+    if (!item) {
+      if (state.rounds.length) {
+        var first = state.rounds[0].round;
+        toast(k < first
+          ? "第 " + k + " 轮太久了，只留着最近 " + state.rounds.length + " 轮"
+          : "第 " + k + " 轮还没抽过，点「下一轮」往后走");
+      } else {
+        toast("还没有学过的单词，先学一轮再回来");
+      }
+      return;
+    }
+    if (state.currentRound && state.currentRound.round === k) {
+      if (!quiet) toast("现在就是第 " + k + " 轮");
+      return;
+    }
+    if (!item.words || !item.words.length) { toast("第 " + k + " 轮的词已经找不到了"); return; }
+    var back = !!(state.currentRound && k < state.currentRound.round);
+    state.currentRound = {
+      round: item.round,
+      words: wordsOfRound(item),
+      createdAt: item.createdAt
+    };
+    state.currentIndex = item.idx || 0;
+    if (state.currentIndex >= state.currentRound.words.length) state.currentIndex = 0;
+    state.showAnswer = false;
+    state.view = "learn";
+    saveState();
+    renderAll();
+    document.dispatchEvent(new CustomEvent("xd:round-changed", { detail: { round: k } }));
+    if (!quiet) {
+      toast(back && state.roundCounter > k
+        ? "已回到第 " + k + " 轮 · 第 " + state.roundCounter + " 轮给你留着"
+        : "已回到第 " + k + " 轮");
+    }
   }
 
   /* ---------- 持久化 ---------- */
   function saveState() {
     // 当前来源的进度随时写回 ctx，切来源时才不会丢
+    // 顺手记下这一轮翻到第几张：回退到它时能停在上次的位置（「补回误触」要的就是这个）
+    if (state.currentRound && state.rounds && state.rounds.length) {
+      var item = findRound(state.currentRound.round);
+      if (item) item.idx = state.currentIndex;
+    }
     if (state.ctx && state.source) state.ctx[state.source] = ctxFields();
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
@@ -189,6 +314,7 @@
         cursor: state.cursor,
         roundCounter: state.roundCounter,
         currentRound: state.currentRound,
+        rounds: state.rounds,
         reviewIndex: state.reviewIndex,
         reviewSource: state.reviewSource,
         marks: state.marks,
@@ -322,9 +448,12 @@
   }
 
   /* ---------- 渲染：卡片 ---------- */
+  // 进度条上一次渲染属于哪一轮：换轮时用来「直接归位」，不走 0.2s 倒带
+  var progressTag = "";
   function renderCard(viewName) {
     var viewEl = document.getElementById(viewName === "review" ? "view-review" : "view-learn");
     var round = activeRoundFor(viewName);
+    publishRounds();   // 顶栏菜单的「第 K / N 轮」跟着一起刷新（翻卡 / 换批 / 开书都经过这里）
     if (!round) return;
 
     var idx = cardIndex(viewName, round);
@@ -361,8 +490,20 @@
     input.value = "";
     input.classList.remove("correct", "wrong");
 
+    /* 换轮 / 换批时进度条不许「倒带」：0.2s 从 100% 滑回 5%，看着像在抽水。
+       跨轮就关掉这一帧的过渡直接归位；同一轮里翻卡仍然平滑走。 */
+    var fill = viewEl.querySelector(".progress-fill");
     var pct = (idx / Math.max(round.words.length - 1, 1)) * 100;
-    viewEl.querySelector(".progress-fill").style.width = pct + "%";
+    var roundTag = viewName + ":" + (round._round != null ? "r" + round._round : "l" + round.round);
+    if (roundTag !== progressTag) {
+      progressTag = roundTag;
+      fill.style.transition = "none";
+      fill.style.width = pct + "%";
+      void fill.offsetWidth;          // 让上面这个宽度立刻落地，再恢复过渡
+      fill.style.transition = "";
+    } else {
+      fill.style.width = pct + "%";
+    }
     viewEl.querySelector(".progress-text").textContent =
       (idx + 1) + " / " + round.words.length;
 
@@ -385,9 +526,38 @@
     } else {
       viewEl.querySelector(".nav-left").disabled = idx === 0;
       viewEl.querySelector(".nav-right").disabled = idx === round.words.length - 1;
+      renderRewind(viewEl);
     }
 
     renderMark(viewName);
+  }
+
+  /* ---------- 回退态的两个文案（2026-10-30）----------
+     不新增任何 DOM：把「下一轮」换成「回第 N 轮」，进度提示行说明后面的轮次还留着。
+     学习页的留白一点都没动，回退也只是临时状态。 */
+  function renderRewind(viewEl) {
+    var btn = document.getElementById("btn-new-round-learn");
+    var hint = viewEl.querySelector(".progress-hint");
+    var cur = state.currentRound ? state.currentRound.round : 0;
+    var far = state.roundCounter || 0;
+    var rewound = cur > 0 && far > cur;
+    if (btn) {
+      var label = rewound ? "回第 " + far + " 轮" : "下一轮";
+      // 图标是子元素，文字挂在它后面的文本节点上
+      for (var i = btn.childNodes.length - 1; i >= 0; i--) {
+        var n = btn.childNodes[i];
+        if (n.nodeType === 3 && n.nodeValue.trim()) { n.nodeValue = " " + label; break; }
+      }
+      btn.classList.toggle("is-rewound", rewound);
+      btn.title = rewound
+        ? "第 " + far + " 轮已经抽好了、一个词没少，点这里接回去"
+        : "抽下一批 20 个新词";
+    }
+    if (hint) {
+      hint.textContent = rewound
+        ? "正在补第 " + cur + " 轮 · 第 " + far + " 轮的词给你留着"
+        : "点击左右箭头，切换上一个 / 下一个单词";
+    }
   }
 
   /* ---------- 渲染：卡片左上角标记按钮（状态跟随当前模式） ---------- */
@@ -418,13 +588,80 @@
   function renderRoundBadge() {
     var badge = document.getElementById("round-badge");
     var round = state.currentRound ? state.currentRound.round : 1;
+    var far = Math.max(state.roundCounter || 0, round);   // 最远抽到第几轮
     var learned = state.currentRound ? Math.min(round * ROUND_SIZE, activeWords().length) : 0;
     var srcLabel = "";
     if (state.source !== "cet4" && window.BANKS) {
       var b = BANKS.byId(state.source);
       if (b) srcLabel = "「" + b.name + "」 · ";
     }
-    badge.textContent = srcLabel + "第 " + round + " 轮 · 已学 " + learned + " 词";
+    // 回退到旧轮时写成「第 4 / 5 轮」：一眼看出在补哪一轮、最远学到哪一轮
+    var roundText = far > round ? "第 " + round + " / " + far + " 轮" : "第 " + round + " 轮";
+    badge.textContent = srcLabel + roundText + " · 已学 " + learned + " 词";
+    badge.classList.toggle("is-rewound", far > round);
+    badge.title = far > round
+      ? "正在补第 " + round + " 轮 · 第 " + far + " 轮给你留着（点这里切换）"
+      : "点击切换词库 / 回到某一轮";
+  }
+
+  /* ---------- 轮次快照 + 跳轮次（2026-10-29，2026-10-30 改为真回退） ----------
+     同一个菜单，两个视图语义不同：
+     - 学习视图：「回到某一轮」= 真的把 currentRound 搬过去（能补学、能补故事）
+     - 复习视图：「跳到某一批」= 只换 reviewIndex（复习页本来就是浏览已学词） */
+  function roundSnapshot() {
+    if (state.view === "review") {
+      var chunks = getReviewChunks().length;
+      return {
+        view: "review",
+        cur: chunks ? Math.floor(state.reviewIndex / ROUND_SIZE) + 1 : 0,
+        total: chunks,
+        round: state.currentRound ? state.currentRound.round : 0
+      };
+    }
+    var cur = state.currentRound ? state.currentRound.round : 0;
+    var far = Math.max(state.roundCounter || 0, cur);
+    return { view: "learn", cur: cur, total: far, round: cur };
+  }
+  /* 给 bank.js 读（与 window.BANKS / window.UserDict 同一套做法：
+     只发只读快照、不互调内部函数）。每次重绘卡片时刷新一次。 */
+  function publishRounds() {
+    window.__rounds = roundSnapshot();
+    return window.__rounds;
+  }
+
+  function jumpRound(n, quiet) {
+    /* ---- 复习视图：只跳批次，不动学习进度 ---- */
+    if (state.view === "review") {
+      var total = getReviewChunks().length;
+      if (!total) { toast("还没有学过的单词，先学一轮再回来查看"); return; }
+      var k0 = parseInt(n, 10);
+      if (!k0 || isNaN(k0) || k0 < 1) { toast("轮次填 1 到 " + total + " 之间的数字"); return; }
+      var clamped0 = false;
+      if (k0 > total) { clamped0 = true; k0 = total; }
+      if (state.reviewSource === "marked") state.reviewSource = "all";
+      state.reviewIndex = (k0 - 1) * ROUND_SIZE;
+      state.showAnswer = false;
+      saveState();
+      renderAll();
+      if (!quiet) {
+        toast(clamped0
+          ? "目前只到第 " + total + " 轮，已跳到最后一轮"
+          : "已跳到第 " + k0 + " 轮 · 共 " + total + " 轮");
+      }
+      return;
+    }
+    /* ---- 学习视图：真的回到那一轮 ---- */
+    if (!state.currentRound || !state.rounds.length) {
+      toast("还没有学过的单词，先学一轮再回来");
+      return;
+    }
+    var far = Math.max(state.roundCounter || 0, state.currentRound.round);
+    var k = parseInt(n, 10);
+    if (!k || isNaN(k) || k < 1) { toast("轮次填 1 到 " + far + " 之间的数字"); return; }
+    var clamped = false;
+    if (k > far) { clamped = true; k = far; }
+    gotoRound(k, quiet || clamped);
+    if (clamped && !quiet) toast("目前只到第 " + far + " 轮，已跳到最后一轮");
   }
 
   /* ---------- 故事面板 ----------
@@ -675,6 +912,7 @@
     state.cursor = 0;
     state.roundCounter = 0;
     state.currentRound = null;
+    state.rounds = [];
     state.reviewIndex = 0;
     state.reviewSource = "all";
     state.view = "learn";
@@ -684,7 +922,7 @@
     // state.marks 刻意保留：标记是用户自己整理的「重点词」，不随学习进度重置而清空
     // 抽词来源也回到四级词库，但只清当前来源的进度（其他词库的进度保留）
     state.source = "cet4";
-    state.ctx = { cet4: { pool: [], cursor: 0, roundCounter: 0, currentRound: null } };
+    state.ctx = { cet4: { pool: [], cursor: 0, roundCounter: 0, currentRound: null, rounds: [] } };
     closeResetModal();
     if (!Array.isArray(state.pool) || state.pool.length !== WORDS.length) state.pool = freshPool();
     drawRound(); // 抽第 1 轮并渲染
@@ -697,6 +935,19 @@
     el.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+
+  /* 动效重播器（2026-10-31）：同一个元素上连续触发同一个动作（改错又改回、
+     连续两次拼错）时，光加类不会重播 —— 必须先摘类、强制重排、再挂上。
+     动画结束后把类摘掉，下次复用同一类名时状态是干净的。 */
+  function pulseClass(el, cls, ms) {
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    var key = "_pulse_" + cls;
+    clearTimeout(el[key]);
+    el[key] = setTimeout(function () { el.classList.remove(cls); }, ms || 400);
   }
 
   /* ---------- 事件绑定 ---------- */
@@ -723,8 +974,16 @@
       if (e.key === "Escape" && resetModal && !resetModal.hasAttribute("hidden")) closeResetModal();
     });
 
-    // 学习页：开始新一轮 / 生成故事
-    document.getElementById("btn-new-round-learn").addEventListener("click", function () { drawRound(); });
+    /* 学习页主按钮：正常态抽下一轮；回退态（正在补第 K 轮）时它已经改名
+       「回第 N 轮」，N = 最远抽到的那一轮，点击就得真跳回第 N 轮。
+       早先这里无条件走 drawRound()，而 drawRound 对回退态只往前挪一轮，
+       于是写着「回第 4 轮」点下去只到了第 2 轮 —— 文案与行为对不上。 */
+    document.getElementById("btn-new-round-learn").addEventListener("click", function () {
+      var cur = state.currentRound ? state.currentRound.round : 0;
+      var far = state.roundCounter || 0;
+      if (cur > 0 && far > cur && findRound(far)) { gotoRound(far); return; }
+      drawRound();
+    });
 
     /* 故事面板展开 / 收起开关：只切一个 .story-open 类到学习视图，
        具体怎么让位（卡片区隐藏、书桌居中）全交给 style.css 的「书桌」段。
@@ -1265,6 +1524,7 @@
         }
         renderMark(viewName);
         renderReviewTools();
+        if (on) pulseClass(btn, "is-stamp", 300);   // 书签「盖上去」的那一下
         toast((on ? "已标记「" + w.word + "」" : "已取消标记「" + w.word + "」") +
               " · " + modeLabel(mode));
       });
@@ -1286,23 +1546,60 @@
 
     // 中文模式默写输入框：实时视觉反馈（不阻断）
     document.querySelectorAll(".write-input").forEach(function (input) {
-      input.addEventListener("input", function () {
-        if (state.mode !== "zh") { input.classList.remove("correct", "wrong"); return; }
+      /* 取当前该拼的那个词（学习 / 复习两套索引规则都要走同一份） */
+      function targetWord() {
         var round = activeRoundFor(state.view);
-        if (!round) return;
+        if (!round || !round.words.length) return null;
         var idx = state.view === "review" ? (state.reviewIndex % ROUND_SIZE) : state.currentIndex;
         if (idx >= round.words.length) idx = 0;
-        var w = round.words[idx];
+        return round.words[idx];
+      }
+      function shakeIfWrong() {
+        if (state.mode !== "zh" || !input.value.trim()) return;
+        var w = targetWord();
+        if (!w) return;
+        if (input.value.trim().toLowerCase() !== w.word.toLowerCase()) {
+          pulseClass(input, "is-err-shake", 340);
+        }
+      }
+      input.addEventListener("input", function () {
+        if (state.mode !== "zh") { input.classList.remove("correct", "wrong"); return; }
+        var w = targetWord();
+        if (!w) return;
         var val = input.value.trim().toLowerCase();
         if (!val) { input.classList.remove("correct", "wrong"); return; }
-        if (val === w.word.toLowerCase()) { input.classList.add("correct"); input.classList.remove("wrong"); }
-        else { input.classList.add("wrong"); input.classList.remove("correct"); }
+        if (val === w.word.toLowerCase()) {
+          // 一个词只可能「刚判对」一次 → 光晕只在这一下出现，天然不吵
+          var justOk = !input.classList.contains("correct");
+          input.classList.add("correct");
+          input.classList.remove("wrong");
+          if (justOk) pulseClass(input, "is-ok-pulse", 420);
+        } else {
+          input.classList.add("wrong");
+          input.classList.remove("correct");
+          /* 摇动只在「刚好写满却写错」时来一下 —— 长度继续变长就不再触发，
+             逐字母摇会变成持续抖动，那是噪音不是反馈 */
+          if (val.length === w.word.length) pulseClass(input, "is-err-shake", 340);
+        }
       });
+      // 回车 = 「我写完了」的明确确认：漏字母停手的人也能得到一次判定
+      input.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        shakeIfWrong();
+      });
+      // 离开输入框也算一次确认（点卡片翻面看答案时）
+      input.addEventListener("blur", shakeIfWrong);
     });
 
     // 抽词来源切换（bank.js 的「学习 / 停用」按钮发这个事件）
     document.addEventListener("xd:switch-source", function (e) {
       switchSource(e.detail && e.detail.id);
+    });
+
+    // 顶栏菜单里的轮次跳转（bank.js 发）：只换「看哪一批」，不改学习进度
+    document.addEventListener("xd:jump-round", function (e) {
+      jumpRound(e.detail && e.detail.round, e.detail && e.detail.quiet);
     });
 
     // 故事页双击标记（story.js 发）：落进当前模式的书签，与卡片书签同源。
@@ -1339,6 +1636,8 @@
     if (!Array.isArray(state.pool) || state.pool.length !== activeWords().length) {
       state.pool = freshPool(); state.cursor = 0;
     }
+    // 老存档没有轮次记录：pool 可信就按已学序列补出来；刚重置过 cursor=0，只留当前轮
+    ensureRoundLog();
     bindEvents();                                // 先绑定事件，保证任何分支按钮都可用
     mountSysCluster();                           // 系统按钮簇就位（托盘 / 顶栏）
     document.dispatchEvent(new CustomEvent("xd:source-changed", { detail: { id: state.source } }));

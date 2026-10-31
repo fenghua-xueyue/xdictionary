@@ -12,6 +12,10 @@
      但历史故事不丢（重置只清学习进度，与「标记保留」同一哲学）。
    - 请求直连 OpenAI 兼容接口（默认 DeepSeek），SSE 流式渲染；
      file:// 直连已用探针实测放行（2026-10-08，HEAD 拿到 HTTP 401 真 JSON）。
+   - 2026-10-28 新增「墨水瓶」：没填自己 Key 的访客，可以用兑换码换来的墨滴
+     生成（每篇 1 滴），请求经 Worker 转发，Key 只存在服务端。
+     墨水瓶状态在独立 key english_app_ink_v1：{ drops, worker, clientId }。
+     有 Key 时墨水瓶完全不出现 —— 两条通道互不干扰，老路径一行没动。
    - 操作栏「＋ 展开今日故事」按钮的展开 / 收起职责不变（仍归 app.js）；
      本模块只负责面板内部的「生成本轮故事 / 重新生成」按钮与设置弹窗。
    - 故事面板默认收着 → 生成时借 #btn-generate 的点击展开
@@ -22,6 +26,7 @@
 
   var LS_STORY = "english_app_story_v1";
   var LS_PROGRESS = "english_app_v1";
+  var LS_INK = "english_app_ink_v1";     // 墨水瓶：剩余墨滴 / Worker 地址 / 匿名 id
   var DEFAULT_BASE = "https://api.deepseek.com";
   var DEFAULT_MODEL = "deepseek-chat";
   var HISTORY_MAX = 200;   // 故事集上限：每篇约 1~2KB，200 篇远在 localStorage 容量之内
@@ -302,6 +307,69 @@
     try { localStorage.setItem(LS_STORY, JSON.stringify(store)); } catch (e) { /* 无痕模式降级为内存态 */ }
   }
 
+  /* ---------- 墨水瓶（2026-10-28 新增） ----------
+     两条生成通道，互不影响：
+       ① 自带 API Key → 直连 DeepSeek，不计数（老路径，一行没动）
+       ② 没有 Key    → 用兑换码换来的「墨滴」，经 Worker 代生成，每篇耗 1 滴
+     墨量的权威在 Worker（KV），本地这份只是显示与离线兜底 ——
+     本地改数字没用，Worker 那边过不去。 */
+  function readInk() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem(LS_INK) || "null"); } catch (e) { o = null; }
+    o = (o && typeof o === "object") ? o : {};
+    return {
+      drops: (typeof o.drops === "number" && o.drops >= 0) ? Math.floor(o.drops) : 0,
+      worker: (typeof o.worker === "string") ? o.worker.trim().replace(/\/+$/, "") : "",
+      clientId: (typeof o.clientId === "string") ? o.clientId : ""
+    };
+  }
+  function saveInk(o) {
+    try { localStorage.setItem(LS_INK, JSON.stringify(o)); } catch (e) { /* 无痕模式忽略 */ }
+  }
+  function ensureClientId() {
+    var ink = readInk();
+    if (ink.clientId) return ink.clientId;
+    var id = "";
+    try {
+      if (window.crypto && crypto.randomUUID) id = crypto.randomUUID().replace(/-/g, "");
+    } catch (e) { /* ignore */ }
+    if (!id) {
+      for (var i = 0; i < 24; i++) id += "0123456789abcdef"[Math.floor(Math.random() * 16)];
+    }
+    ink.clientId = id;
+    saveInk(ink);
+    return id;
+  }
+  function setInkDrops(n) {
+    var ink = readInk();
+    ink.drops = Math.max(0, Math.floor(n));
+    saveInk(ink);
+    renderInk();
+  }
+  // HTTP 头里的剩余墨量（Worker 回写）优先于本地估算
+  function syncDropsFromHeader(res) {
+    try {
+      var raw = res.headers.get("x-ink-left");
+      if (raw === null) return;
+      var n = parseInt(raw, 10);
+      if (!isNaN(n)) setInkDrops(n);
+    } catch (e) { /* ignore */ }
+  }
+  // 主动向 Worker 对账（打开弹窗 / 生成失败时用）
+  async function refreshInk() {
+    var ink = readInk();
+    if (!ink.worker) { renderInk(); return; }
+    try {
+      var res = await fetch(ink.worker + "/api/ink", {
+        headers: { "x-client-id": ensureClientId() },
+        cache: "no-store"
+      });
+      if (!res.ok) return;
+      var j = await res.json();
+      if (j && typeof j.drops === "number") setInkDrops(j.drops);
+    } catch (e) { /* 离线 / 服务没开 → 用本地副本 */ }
+  }
+
   /* ---------- 当前轮（只读进度 key） ---------- */
   function readProgress() {
     try {
@@ -323,11 +391,47 @@
       .map(function (w) { return (w && w.word) ? w.word : ""; })
       .filter(function (w) { return !!w; });
   }
-  // 当前轮对应的已缓存故事（roundKey 不匹配 = 没有本轮故事）
+  // 当前轮对应的故事：先认 store.story（最近写的那篇），再去故事集里找同一轮。
+  // 回退到旧轮补写故事后，store.story 这个槽会被那一轮占住 —— 回到新轮时得从
+  // 故事集里把它认回来，否则明明写过却显示空态。
   function currentStoryForRound() {
     var store = readStore();
-    var rk = currentRoundKey();
-    return (store.story && store.story.roundKey === rk) ? store.story : null;
+    var rp = readProgress();
+    var rk = (rp && typeof rp.createdAt === "string" && rp.createdAt) ? rp.createdAt : null;
+    if (rk && store.story && store.story.roundKey === rk) return store.story;
+    var list = Array.isArray(store.history) ? store.history : [];
+    var i;
+    if (rk) {
+      for (i = list.length - 1; i >= 0; i--) {
+        if (list[i] && list[i].roundKey === rk) return list[i];
+      }
+    }
+    /* 老存档：更早那几轮没有原始 createdAt（app.js 补的是 legacy-… 替代指纹），
+       当年写的故事用的是另一个指纹 → 退一步按「同一轮 + 同一批词」认领。 */
+    if (rp && typeof rp.round === "number" && Array.isArray(rp.words)) {
+      var want = normWords(rp.words);
+      for (i = list.length - 1; i >= 0; i--) {
+        var h = list[i];
+        if (!h || h.round !== rp.round) continue;
+        if (sameWords(normWords(h.words || []), want)) return h;
+      }
+    }
+    return null;
+  }
+  function normWords(arr) {
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var w = arr[i];
+      if (typeof w !== "string") w = (w && w.word) ? w.word : "";
+      w = String(w || "").toLowerCase().trim();
+      if (w) out.push(w);
+    }
+    return out;
+  }
+  function sameWords(a, b) {
+    if (!a.length || a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
   }
 
   /* ---------- 轻提示（本地小份拷贝，避免依赖 app.js 内部） ---------- */
@@ -663,6 +767,7 @@
   function render() {
     if (!els.panel) return;
     els.gen.disabled = busy;
+    renderInk();
     if (busy) { setGenLabel(null, "生成中…"); return; }   // 生成中的面板状态由 generate() 管理
     // 书架点开的旧篇优先；没点过就是本轮那篇
     var story = viewStory || currentStoryForRound();
@@ -971,18 +1076,62 @@
     return "请求失败（HTTP " + status + "）" + (detail ? "：" + detail : "");
   }
 
+  /* 统一请求入口：有 Key 直连，没 Key 走 Worker。返回 Response（body 是 SSE 流）。
+     两条通道的下游解析完全一致，所以后面那段 while(reader.read()) 一行都不用改。 */
+  async function requestStream(cfg, words) {
+    var messages = buildMessages(words);
+    if (cfg.apiKey) {
+      return fetch(endpointOf(cfg.baseUrl), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + cfg.apiKey
+        },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: messages,
+          temperature: 1.5,
+          max_tokens: 600,
+          stream: true
+        })
+      });
+    }
+    var ink = readInk();
+    if (!ink.worker) {
+      var e1 = new Error("还没有配置墨水服务");
+      e1.inkCode = "no_worker";
+      throw e1;
+    }
+    var res = await fetch(ink.worker + "/api/story", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-client-id": ensureClientId()
+      },
+      body: JSON.stringify({ messages: messages })
+    });
+    if (res.status === 402) {
+      var e2 = new Error("墨水用完了");
+      e2.inkCode = "no_ink";
+      throw e2;
+    }
+    return res;
+  }
+
   async function generate() {
     if (busy) return;
     viewStory = null;          // 生成的是本轮 → 视角先切回本轮，别让旧篇盖住流式内容
     var cfg = readStore().config;
     if (!cfg.apiKey) {
-      openConfig("还没有填 API Key，填好保存后就能生成了。");
-      return;
+      var hold = readInk();
+      if (!hold.worker) { openInk("还没有填 API Key。带一瓶自己的墨，或者用兑换码换几滴。"); return; }
+      if (hold.drops <= 0) { openInk("墨水瓶空了，添一点墨就能继续写。"); return; }
     }
     var words = currentRoundWords();
     if (!words.length) { toast("还没有当前轮的单词，先抽一轮再说"); return; }
 
     var roundKey = currentRoundKey();
+    if (!roundKey) { toast("这一轮的记录有点乱，点「下一轮」重新抽一轮再写"); return; }
     var rp = readProgress();
     var roundNo = (rp && typeof rp.round === "number") ? rp.round : null;
     busy = true;
@@ -1004,19 +1153,7 @@
 
     var full = "";
     try {
-      var headers = { "Content-Type": "application/json" };
-      if (cfg.apiKey) headers["Authorization"] = "Bearer " + cfg.apiKey;
-      var res = await fetch(endpointOf(cfg.baseUrl), {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: buildMessages(words),
-          temperature: 1.5,
-          max_tokens: 600,
-          stream: true
-        })
-      });
+      var res = await requestStream(cfg, words);
       if (!res.ok) {
         var bodyText = "";
         try { bodyText = await res.text(); } catch (e) { /* ignore */ }
@@ -1055,6 +1192,7 @@
 
       var story = splitStory(full);
       if (!story.en) throw new Error("模型没有返回有效内容，请重新生成试试。");
+      syncDropsFromHeader(res);   // 走 Worker 时把服务端回写的余量落到本地显示
 
       // 生成期间换轮 / 重置了 → 内容对不上新一轮的词，不保存
       if (currentRoundKey() !== roundKey) {
@@ -1084,6 +1222,14 @@
       toast("本轮故事已生成");
     } catch (err) {
       busy = false;
+      // 墨水相关的失败不按「网络错误」报，直接把添墨面板摆到面前
+      if (err && err.inkCode) {
+        fail(err.message);
+        openInk(err.inkCode === "no_ink"
+          ? "墨水瓶空了，添一点墨就能继续写。"
+          : "还没有配置墨水服务，看看下面这两条路。");
+        return;
+      }
       var msg = (err && err.message) ? err.message : "生成失败，请重试。";
       if (err instanceof TypeError) msg = "网络请求失败，请检查网络连接后再试。";   // fetch 被断网 / 拦截时抛 TypeError
       fail(msg);
@@ -1111,7 +1257,91 @@
     };
     saveStore(store);
     closeConfig();
+    renderInk();
     toast("故事生成设置已保存");
+  }
+
+  /* ---------- 墨水瓶 UI（2026-10-28） ----------
+     规则：有自己的 Key 就完全不显示墨水瓶（他不受计数约束）；
+     没有 Key 才出现，空了会变成空心瓶。 */
+  var inkBusy = false;
+
+  function renderInk() {
+    var bottle = els.ink;
+    if (!bottle) return;
+    var cfg = readStore().config;
+    var ink = readInk();
+    bottle.hidden = !!cfg.apiKey;
+    if (els.inkNum) els.inkNum.textContent = String(ink.drops);
+    bottle.classList.toggle("is-empty", ink.drops <= 0);
+    bottle.title = ink.drops > 0
+      ? "还剩 " + ink.drops + " 滴墨，点一下可以添墨"
+      : "墨水瓶空了，点一下添墨";
+  }
+  function inkMsg(text, isError) {
+    if (!els.inkMsg) return;
+    els.inkMsg.hidden = !text;
+    els.inkMsg.textContent = text || "";
+    els.inkMsg.classList.toggle("is-error", !!isError);
+  }
+  function openInk(hint) {
+    if (!els.inkModal) return;
+    var ink = readInk();
+    if (els.inkHint) {
+      els.inkHint.hidden = !hint;
+      els.inkHint.textContent = hint || "";
+    }
+    if (els.inkCount) els.inkCount.textContent = String(ink.drops);
+    if (els.inkWorker) els.inkWorker.value = ink.worker;
+    if (els.inkCodeInput) els.inkCodeInput.value = "";
+    inkMsg("", false);
+    els.inkModal.removeAttribute("hidden");
+    refreshInk();
+    try { els.inkCodeInput.focus(); } catch (e) { /* ignore */ }
+  }
+  function closeInk() { if (els.inkModal) els.inkModal.setAttribute("hidden", ""); }
+
+  async function redeemInk() {
+    if (inkBusy || !els.inkCodeInput) return;
+    var code = (els.inkCodeInput.value || "").trim();
+    if (!code) { inkMsg("先填兑换码。", true); return; }
+    var ink = readInk();
+    if (!ink.worker) { inkMsg("墨水服务还没接通，先在下面填服务地址（部署说明见 server/）。", true); return; }
+    inkBusy = true;
+    if (els.inkRedeem) els.inkRedeem.disabled = true;
+    inkMsg("正在兑换…", false);
+    try {
+      var res = await fetch(ink.worker + "/api/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-client-id": ensureClientId() },
+        body: JSON.stringify({ code: code })
+      });
+      var j = null;
+      try { j = await res.json(); } catch (e) { j = null; }
+      if (!res.ok || !j || !j.ok) {
+        inkMsg((j && j.error) || "兑换失败，检查一下码有没有输错。", true);
+        return;
+      }
+      setInkDrops(j.drops);
+      if (els.inkCount) els.inkCount.textContent = String(j.drops);
+      if (els.inkCodeInput) els.inkCodeInput.value = "";
+      inkMsg("添了 " + j.added + " 滴墨，现在共有 " + j.drops + " 滴。", false);
+      toast("添墨成功");
+    } catch (e) {
+      inkMsg("连不上墨水服务，检查服务地址或稍后再试。", true);
+    } finally {
+      inkBusy = false;
+      if (els.inkRedeem) els.inkRedeem.disabled = false;
+    }
+  }
+
+  function saveWorker() {
+    if (!els.inkWorker) return;
+    var ink = readInk();
+    ink.worker = (els.inkWorker.value || "").trim().replace(/\/+$/, "");
+    saveInk(ink);
+    inkMsg(ink.worker ? "服务地址已保存。" : "已清空服务地址。", false);
+    refreshInk();
   }
 
   /* ---------- 故事集 = 书架（2026-10-27 改版） ---------- */
@@ -1553,6 +1783,19 @@
     els.histBtn.addEventListener("click", openHistory);
     els.cfgCancel.addEventListener("click", closeConfig);
     els.cfgSave.addEventListener("click", saveConfig);
+    // 墨水瓶
+    if (els.ink) els.ink.addEventListener("click", function () { openInk(""); });
+    if (els.inkClose) els.inkClose.addEventListener("click", closeInk);
+    if (els.inkRedeem) els.inkRedeem.addEventListener("click", redeemInk);
+    if (els.inkSaveWorker) els.inkSaveWorker.addEventListener("click", saveWorker);
+    if (els.inkCodeInput) els.inkCodeInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); redeemInk(); }
+    });
+    if (els.inkOwnKey) els.inkOwnKey.addEventListener("click", function () {
+      closeInk();
+      openConfig("填好你自己的 Key 保存后，这条通道就不再计数了。");
+    });
+    if (els.inkModal) els.inkModal.addEventListener("click", function (e) { if (e.target === this) closeInk(); });
     els.histClose.addEventListener("click", closeHistory);
     // 书架翻页：「‹」看更早（页码变大），「›」看更新
     if (els.shelfPrev) els.shelfPrev.addEventListener("click", function () {
@@ -1569,6 +1812,7 @@
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
       if (!els.cfgModal.hasAttribute("hidden")) { closeConfig(); return; }
+      if (els.inkModal && !els.inkModal.hasAttribute("hidden")) { closeInk(); return; }
       if (!els.histModal.hasAttribute("hidden")) closeHistory();
     });
 
@@ -1672,6 +1916,14 @@
       applyMarkedClasses();  // 并把正文里的标记态对齐
       setTimeout(fitPages, 0);
     });
+
+    /* 换轮 / 回退到旧轮（app.js 发）：书桌上摊的必须是「这一轮」那篇。
+       从书架点开的旧篇先收掉，否则回退后还摊着别的轮次。 */
+    document.addEventListener("xd:round-changed", function () {
+      if (viewStory) viewStory = null;
+      render();
+      setTimeout(fitPages, 0);
+    });
   }
 
   /* ---------- 换轮感知 ---------- */
@@ -1728,6 +1980,19 @@
     els.cfgHint = $("#cfg-hint");
     els.cfgCancel = $("#btn-cfg-cancel");
     els.cfgSave = $("#btn-cfg-save");
+    // 墨水瓶
+    els.ink = $("#btn-ink");
+    els.inkNum = $("#ink-num");
+    els.inkModal = $("#ink-modal");
+    els.inkCount = $("#ink-count");
+    els.inkHint = $("#ink-hint");
+    els.inkMsg = $("#ink-msg");
+    els.inkCodeInput = $("#ink-code");
+    els.inkRedeem = $("#btn-ink-redeem");
+    els.inkWorker = $("#ink-worker");
+    els.inkSaveWorker = $("#btn-ink-save-worker");
+    els.inkOwnKey = $("#btn-ink-own-key");
+    els.inkClose = $("#btn-ink-close");
     els.histModal = $("#story-history-modal");
     els.histClose = $("#btn-history-close");
     els.shelfMeta = $("#shelf-meta");

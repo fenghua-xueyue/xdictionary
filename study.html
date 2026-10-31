@@ -4,7 +4,7 @@
   <meta charset="UTF-8" data-page-node-id="x4Dd2VYmBDfpY8uIf7fR1S" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="SdQzvdihu3L29PSZxEuudD" />
   <title>xdictionary · 学习</title>
-  <link rel="stylesheet" href="style.css?v=202610290" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
+  <link rel="stylesheet" href="style.css?v=202610312" data-page-node-id="2atDd7uC3RP8LtJFyD0Dpd" />
   <script>
     /* 防闪屏：必须在首次绘制前把已保存的皮肤套上，否则会先闪一下默认配色。
        这段脚本刻意写得很短，且不依赖 skin.js（那时还没加载）。
@@ -192,6 +192,7 @@
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 21h16"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-ink" viewBox="0 0 24 24"><path d="M9.5 2.5h5v2.8c0 .6.2 1.1.6 1.5l1.5 1.7c.5.6.9 1.3.9 2.1V19a2.5 2.5 0 0 1-2.5 2.5h-6A2.5 2.5 0 0 1 6.5 19v-8.4c0-.8.3-1.5.9-2.1l1.5-1.7c.4-.4.6-.9.6-1.5V2.5z"/><path d="M6.8 13.5h10.4"/></symbol>
   </svg>
   <!-- 全局顶栏 -->
   <header class="app-header" id="app-header" data-page-node-id="KDATJVcX8cc8iCgE26HF0H">
@@ -208,9 +209,9 @@
     <div class="header-right">
       <!-- 皮肤 / 音效 / 备份 / 重置 已挪到学习页卡下的 .card-tray（#sys-cluster），
            切视图 / 开书时由 app.js 搬运；顶栏这里只留轮次徽标。 -->
-      <!-- 词库快速切换：点徽标弹出词源菜单（菜单内容由 bank.js 渲染） -->
+      <!-- 词库快速切换：点徽标弹出菜单（轮次跳转 + 词源，菜单内容由 bank.js 渲染） -->
       <div class="source-switch" data-page-node-id="Kndmtq3IaAoNlK10dJABQL">
-        <button type="button" class="round-badge" id="round-badge" aria-haspopup="menu" aria-expanded="false" title="点击切换词库">第 1 轮</button>
+        <button type="button" class="round-badge" id="round-badge" aria-haspopup="menu" aria-expanded="false" title="点击切换词库 / 跳到某一轮">第 1 轮</button>
         <div class="source-menu" id="source-menu" hidden></div>
       </div>
     </div>
@@ -323,6 +324,9 @@
 
         <div class="book-tools">
           <button class="btn btn-outline btn-story-gen" id="btn-story-gen" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-spark"></use></svg> 生成本轮故事</button>
+          <button class="btn-ink" id="btn-ink" type="button" hidden aria-haspopup="dialog" title="墨水瓶">
+            <svg class="svg-icon" aria-hidden="true" width="16" height="16"><use href="#i-ink"></use></svg><span class="ink-num" id="ink-num">0</span>
+          </button>
           <button class="btn-story-config" id="btn-story-history" type="button" aria-label="故事集：翻看历轮生成的故事" title="故事集：历轮生成的故事都在这里"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-book"></use></svg></button>
           <button class="btn-story-config" id="btn-story-config" type="button" aria-label="故事生成设置" title="故事生成设置"><svg class="svg-icon" aria-hidden="true" width="17" height="17"><use href="#i-gear"></use></svg></button>
           <button class="btn-book-back" id="btn-book-close" type="button" title="合上书，回到单词卡片（Esc）">
@@ -523,6 +527,54 @@
     </div>
   </div>
 
+  <!-- 墨水瓶 / 添墨（story.js 管理）
+       没有自己的 Key 时，生成故事要花「墨滴」；墨从兑换码来。 -->
+  <div class="modal-overlay" id="ink-modal" hidden>
+    <div class="modal modal-ink" role="dialog" aria-modal="true" aria-labelledby="ink-title">
+      <h3 class="modal-title" id="ink-title">墨水瓶</h3>
+
+      <div class="ink-meter">
+        <svg class="ink-meter-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-ink"></use></svg>
+        <p class="ink-meter-text"><span class="ink-meter-num" id="ink-count">0</span><span class="ink-meter-unit">滴墨</span></p>
+        <p class="ink-meter-note">一篇故事耗一滴</p>
+      </div>
+
+      <p class="modal-hint ink-hint" id="ink-hint" hidden></p>
+
+      <div class="ink-ways">
+        <div class="ink-way">
+          <h4>带一瓶自己的墨</h4>
+          <p>填一个 DeepSeek API Key，从此写多少篇都不计数。Key 只存在你自己的浏览器里，不会上传。</p>
+          <button class="btn btn-secondary ink-way-btn" id="btn-ink-own-key" type="button">去填 Key</button>
+        </div>
+
+        <div class="ink-way">
+          <h4>用兑换码添墨</h4>
+          <p>一个码换几滴墨。输进去就能用，不用注册。</p>
+          <div class="ink-code-row">
+            <input type="text" id="ink-code" placeholder="INK-…" autocomplete="off" spellcheck="false" />
+            <button class="btn btn-primary" id="btn-ink-redeem" type="button">兑换</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="ink-msg" id="ink-msg" hidden></p>
+
+      <details class="ink-advanced">
+        <summary>墨水服务地址</summary>
+        <div class="ink-code-row">
+          <input type="url" id="ink-worker" placeholder="https://xxx.workers.dev" autocomplete="off" spellcheck="false" />
+          <button class="btn btn-secondary" id="btn-ink-save-worker" type="button">保存</button>
+        </div>
+        <p class="modal-field-hint">没填自己的 Key 时，故事由这个服务代写。部署方式见仓库里的 <code>server/</code> 目录。</p>
+      </details>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-ink-close" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 故事集 = 书架（story.js 管理） -->
   <div class="modal-overlay" id="story-history-modal" hidden>
     <div class="modal modal-shelf" role="dialog" aria-modal="true" aria-labelledby="story-history-title">
@@ -558,7 +610,7 @@
   <div class="modal-overlay" id="backup-modal" hidden>
     <div class="modal modal-backup" role="dialog" aria-modal="true" aria-labelledby="backup-title">
       <h3 class="modal-title" id="backup-title">备份进度</h3>
-      <p class="modal-hint">导出会把学习进度、标记、皮肤、音效、故事集和自定义词库存成一个 JSON 文件；导入用备份文件整包覆盖当前进度（覆盖前会先把当前进度自动另存一份）。API Key 不会包含在备份文件里，换设备后到故事生成设置里重填即可。</p>
+      <p class="modal-hint">导出会把学习进度、标记、皮肤、音效、故事集、自定义词库和墨水瓶存成一个 JSON 文件；导入用备份文件整包覆盖当前进度（覆盖前会先把当前进度自动另存一份）。API Key 不会包含在备份文件里，换设备后到故事生成设置里重填即可。</p>
       <div class="backup-actions">
         <button class="btn btn-primary" id="btn-backup-export" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-download"></use></svg> 导出进度文件</button>
         <button class="btn btn-secondary" id="btn-backup-import" type="button"><svg class="svg-icon" aria-hidden="true" width="15" height="15"><use href="#i-upload"></use></svg> 从文件导入</button>
@@ -625,12 +677,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="NYLkiER8CIsTokCaqF1Gss"></div>
 
   <script src="words.js?v=202610265"></script>
-  <script src="skin.js?v=202610272"></script>
-  <script src="bank.js?v=202610265"></script>
-  <script src="app.js?v=202610290"></script>
+  <script src="skin.js?v=202610312"></script>
+  <script src="bank.js?v=202610301"></script>
+  <script src="app.js?v=202610311"></script>
   <script src="intro.js?v=202610272"></script>
   <script src="speak.js?v=202610265"></script>
-  <script src="story.js?v=202610290"></script>
+  <script src="story.js?v=202610301"></script>
   <script src="backup.js?v=202610265"></script>
 </body>
 </html>
