@@ -5,7 +5,7 @@
 (function () {
   "use strict";
   /* 版本指纹：F12 控制台可确认浏览器实际加载的 app.js 是哪一版（排查缓存用） */
-  console.log("[xdictionary] app.js v202610311 · 判分落定 + 按压与菜单微交互");
+  console.log("[xdictionary] app.js v202610313 · 判分落定 + 按压与菜单微交互");
 
   /* ---------- 状态 ---------- */
   var state = {

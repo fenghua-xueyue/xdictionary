@@ -27,6 +27,13 @@
   var LS_STORY = "english_app_story_v1";
   var LS_PROGRESS = "english_app_v1";
   var LS_INK = "english_app_ink_v1";     // 墨水瓶：剩余墨滴 / Worker 地址 / 匿名 id
+
+  /* ---------- 墨水通道总开关（2026-10-31） ----------
+     兑换码通道要有 Cloudflare Worker 才成立，而服务端（server/）还没部署。
+     关掉时：工具条不出现墨水瓶、没填 Key 的人点「生成本轮故事」走原来的
+     「先去填 API Key」提示，不会弹出一个连不上服务的面板。
+     Worker 部署好之后把它改成 true，整条通道立即生效（story.js 其余代码不用动）。 */
+  var INK_ENABLED = false;
   var DEFAULT_BASE = "https://api.deepseek.com";
   var DEFAULT_MODEL = "deepseek-chat";
   var HISTORY_MAX = 200;   // 故事集上限：每篇约 1~2KB，200 篇远在 localStorage 容量之内
@@ -1097,6 +1104,7 @@
       });
     }
     var ink = readInk();
+    if (!INK_ENABLED) throw new Error("还没有填 API Key，填好保存后就能生成了。");
     if (!ink.worker) {
       var e1 = new Error("还没有配置墨水服务");
       e1.inkCode = "no_worker";
@@ -1123,6 +1131,7 @@
     viewStory = null;          // 生成的是本轮 → 视角先切回本轮，别让旧篇盖住流式内容
     var cfg = readStore().config;
     if (!cfg.apiKey) {
+      if (!INK_ENABLED) { openConfig("还没有填 API Key，填好保存后就能生成了。"); return; }
       var hold = readInk();
       if (!hold.worker) { openInk("还没有填 API Key。带一瓶自己的墨，或者用兑换码换几滴。"); return; }
       if (hold.drops <= 0) { openInk("墨水瓶空了，添一点墨就能继续写。"); return; }
@@ -1271,7 +1280,7 @@
     if (!bottle) return;
     var cfg = readStore().config;
     var ink = readInk();
-    bottle.hidden = !!cfg.apiKey;
+    bottle.hidden = !INK_ENABLED || !!cfg.apiKey;   // 服务端未部署时整条通道不露脸
     if (els.inkNum) els.inkNum.textContent = String(ink.drops);
     bottle.classList.toggle("is-empty", ink.drops <= 0);
     bottle.title = ink.drops > 0
